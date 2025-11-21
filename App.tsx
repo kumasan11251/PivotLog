@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import { loadUserSettings } from './src/utils/storage';
+import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const [fontsLoaded] = useFonts({
+    NotoSansJP_400Regular,
+    NotoSansJP_700Bold,
+  });
 
   useEffect(() => {
     const checkUserSettings = async () => {
@@ -22,7 +28,7 @@ export default function App() {
     setIsSetupComplete(true);
   };
 
-  if (isLoading) {
+  if (!fontsLoaded || isLoading) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#8B9D83" />
@@ -40,10 +46,10 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* ここに後でホーム画面を追加 */}
+    <>
+      <HomeScreen />
       <StatusBar style="auto" />
-    </View>
+    </>
   );
 }
 

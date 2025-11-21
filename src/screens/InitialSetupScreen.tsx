@@ -174,6 +174,7 @@ const styles = StyleSheet.create({
     marginBottom: 48,
     textAlign: 'center',
     letterSpacing: 1,
+    fontFamily: 'NotoSansJP_400Regular',
   },
   section: {
     marginBottom: 32,
@@ -183,6 +184,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 12,
     letterSpacing: 0.5,
+    fontFamily: 'NotoSansJP_400Regular',
   },
   birthdayInputContainer: {
     flexDirection: 'row',
@@ -204,11 +206,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#2C2C2C',
     padding: 0,
+    fontFamily: 'NotoSansJP_400Regular',
   },
   inputLabel: {
     fontSize: 16,
     color: '#666',
     marginLeft: 4,
+    fontFamily: 'NotoSansJP_400Regular',
   },
   lifespanInputContainer: {
     flexDirection: 'row',
@@ -225,6 +229,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#2C2C2C',
     padding: 0,
+    fontFamily: 'NotoSansJP_400Regular',
   },
   completeButton: {
     backgroundColor: '#8B9D83', // Sage green accent color
@@ -246,6 +251,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 1,
+    fontFamily: 'NotoSansJP_400Regular',
   },
 });
 
