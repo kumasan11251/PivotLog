@@ -3,9 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
 } from 'react-native';
 import { loadUserSettings } from '../utils/storage';
+import { colors, fonts, spacing } from '../theme';
+import Button from '../components/common/Button';
 
 interface TimeLeft {
   years: number;
@@ -166,9 +167,7 @@ const HomeScreen: React.FC = () => {
       </View>
 
       {/* 今日を記録するボタン */}
-      <TouchableOpacity style={styles.recordButton} onPress={handleRecordToday}>
-        <Text style={styles.recordButtonText}>記録する</Text>
-      </TouchableOpacity>
+      <Button title="記録する" onPress={handleRecordToday} />
     </View>
   );
 };
@@ -176,123 +175,102 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.padding.screen,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '300',
-    color: '#2C2C2C',
+    fontSize: fonts.size.title,
+    fontWeight: fonts.weight.regular,
+    color: colors.text.primary,
     textAlign: 'center',
-    marginBottom: 48,
+    marginBottom: spacing.xxl,
     letterSpacing: 2,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   countdownContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    marginBottom: 48,
+    marginBottom: spacing.xxl,
     flexWrap: 'wrap',
-    gap: 4,
+    gap: spacing.xs,
   },
   timeBlock: {
     alignItems: 'center',
     marginHorizontal: 2,
-    minWidth: 50,
+    minWidth: spacing.countdown.blockWidthLarge,
   },
   timeValue: {
-    fontSize: 32,
-    fontWeight: '200',
-    color: '#2C2C2C',
+    fontSize: fonts.size.countdownLarge,
+    fontWeight: fonts.weight.light,
+    color: colors.text.primary,
     marginBottom: 2,
-    fontFamily: 'NotoSansJP_400Regular',
-    minWidth: 50,
+    fontFamily: fonts.family.regular,
+    minWidth: spacing.countdown.blockWidthLarge,
     textAlign: 'center',
-    lineHeight: 36,
+    lineHeight: fonts.lineHeight.countdownLarge,
   },
   timeLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: fonts.size.label,
+    color: colors.text.secondary,
     letterSpacing: 1,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   timeBlockSmall: {
     alignItems: 'center',
     marginHorizontal: 2,
-    minWidth: 38,
+    minWidth: spacing.countdown.blockWidthSmall,
   },
   timeValueSmall: {
-    fontSize: 22,
-    fontWeight: '200',
-    color: '#2C2C2C',
+    fontSize: fonts.size.countdownSmall,
+    fontWeight: fonts.weight.light,
+    color: colors.text.primary,
     marginBottom: 2,
-    fontFamily: 'NotoSansJP_400Regular',
-    minWidth: 38,
+    fontFamily: fonts.family.regular,
+    minWidth: spacing.countdown.blockWidthSmall,
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: fonts.lineHeight.countdownSmall,
   },
   timeLabelSmall: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
     letterSpacing: 0.5,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   progressSection: {
-    marginTop: 48,
-    marginBottom: 48,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.xxl,
   },
   progressLabelContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   progressLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: fonts.size.label,
+    color: colors.text.secondary,
     letterSpacing: 0.5,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   progressBarContainer: {
-    height: 12,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 6,
+    height: spacing.progressBar.height,
+    backgroundColor: colors.progress.background,
+    borderRadius: spacing.borderRadius.small,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#8B9D83',
-    borderRadius: 6,
+    backgroundColor: colors.progress.bar,
+    borderRadius: spacing.borderRadius.small,
   },
   progressText: {
-    fontSize: 16,
-    color: '#2C2C2C',
+    fontSize: fonts.size.body,
+    color: colors.text.primary,
     textAlign: 'center',
-    fontWeight: '300',
-    fontFamily: 'NotoSansJP_400Regular',
-  },
-  recordButton: {
-    backgroundColor: '#8B9D83',
-    borderRadius: 8,
-    padding: 18,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  recordButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 1,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontWeight: fonts.weight.regular,
+    fontFamily: fonts.family.regular,
   },
 });
 

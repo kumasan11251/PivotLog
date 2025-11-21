@@ -3,13 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Alert,
   TextInput,
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
 import { saveUserSettings } from '../utils/storage';
+import { colors, fonts, spacing } from '../theme';
+import Button from '../components/common/Button';
 
 interface InitialSetupScreenProps {
   onComplete: () => void;
@@ -152,9 +153,7 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ onComplete }) =
           </View>
         </View>
 
-        <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
-          <Text style={styles.completeButtonText}>設定完了</Text>
-        </TouchableOpacity>
+        <Button title="設定完了" onPress={handleComplete} style={{ marginTop: spacing.xl }} />
       </View>
     </TouchableWithoutFeedback>
   );
@@ -163,95 +162,73 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ onComplete }) =
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
-    padding: 24,
+    backgroundColor: colors.background,
+    padding: spacing.padding.screen,
     justifyContent: 'center',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '300',
-    color: '#2C2C2C',
-    marginBottom: 48,
+    fontSize: fonts.size.heading,
+    fontWeight: fonts.weight.regular,
+    color: colors.text.primary,
+    marginBottom: spacing.xxl,
     textAlign: 'center',
     letterSpacing: 1,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   section: {
     marginBottom: 32,
   },
   label: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
+    fontSize: fonts.size.label,
+    color: colors.text.secondary,
+    marginBottom: spacing.md,
     letterSpacing: 0.5,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   birthdayInputContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
   },
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
+    backgroundColor: colors.surface,
+    borderWidth: spacing.borderWidth,
+    borderColor: colors.border,
+    borderRadius: spacing.borderRadius.medium,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.padding.input,
   },
   input: {
     flex: 1,
-    fontSize: 18,
-    color: '#2C2C2C',
+    fontSize: fonts.size.input,
+    color: colors.text.primary,
     padding: 0,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   inputLabel: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: fonts.size.body,
+    color: colors.text.secondary,
     marginLeft: 4,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
   lifespanInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    backgroundColor: colors.surface,
+    borderWidth: spacing.borderWidth,
+    borderColor: colors.border,
+    borderRadius: spacing.borderRadius.medium,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.padding.input,
   },
   lifespanInput: {
     flex: 1,
-    fontSize: 18,
-    color: '#2C2C2C',
+    fontSize: fonts.size.input,
+    color: colors.text.primary,
     padding: 0,
-    fontFamily: 'NotoSansJP_400Regular',
-  },
-  completeButton: {
-    backgroundColor: '#8B9D83', // Sage green accent color
-    borderRadius: 8,
-    padding: 18,
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  completeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 1,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
   },
 });
 

@@ -5,6 +5,7 @@ import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import { loadUserSettings } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
+import { colors } from './src/theme';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +32,7 @@ export default function App() {
   if (!fontsLoaded || isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#8B9D83" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -56,7 +57,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
