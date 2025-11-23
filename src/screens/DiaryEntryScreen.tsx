@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   Platform,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -18,6 +19,8 @@ import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
 import { saveDiaryEntry, getDiaryByDate, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
+
+const MAX_CHARS = 100;
 
 interface DiaryEntryScreenProps {
   onComplete: () => void;
@@ -41,6 +44,9 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initial
   const [initialGoodTime, setInitialGoodTime] = useState('');
   const [initialWastedTime, setInitialWastedTime] = useState('');
   const [initialTomorrow, setInitialTomorrow] = useState('');
+
+  // ScrollViewのref
+  const scrollViewRef = React.useRef<ScrollView>(null);
 
   // 選択された日付をYYYY-MM-DD形式に変換
   const dateString = selectedDate.toISOString().split('T')[0];
@@ -141,14 +147,23 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initial
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        style={styles.innerContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         <View style={styles.innerContainer}>
           {/* 戻るボタン */}
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Text style={styles.backButtonText}>← 戻る</Text>
           </TouchableOpacity>
 
-          <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollViewContent}
+            keyboardShouldPersistTaps="handled"
+          >
           {/* 記録日 */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>記録日</Text>
@@ -163,48 +178,63 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initial
 
           {/* 日記入力エリア */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>{DIARY_QUESTIONS.goodTime.label}</Text>
+            <View style={styles.labelContainer}>
+              <Text style={styles.label}>{DIARY_QUESTIONS.goodTime.label}</Text>
+              <Text style={styles.charCount}>{goodTime.length}/{MAX_CHARS}</Text>
+            </View>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
                 value={goodTime}
                 onChangeText={setGoodTime}
+                onFocus={() => scrollViewRef.current?.scrollTo({ y: 50, animated: true })}
                 placeholder="例：朝の運動、集中した作業時間など"
                 placeholderTextColor={colors.text.secondary}
                 multiline
                 textAlignVertical="top"
+                maxLength={MAX_CHARS}
               />
             </View>
           </View>
 
           {/* 無駄にした時間 */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>{DIARY_QUESTIONS.wastedTime.label}</Text>
+            <View style={styles.labelContainer}>
+              <Text style={styles.label}>{DIARY_QUESTIONS.wastedTime.label}</Text>
+              <Text style={styles.charCount}>{wastedTime.length}/{MAX_CHARS}</Text>
+            </View>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
                 value={wastedTime}
                 onChangeText={setWastedTime}
+                onFocus={() => scrollViewRef.current?.scrollTo({ y: 230, animated: true })}
                 placeholder="例：SNSの見すぎ、意味のない会議など"
                 placeholderTextColor={colors.text.secondary}
                 multiline
                 textAlignVertical="top"
+                maxLength={MAX_CHARS}
               />
             </View>
           </View>
 
           {/* 明日の予定 */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>{DIARY_QUESTIONS.tomorrow.label}</Text>
+            <View style={styles.labelContainer}>
+              <Text style={styles.label}>{DIARY_QUESTIONS.tomorrow.label}</Text>
+              <Text style={styles.charCount}>{tomorrow.length}/{MAX_CHARS}</Text>
+            </View>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
                 value={tomorrow}
                 onChangeText={setTomorrow}
+                onFocus={() => scrollViewRef.current?.scrollTo({ y: 410, animated: true })}
                 placeholder="例：早起きして読書、重要な仕事に取り組むなど"
                 placeholderTextColor={colors.text.secondary}
                 multiline
                 textAlignVertical="top"
+                maxLength={MAX_CHARS}
               />
             </View>
           </View>
@@ -216,11 +246,11 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initial
             disabled={isSaving}
             style={styles.saveButton}
           />
-        </ScrollView>
+          </ScrollView>
 
-        {/* カレンダーモーダル */}
-        {showDatePicker && (
-          Platform.OS === 'ios' ? (
+          {/* カレンダーモーダル */}
+          {showDatePicker && (
+            Platform.OS === 'ios' ? (
             <Modal
               visible={showDatePicker}
               transparent={true}
@@ -256,7 +286,7 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initial
           )
         )}
         </View>
-      </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -282,15 +312,28 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollViewContent: {
+    flexGrow: 1,
+  },
   fieldContainer: {
     paddingHorizontal: spacing.padding.screen,
     marginBottom: spacing.xl,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
   },
   label: {
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
-    marginBottom: spacing.sm,
+  },
+  charCount: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
   },
   dateInputContainer: {
     flexDirection: 'row',
@@ -347,7 +390,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginHorizontal: spacing.padding.screen,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.xxl * 2,
   },
 });
 
