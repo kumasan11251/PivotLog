@@ -62,7 +62,7 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDiary, on
           {item.goodTime && (
             <View style={styles.previewSection}>
               <Text style={styles.previewLabel}>{DIARY_QUESTIONS.goodTime.label}</Text>
-              <Text style={styles.previewText} numberOfLines={1}>
+              <Text style={styles.previewText}>
                 {item.goodTime}
               </Text>
             </View>
@@ -71,7 +71,7 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDiary, on
           {item.wastedTime && (
             <View style={styles.previewSection}>
               <Text style={styles.previewLabel}>{DIARY_QUESTIONS.wastedTime.label}</Text>
-              <Text style={styles.previewText} numberOfLines={1}>
+              <Text style={styles.previewText}>
                 {item.wastedTime}
               </Text>
             </View>
@@ -80,7 +80,7 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDiary, on
           {item.tomorrow && (
             <View style={styles.previewSection}>
               <Text style={styles.previewLabel}>{DIARY_QUESTIONS.tomorrow.label}</Text>
-              <Text style={styles.previewText} numberOfLines={1}>
+              <Text style={styles.previewText}>
                 {item.tomorrow}
               </Text>
             </View>
