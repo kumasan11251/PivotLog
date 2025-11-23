@@ -42,9 +42,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateTo
       setTargetLifespan(settings.targetLifespan);
 
       const now = new Date();
-      const birthday = new Date(settings.birthday);
-      const targetDate = new Date(birthday);
-      targetDate.setFullYear(birthday.getFullYear() + settings.targetLifespan);
+      // タイムゾーンの影響を受けないように、年月日を個別に取得
+      const [year, month, day] = settings.birthday.split('-').map(Number);
+      const birthday = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const targetDate = new Date(year + settings.targetLifespan, month - 1, day, 0, 0, 0, 0);
 
       // 残り時間の計算
       const diffMs = targetDate.getTime() - now.getTime();

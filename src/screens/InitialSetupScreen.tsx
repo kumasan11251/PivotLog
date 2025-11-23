@@ -81,7 +81,8 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ onComplete }) =
     }
 
     try {
-      const birthdayString = birthdayDate.toISOString().split('T')[0];
+      // タイムゾーンの影響を受けないように、年月日から直接ISO形式の文字列を作成
+      const birthdayString = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
 
       await saveUserSettings({
         birthday: birthdayString,
