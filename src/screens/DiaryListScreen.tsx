@@ -11,11 +11,11 @@ import { colors, fonts, spacing } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
 
 interface DiaryListScreenProps {
-  onNavigateToDiary: (date?: string) => void;
+  onNavigateToDetail: (date: string) => void;
   onBack?: () => void;
 }
 
-const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDiary, onBack }) => {
+const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, onBack }) => {
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -49,7 +49,7 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDiary, on
     return (
       <TouchableOpacity
         style={styles.diaryItem}
-        onPress={() => onNavigateToDiary(item.date)}
+        onPress={() => onNavigateToDetail(item.date)}
       >
         <Text style={styles.dateText}>{formatDate(item.date)}</Text>
         <Text style={styles.arrowIcon}>›</Text>
@@ -86,13 +86,6 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDiary, on
         refreshing={isLoading}
         onRefresh={loadDiaries}
       />
-
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => onNavigateToDiary()}
-      >
-        <Text style={styles.addButtonText}>+ 新しい記録</Text>
-      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -166,27 +159,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
-  },
-  addButton: {
-    backgroundColor: colors.primary,
-    margin: spacing.padding.screen,
-    paddingVertical: spacing.lg,
-    borderRadius: spacing.borderRadius.medium,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  addButtonText: {
-    fontSize: fonts.size.body,
-    fontWeight: fonts.weight.semibold,
-    color: '#FFFFFF',
-    fontFamily: fonts.family.bold,
   },
 });
 

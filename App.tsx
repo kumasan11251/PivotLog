@@ -6,11 +6,12 @@ import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
 import DiaryListScreen from './src/screens/DiaryListScreen';
+import DiaryDetailScreen from './src/screens/DiaryDetailScreen';
 import { loadUserSettings } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors } from './src/theme';
 
-type Screen = 'home' | 'diaryEntry' | 'diaryList';
+type Screen = 'home' | 'diaryEntry' | 'diaryList' | 'diaryDetail';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -41,12 +42,26 @@ export default function App() {
     setCurrentScreen('diaryEntry');
   };
 
+  const handleNavigateToDetail = (date: string) => {
+    setSelectedDiaryDate(date);
+    setCurrentScreen('diaryDetail');
+  };
+
   const handleNavigateToList = () => {
     setCurrentScreen('diaryList');
   };
 
   const handleBackToHome = () => {
     setCurrentScreen('home');
+  };
+
+  const handleBackToList = () => {
+    setCurrentScreen('diaryList');
+  };
+
+  const handleEditDiary = (date: string) => {
+    setSelectedDiaryDate(date);
+    setCurrentScreen('diaryEntry');
   };
 
   if (!fontsLoaded || isLoading) {
@@ -84,8 +99,15 @@ export default function App() {
       )}
       {currentScreen === 'diaryList' && (
         <DiaryListScreen
-          onNavigateToDiary={handleNavigateToDiary}
+          onNavigateToDetail={handleNavigateToDetail}
           onBack={handleBackToHome}
+        />
+      )}
+      {currentScreen === 'diaryDetail' && selectedDiaryDate && (
+        <DiaryDetailScreen
+          date={selectedDiaryDate}
+          onBack={handleBackToList}
+          onEdit={handleEditDiary}
         />
       )}
       <StatusBar style="auto" />
