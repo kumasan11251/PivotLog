@@ -10,7 +10,7 @@ export const colors = {
   // テキストカラー
   text: {
     primary: '#2C2C2C', // メインテキスト
-    secondary: '#666', // サブテキスト・ラベル
+    secondary: '#999', // サブテキスト・ラベル
     inverse: '#FFFFFF', // ボタン内のテキストなど
   },
 

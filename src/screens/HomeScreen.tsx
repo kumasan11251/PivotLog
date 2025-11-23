@@ -17,7 +17,11 @@ interface TimeLeft {
   seconds: number;
 }
 
-const HomeScreen: React.FC = () => {
+interface HomeScreenProps {
+  onNavigateToDiary: () => void;
+}
+
+const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary }) => {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     years: 0,
     months: 0,
@@ -113,8 +117,7 @@ const HomeScreen: React.FC = () => {
   }, []);
 
   const handleRecordToday = () => {
-    // TODO: 日記入力画面への遷移
-    console.log('今日を記録する');
+    onNavigateToDiary();
   };
 
   return (
