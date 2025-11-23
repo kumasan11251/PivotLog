@@ -9,7 +9,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, spacing } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
-import { DIARY_QUESTIONS } from '../constants/diary';
 
 interface DiaryListScreenProps {
   onNavigateToDiary: (date?: string) => void;
@@ -47,49 +46,13 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDiary, on
   };
 
   const renderDiaryItem = ({ item }: { item: DiaryEntry }) => {
-    const hasContent = item.goodTime || item.wastedTime || item.tomorrow;
-
     return (
       <TouchableOpacity
         style={styles.diaryItem}
         onPress={() => onNavigateToDiary(item.date)}
       >
-        <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>{formatDate(item.date)}</Text>
-        </View>
-
-        <View style={styles.contentPreview}>
-          {item.goodTime && (
-            <View style={styles.previewSection}>
-              <Text style={styles.previewLabel}>{DIARY_QUESTIONS.goodTime.label}</Text>
-              <Text style={styles.previewText}>
-                {item.goodTime}
-              </Text>
-            </View>
-          )}
-
-          {item.wastedTime && (
-            <View style={styles.previewSection}>
-              <Text style={styles.previewLabel}>{DIARY_QUESTIONS.wastedTime.label}</Text>
-              <Text style={styles.previewText}>
-                {item.wastedTime}
-              </Text>
-            </View>
-          )}
-
-          {item.tomorrow && (
-            <View style={styles.previewSection}>
-              <Text style={styles.previewLabel}>{DIARY_QUESTIONS.tomorrow.label}</Text>
-              <Text style={styles.previewText}>
-                {item.tomorrow}
-              </Text>
-            </View>
-          )}
-
-          {!hasContent && (
-            <Text style={styles.emptyText}>記録なし</Text>
-          )}
-        </View>
+        <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+        <Text style={styles.arrowIcon}>›</Text>
       </TouchableOpacity>
     );
   };
@@ -163,6 +126,9 @@ const styles = StyleSheet.create({
     padding: spacing.padding.screen,
   },
   diaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     borderWidth: spacing.borderWidth,
@@ -170,37 +136,17 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.md,
   },
-  dateContainer: {
-    marginBottom: spacing.sm,
-  },
   dateText: {
     fontSize: fonts.size.body,
     fontWeight: fonts.weight.medium,
     color: colors.text.primary,
     fontFamily: fonts.family.bold,
+    flex: 1,
   },
-  contentPreview: {
-    gap: spacing.xs,
-  },
-  previewSection: {
-    marginTop: spacing.xs,
-  },
-  previewLabel: {
-    fontSize: fonts.size.labelSmall,
+  arrowIcon: {
+    fontSize: fonts.size.title,
     color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    marginBottom: 2,
-  },
-  previewText: {
-    fontSize: fonts.size.label,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
-  },
-  emptyText: {
-    fontSize: fonts.size.label,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
+    fontWeight: fonts.weight.light,
   },
   emptyContainer: {
     flex: 1,
