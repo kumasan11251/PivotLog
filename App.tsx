@@ -5,16 +5,18 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
+import DiaryListScreen from './src/screens/DiaryListScreen';
 import { loadUserSettings } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors } from './src/theme';
 
-type Screen = 'home' | 'diaryEntry';
+type Screen = 'home' | 'diaryEntry' | 'diaryList';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const [selectedDiaryDate, setSelectedDiaryDate] = useState<string | undefined>(undefined);
   const [fontsLoaded] = useFonts({
     NotoSansJP_400Regular,
     NotoSansJP_700Bold,
@@ -34,8 +36,13 @@ export default function App() {
     setIsSetupComplete(true);
   };
 
-  const handleNavigateToDiary = () => {
+  const handleNavigateToDiary = (date?: string) => {
+    setSelectedDiaryDate(date);
     setCurrentScreen('diaryEntry');
+  };
+
+  const handleNavigateToList = () => {
+    setCurrentScreen('diaryList');
   };
 
   const handleBackToHome = () => {
@@ -63,10 +70,23 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {currentScreen === 'home' ? (
-        <HomeScreen onNavigateToDiary={handleNavigateToDiary} />
-      ) : (
-        <DiaryEntryScreen onComplete={handleBackToHome} />
+      {currentScreen === 'home' && (
+        <HomeScreen
+          onNavigateToDiary={handleNavigateToDiary}
+          onNavigateToList={handleNavigateToList}
+        />
+      )}
+      {currentScreen === 'diaryEntry' && (
+        <DiaryEntryScreen
+          onComplete={handleBackToHome}
+          initialDate={selectedDiaryDate}
+        />
+      )}
+      {currentScreen === 'diaryList' && (
+        <DiaryListScreen
+          onNavigateToDiary={handleNavigateToDiary}
+          onBack={handleBackToHome}
+        />
       )}
       <StatusBar style="auto" />
     </SafeAreaProvider>

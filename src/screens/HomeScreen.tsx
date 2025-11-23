@@ -19,9 +19,10 @@ interface TimeLeft {
 
 interface HomeScreenProps {
   onNavigateToDiary: () => void;
+  onNavigateToList: () => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateToList }) => {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     years: 0,
     months: 0,
@@ -169,8 +170,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary }) => {
         <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
       </View>
 
-      {/* 今日を記録するボタン */}
-      <Button title="記録する" onPress={handleRecordToday} />
+      {/* ボタン */}
+      <View style={styles.buttonContainer}>
+        <Button title="記録する" onPress={handleRecordToday} />
+        <Button
+          title="記録一覧"
+          onPress={onNavigateToList}
+          variant="secondary"
+        />
+      </View>
     </View>
   );
 };
@@ -181,6 +189,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.padding.screen,
     justifyContent: 'center',
+  },
+  buttonContainer: {
+    gap: spacing.md,
   },
   title: {
     fontSize: fonts.size.title,

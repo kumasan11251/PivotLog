@@ -17,18 +17,30 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
 import { saveDiaryEntry, getDiaryByDate, DiaryEntry } from '../utils/storage';
+import { DIARY_QUESTIONS } from '../constants/diary';
 
 interface DiaryEntryScreenProps {
   onComplete: () => void;
+  initialDate?: string;
 }
 
-const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete }) => {
+const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initialDate }) => {
   const [goodTime, setGoodTime] = useState('');
   const [wastedTime, setWastedTime] = useState('');
   const [tomorrow, setTomorrow] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (initialDate) {
+      return new Date(initialDate);
+    }
+    return new Date();
+  });
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // 初期値を保持（変更検出用）
+  const [initialGoodTime, setInitialGoodTime] = useState('');
+  const [initialWastedTime, setInitialWastedTime] = useState('');
+  const [initialTomorrow, setInitialTomorrow] = useState('');
 
   // 選択された日付をYYYY-MM-DD形式に変換
   const dateString = selectedDate.toISOString().split('T')[0];
@@ -41,10 +53,16 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete }) => {
         setGoodTime(existingDiary.goodTime || '');
         setWastedTime(existingDiary.wastedTime || '');
         setTomorrow(existingDiary.tomorrow || '');
+        setInitialGoodTime(existingDiary.goodTime || '');
+        setInitialWastedTime(existingDiary.wastedTime || '');
+        setInitialTomorrow(existingDiary.tomorrow || '');
       } else {
         setGoodTime('');
         setWastedTime('');
         setTomorrow('');
+        setInitialGoodTime('');
+        setInitialWastedTime('');
+        setInitialTomorrow('');
       }
     };
     loadDiary();
@@ -91,7 +109,13 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete }) => {
   };
 
   const handleBack = () => {
-    if (goodTime.trim() || wastedTime.trim() || tomorrow.trim()) {
+    // 初期値と現在の値を比較して変更があるかチェック
+    const hasChanges =
+      goodTime.trim() !== initialGoodTime.trim() ||
+      wastedTime.trim() !== initialWastedTime.trim() ||
+      tomorrow.trim() !== initialTomorrow.trim();
+
+    if (hasChanges) {
       Alert.alert(
         '確認',
         '保存せずに戻りますか？',
@@ -139,7 +163,7 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete }) => {
 
           {/* 日記入力エリア */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>時間を有効に使えたと思うことは？</Text>
+            <Text style={styles.label}>{DIARY_QUESTIONS.goodTime.label}</Text>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
@@ -155,7 +179,7 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete }) => {
 
           {/* 無駄にした時間 */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>時間を無駄にしたと思うことは？</Text>
+            <Text style={styles.label}>{DIARY_QUESTIONS.wastedTime.label}</Text>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
@@ -171,7 +195,7 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete }) => {
 
           {/* 明日の予定 */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>明日はどう過ごしますか？</Text>
+            <Text style={styles.label}>{DIARY_QUESTIONS.tomorrow.label}</Text>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
