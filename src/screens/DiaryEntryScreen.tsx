@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableWithoutFeedback,
-  Keyboard,
   Alert,
   TouchableOpacity,
   Platform,
