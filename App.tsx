@@ -7,11 +7,14 @@ import HomeScreen from './src/screens/HomeScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
 import DiaryListScreen from './src/screens/DiaryListScreen';
 import DiaryDetailScreen from './src/screens/DiaryDetailScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
+import EditLifespanScreen from './src/screens/EditLifespanScreen';
 import { loadUserSettings } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors } from './src/theme';
 
-type Screen = 'home' | 'diaryEntry' | 'diaryList' | 'diaryDetail';
+type Screen = 'home' | 'diaryEntry' | 'diaryList' | 'diaryDetail' | 'settings' | 'editBirthday' | 'editLifespan';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +67,22 @@ export default function App() {
     setCurrentScreen('diaryEntry');
   };
 
+  const handleNavigateToSettings = () => {
+    setCurrentScreen('settings');
+  };
+
+  const handleEditBirthday = () => {
+    setCurrentScreen('editBirthday');
+  };
+
+  const handleEditLifespan = () => {
+    setCurrentScreen('editLifespan');
+  };
+
+  const handleBackToSettings = () => {
+    setCurrentScreen('settings');
+  };
+
   if (!fontsLoaded || isLoading) {
     return (
       <SafeAreaProvider>
@@ -89,6 +108,7 @@ export default function App() {
         <HomeScreen
           onNavigateToDiary={handleNavigateToDiary}
           onNavigateToList={handleNavigateToList}
+          onNavigateToSettings={handleNavigateToSettings}
         />
       )}
       {currentScreen === 'diaryEntry' && (
@@ -108,6 +128,25 @@ export default function App() {
           date={selectedDiaryDate}
           onBack={handleBackToList}
           onEdit={handleEditDiary}
+        />
+      )}
+      {currentScreen === 'settings' && (
+        <SettingsScreen
+          onBack={handleBackToHome}
+          onEditBirthday={handleEditBirthday}
+          onEditLifespan={handleEditLifespan}
+        />
+      )}
+      {currentScreen === 'editBirthday' && (
+        <EditBirthdayScreen
+          onComplete={handleBackToSettings}
+          onBack={handleBackToSettings}
+        />
+      )}
+      {currentScreen === 'editLifespan' && (
+        <EditLifespanScreen
+          onComplete={handleBackToSettings}
+          onBack={handleBackToSettings}
         />
       )}
       <StatusBar style="auto" />

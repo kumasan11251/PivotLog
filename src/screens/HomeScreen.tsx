@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
@@ -20,9 +21,10 @@ interface TimeLeft {
 interface HomeScreenProps {
   onNavigateToDiary: () => void;
   onNavigateToList: () => void;
+  onNavigateToSettings: () => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateToList }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateToList, onNavigateToSettings }) => {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     years: 0,
     months: 0,
@@ -124,6 +126,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateTo
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={onNavigateToSettings}
+      >
+        <Text style={styles.settingsButtonText}>⚙️</Text>
+      </TouchableOpacity>
+
       <Text style={styles.title}>残りの時間</Text>
 
       {/* カウントダウン表示 */}
@@ -190,6 +199,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.padding.screen,
     justifyContent: 'center',
+  },
+  settingsButton: {
+    position: 'absolute',
+    top: spacing.padding.screen,
+    right: spacing.padding.screen,
+    padding: spacing.md,
+    zIndex: 1,
+  },
+  settingsButtonText: {
+    fontSize: 28,
   },
   buttonContainer: {
     gap: spacing.md,
