@@ -13,6 +13,8 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { DiaryEntryScreenNavigationProp, RootStackParamList } from '../types/navigation';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
@@ -21,12 +23,13 @@ import { DIARY_QUESTIONS } from '../constants/diary';
 
 const MAX_CHARS = 100;
 
-interface DiaryEntryScreenProps {
-  onComplete: () => void;
-  initialDate?: string;
-}
+type DiaryEntryScreenRouteProp = RouteProp<RootStackParamList, 'DiaryEntry'>;
 
-const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initialDate }) => {
+const DiaryEntryScreen: React.FC = () => {
+  const navigation = useNavigation<DiaryEntryScreenNavigationProp>();
+  const route = useRoute<DiaryEntryScreenRouteProp>();
+  const { initialDate } = route.params || {};
+
   const [goodTime, setGoodTime] = useState('');
   const [wastedTime, setWastedTime] = useState('');
   const [tomorrow, setTomorrow] = useState('');
@@ -94,7 +97,7 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initial
 
       await saveDiaryEntry(entry);
       Alert.alert('保存完了', '記録を保存しました', [
-        { text: 'OK', onPress: onComplete },
+        { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch {
       Alert.alert('エラー', '保存に失敗しました。もう一度お試しください。');
@@ -126,11 +129,11 @@ const DiaryEntryScreen: React.FC<DiaryEntryScreenProps> = ({ onComplete, initial
         '保存せずに戻りますか？',
         [
           { text: 'キャンセル', style: 'cancel' },
-          { text: '戻る', onPress: onComplete, style: 'destructive' },
+          { text: '戻る', onPress: () => navigation.goBack(), style: 'destructive' },
         ]
       );
     } else {
-      onComplete();
+      navigation.goBack();
     }
   };
 

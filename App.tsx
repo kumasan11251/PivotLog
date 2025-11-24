@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SplashScreen } from './src/screens/SplashScreen';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -14,15 +16,14 @@ import EditLifespanScreen from './src/screens/EditLifespanScreen';
 import { loadUserSettings } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors } from './src/theme';
+import type { RootStackParamList } from './src/types/navigation';
 
-type Screen = 'home' | 'diaryEntry' | 'diaryList' | 'diaryDetail' | 'settings' | 'editBirthday' | 'editLifespan';
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSetupComplete, setIsSetupComplete] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
-  const [selectedDiaryDate, setSelectedDiaryDate] = useState<string | undefined>(undefined);
+  const [showSplash, setShowSplash] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
   const [fontsLoaded] = useFonts({
     NotoSansJP_400Regular,
     NotoSansJP_700Bold,
@@ -38,57 +39,6 @@ export default function App() {
     checkUserSettings();
   }, []);
 
-  const handleSplashComplete = () => {
-    setShowSplash(false);
-  };
-
-  const handleSetupComplete = () => {
-    setIsSetupComplete(true);
-  };
-
-  const handleNavigateToDiary = (date?: string) => {
-    setSelectedDiaryDate(date);
-    setCurrentScreen('diaryEntry');
-  };
-
-  const handleNavigateToDetail = (date: string) => {
-    setSelectedDiaryDate(date);
-    setCurrentScreen('diaryDetail');
-  };
-
-  const handleNavigateToList = () => {
-    setCurrentScreen('diaryList');
-  };
-
-  const handleBackToHome = () => {
-    setCurrentScreen('home');
-  };
-
-  const handleBackToList = () => {
-    setCurrentScreen('diaryList');
-  };
-
-  const handleEditDiary = (date: string) => {
-    setSelectedDiaryDate(date);
-    setCurrentScreen('diaryEntry');
-  };
-
-  const handleNavigateToSettings = () => {
-    setCurrentScreen('settings');
-  };
-
-  const handleEditBirthday = () => {
-    setCurrentScreen('editBirthday');
-  };
-
-  const handleEditLifespan = () => {
-    setCurrentScreen('editLifespan');
-  };
-
-  const handleBackToSettings = () => {
-    setCurrentScreen('settings');
-  };
-
   if (!fontsLoaded || isLoading) {
     return (
       <SafeAreaProvider>
@@ -102,70 +52,35 @@ export default function App() {
   if (showSplash) {
     return (
       <SafeAreaProvider>
-        <SplashScreen onComplete={handleSplashComplete} />
+        <SplashScreen onComplete={() => setShowSplash(false)} />
         <StatusBar style="auto" />
       </SafeAreaProvider>
     );
   }
 
-  if (!isSetupComplete) {
-    return (
-      <SafeAreaProvider>
-        <InitialSetupScreen onComplete={handleSetupComplete} />
-        <StatusBar style="auto" />
-      </SafeAreaProvider>
-    );
-  }
+  const initialRouteName = isSetupComplete ? 'Home' : 'InitialSetup';
 
   return (
     <SafeAreaProvider>
-      {currentScreen === 'home' && (
-        <HomeScreen
-          onNavigateToDiary={handleNavigateToDiary}
-          onNavigateToList={handleNavigateToList}
-          onNavigateToSettings={handleNavigateToSettings}
-        />
-      )}
-      {currentScreen === 'diaryEntry' && (
-        <DiaryEntryScreen
-          onComplete={handleBackToHome}
-          initialDate={selectedDiaryDate}
-        />
-      )}
-      {currentScreen === 'diaryList' && (
-        <DiaryListScreen
-          onNavigateToDetail={handleNavigateToDetail}
-          onNavigateToHome={handleBackToHome}
-          onNavigateToSettings={handleNavigateToSettings}
-        />
-      )}
-      {currentScreen === 'diaryDetail' && selectedDiaryDate && (
-        <DiaryDetailScreen
-          date={selectedDiaryDate}
-          onBack={handleBackToList}
-          onEdit={handleEditDiary}
-        />
-      )}
-      {currentScreen === 'settings' && (
-        <SettingsScreen
-          onNavigateToHome={handleBackToHome}
-          onNavigateToList={handleNavigateToList}
-          onEditBirthday={handleEditBirthday}
-          onEditLifespan={handleEditLifespan}
-        />
-      )}
-      {currentScreen === 'editBirthday' && (
-        <EditBirthdayScreen
-          onComplete={handleBackToSettings}
-          onBack={handleBackToSettings}
-        />
-      )}
-      {currentScreen === 'editLifespan' && (
-        <EditLifespanScreen
-          onComplete={handleBackToSettings}
-          onBack={handleBackToSettings}
-        />
-      )}
+      <NavigationContainer>
+        <Stack.Navigator
+          initialRouteName={initialRouteName}
+          screenOptions={{
+            headerShown: false,
+            gestureEnabled: true,
+            animation: 'slide_from_right',
+          }}
+        >
+          <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />
+          <Stack.Screen name="DiaryList" component={DiaryListScreen} />
+          <Stack.Screen name="DiaryDetail" component={DiaryDetailScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
+          <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
       <StatusBar style="auto" />
     </SafeAreaProvider>
   );

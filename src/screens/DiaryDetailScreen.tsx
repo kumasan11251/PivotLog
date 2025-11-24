@@ -8,17 +8,19 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { DiaryDetailScreenNavigationProp, RootStackParamList } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
 import { getDiaryByDate, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
 
-interface DiaryDetailScreenProps {
-  date: string; // YYYY-MM-DD形式
-  onBack: () => void;
-  onEdit: (date: string) => void;
-}
+type DiaryDetailScreenRouteProp = RouteProp<RootStackParamList, 'DiaryDetail'>;
 
-const DiaryDetailScreen: React.FC<DiaryDetailScreenProps> = ({ date, onBack, onEdit }) => {
+const DiaryDetailScreen: React.FC = () => {
+  const navigation = useNavigation<DiaryDetailScreenNavigationProp>();
+  const route = useRoute<DiaryDetailScreenRouteProp>();
+  const { date } = route.params;
+
   const [diary, setDiary] = useState<DiaryEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,7 +65,7 @@ const DiaryDetailScreen: React.FC<DiaryDetailScreenProps> = ({ date, onBack, onE
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Text style={styles.backButtonText}>← 戻る</Text>
           </TouchableOpacity>
         </View>
@@ -77,10 +79,10 @@ const DiaryDetailScreen: React.FC<DiaryDetailScreenProps> = ({ date, onBack, onE
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backButtonText}>← 戻る</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onEdit(date)} style={styles.editButton}>
+        <TouchableOpacity onPress={() => navigation.navigate('DiaryEntry', { initialDate: date })} style={styles.editButton}>
           <Text style={styles.editButtonText}>編集</Text>
         </TouchableOpacity>
       </View>

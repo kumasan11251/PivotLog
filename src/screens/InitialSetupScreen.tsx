@@ -8,15 +8,14 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { InitialSetupScreenNavigationProp } from '../types/navigation';
 import { saveUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
 
-interface InitialSetupScreenProps {
-  onComplete: () => void;
-}
-
-const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ onComplete }) => {
+const InitialSetupScreen: React.FC = () => {
+  const navigation = useNavigation<InitialSetupScreenNavigationProp>();
   const [year, setYear] = useState<string>('');
   const [month, setMonth] = useState<string>('');
   const [day, setDay] = useState<string>('');
@@ -89,7 +88,11 @@ const InitialSetupScreen: React.FC<InitialSetupScreenProps> = ({ onComplete }) =
         targetLifespan: lifespanNum,
       });
 
-      onComplete();
+      // 初期設定完了後、ホーム画面に遷移し、戻れないようにする
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
     } catch {
       Alert.alert('エラー', '設定の保存に失敗しました。もう一度お試しください。');
     }

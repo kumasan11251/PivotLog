@@ -7,23 +7,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { SettingsScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
 import { loadUserSettings } from '../utils/storage';
 import TabBar from '../components/common/TabBar';
 
-interface SettingsScreenProps {
-  onNavigateToHome: () => void;
-  onNavigateToList: () => void;
-  onEditBirthday: () => void;
-  onEditLifespan: () => void;
-}
-
-const SettingsScreen: React.FC<SettingsScreenProps> = ({
-  onNavigateToHome,
-  onNavigateToList,
-  onEditBirthday,
-  onEditLifespan,
-}) => {
+const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation<SettingsScreenNavigationProp>();
   const [birthday, setBirthday] = useState<string>('');
   const [targetLifespan, setTargetLifespan] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +52,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <ScrollView style={styles.content}>
         <TouchableOpacity
           style={styles.settingItem}
-          onPress={onEditBirthday}
+          onPress={() => navigation.navigate('EditBirthday')}
         >
           <View style={styles.settingInfo}>
             <Text style={styles.settingLabel}>誕生日</Text>
@@ -76,7 +67,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
         <TouchableOpacity
           style={styles.settingItem}
-          onPress={onEditLifespan}
+          onPress={() => navigation.navigate('EditLifespan')}
         >
           <View style={styles.settingInfo}>
             <Text style={styles.settingLabel}>目標寿命</Text>
@@ -93,8 +84,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
       <TabBar
         activeTab="settings"
         onTabChange={(tab) => {
-          if (tab === 'home') onNavigateToHome();
-          if (tab === 'diaryList') onNavigateToList();
+          if (tab === 'home') navigation.navigate('Home');
+          if (tab === 'diaryList') navigation.navigate('DiaryList');
         }}
       />
     </SafeAreaView>

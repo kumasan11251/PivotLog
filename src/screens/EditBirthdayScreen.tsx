@@ -9,16 +9,14 @@ import {
   Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { EditBirthdayScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
 
-interface EditBirthdayScreenProps {
-  onComplete: () => void;
-  onBack: () => void;
-}
-
-const EditBirthdayScreen: React.FC<EditBirthdayScreenProps> = ({ onComplete, onBack }) => {
+const EditBirthdayScreen: React.FC = () => {
+  const navigation = useNavigation<EditBirthdayScreenNavigationProp>();
   const [year, setYear] = useState<string>('');
   const [month, setMonth] = useState<string>('');
   const [day, setDay] = useState<string>('');
@@ -104,7 +102,7 @@ const EditBirthdayScreen: React.FC<EditBirthdayScreenProps> = ({ onComplete, onB
         targetLifespan: targetLifespan,
       });
 
-      onComplete();
+      navigation.goBack();
     } catch {
       Alert.alert('エラー', '設定の保存に失敗しました。もう一度お試しください。');
     }
@@ -169,7 +167,7 @@ const EditBirthdayScreen: React.FC<EditBirthdayScreenProps> = ({ onComplete, onB
 
           <View style={styles.buttonContainer}>
             <Button title="保存" onPress={handleSave} />
-            <Button title="キャンセル" onPress={onBack} variant="secondary" />
+            <Button title="キャンセル" onPress={() => navigation.goBack()} variant="secondary" />
           </View>
         </View>
       </SafeAreaView>

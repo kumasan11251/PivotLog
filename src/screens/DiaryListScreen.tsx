@@ -7,17 +7,14 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { DiaryListScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
 import TabBar from '../components/common/TabBar';
 
-interface DiaryListScreenProps {
-  onNavigateToDetail: (date: string) => void;
-  onNavigateToHome: () => void;
-  onNavigateToSettings: () => void;
-}
-
-const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, onNavigateToHome, onNavigateToSettings }) => {
+const DiaryListScreen: React.FC = () => {
+  const navigation = useNavigation<DiaryListScreenNavigationProp>();
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,7 +48,7 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, o
     return (
       <TouchableOpacity
         style={styles.diaryItem}
-        onPress={() => onNavigateToDetail(item.date)}
+        onPress={() => navigation.navigate('DiaryDetail', { date: item.date })}
       >
         <Text style={styles.dateText}>{formatDate(item.date)}</Text>
         <Text style={styles.arrowIcon}>›</Text>
@@ -87,8 +84,8 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, o
       <TabBar
         activeTab="diaryList"
         onTabChange={(tab) => {
-          if (tab === 'home') onNavigateToHome();
-          if (tab === 'settings') onNavigateToSettings();
+          if (tab === 'home') navigation.navigate('Home');
+          if (tab === 'settings') navigation.navigate('Settings');
         }}
       />
     </SafeAreaView>

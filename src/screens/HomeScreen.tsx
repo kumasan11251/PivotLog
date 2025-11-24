@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { HomeScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
@@ -18,13 +20,8 @@ interface TimeLeft {
   seconds: number;
 }
 
-interface HomeScreenProps {
-  onNavigateToDiary: () => void;
-  onNavigateToList: () => void;
-  onNavigateToSettings: () => void;
-}
-
-const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateToList, onNavigateToSettings }) => {
+const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     years: 0,
     months: 0,
@@ -121,7 +118,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateTo
   }, []);
 
   const handleRecordToday = () => {
-    onNavigateToDiary();
+    navigation.navigate('DiaryEntry', {});
   };
 
   return (
@@ -183,8 +180,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateTo
       <TabBar
         activeTab="home"
         onTabChange={(tab) => {
-          if (tab === 'diaryList') onNavigateToList();
-          if (tab === 'settings') onNavigateToSettings();
+          if (tab === 'diaryList') navigation.navigate('DiaryList');
+          if (tab === 'settings') navigation.navigate('Settings');
         }}
       />
     </View>
