@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SplashScreen } from './src/screens/SplashScreen';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
@@ -17,6 +18,7 @@ import { colors } from './src/theme';
 type Screen = 'home' | 'diaryEntry' | 'diaryList' | 'diaryDetail' | 'settings' | 'editBirthday' | 'editLifespan';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSetupComplete, setIsSetupComplete] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<Screen>('home');
@@ -35,6 +37,10 @@ export default function App() {
 
     checkUserSettings();
   }, []);
+
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+  };
 
   const handleSetupComplete = () => {
     setIsSetupComplete(true);
@@ -89,6 +95,15 @@ export default function App() {
         <View style={styles.container}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (showSplash) {
+    return (
+      <SafeAreaProvider>
+        <SplashScreen onComplete={handleSplashComplete} />
+        <StatusBar style="auto" />
       </SafeAreaProvider>
     );
   }
