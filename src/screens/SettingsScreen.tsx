@@ -9,15 +9,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, spacing } from '../theme';
 import { loadUserSettings } from '../utils/storage';
+import TabBar from '../components/common/TabBar';
 
 interface SettingsScreenProps {
-  onBack: () => void;
+  onNavigateToHome: () => void;
+  onNavigateToList: () => void;
   onEditBirthday: () => void;
   onEditLifespan: () => void;
 }
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({
-  onBack,
+  onNavigateToHome,
+  onNavigateToList,
   onEditBirthday,
   onEditLifespan,
 }) => {
@@ -50,11 +53,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← 戻る</Text>
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>設定</Text>
       </View>
 
@@ -89,6 +89,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <Text style={styles.arrowIcon}>›</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <TabBar
+        activeTab="settings"
+        onTabChange={(tab) => {
+          if (tab === 'home') onNavigateToHome();
+          if (tab === 'diaryList') onNavigateToList();
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -103,15 +111,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-  },
-  backButton: {
-    paddingVertical: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  backButtonText: {
-    fontSize: fonts.size.body,
-    color: colors.primary,
-    fontFamily: fonts.family.regular,
   },
   headerTitle: {
     fontSize: fonts.size.heading,

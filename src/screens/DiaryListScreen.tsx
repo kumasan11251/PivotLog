@@ -9,13 +9,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, spacing } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
+import TabBar from '../components/common/TabBar';
 
 interface DiaryListScreenProps {
   onNavigateToDetail: (date: string) => void;
-  onBack?: () => void;
+  onNavigateToHome: () => void;
+  onNavigateToSettings: () => void;
 }
 
-const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, onBack }) => {
+const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, onNavigateToHome, onNavigateToSettings }) => {
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,13 +69,8 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, o
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        {onBack && (
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← 戻る</Text>
-          </TouchableOpacity>
-        )}
         <Text style={styles.headerTitle}>記録一覧</Text>
       </View>
 
@@ -85,6 +82,14 @@ const DiaryListScreen: React.FC<DiaryListScreenProps> = ({ onNavigateToDetail, o
         ListEmptyComponent={!isLoading ? renderEmptyList : null}
         refreshing={isLoading}
         onRefresh={loadDiaries}
+      />
+
+      <TabBar
+        activeTab="diaryList"
+        onTabChange={(tab) => {
+          if (tab === 'home') onNavigateToHome();
+          if (tab === 'settings') onNavigateToSettings();
+        }}
       />
     </SafeAreaView>
   );
@@ -100,14 +105,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-  },
-  backButton: {
-    paddingVertical: spacing.md,
-  },
-  backButtonText: {
-    fontSize: fonts.size.body,
-    color: colors.primary,
-    fontFamily: fonts.family.regular,
   },
   headerTitle: {
     fontSize: fonts.size.heading,

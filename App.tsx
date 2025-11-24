@@ -120,7 +120,8 @@ export default function App() {
       {currentScreen === 'diaryList' && (
         <DiaryListScreen
           onNavigateToDetail={handleNavigateToDetail}
-          onBack={handleBackToHome}
+          onNavigateToHome={handleBackToHome}
+          onNavigateToSettings={handleNavigateToSettings}
         />
       )}
       {currentScreen === 'diaryDetail' && selectedDiaryDate && (
@@ -132,7 +133,8 @@ export default function App() {
       )}
       {currentScreen === 'settings' && (
         <SettingsScreen
-          onBack={handleBackToHome}
+          onNavigateToHome={handleBackToHome}
+          onNavigateToList={handleNavigateToList}
           onEditBirthday={handleEditBirthday}
           onEditLifespan={handleEditLifespan}
         />

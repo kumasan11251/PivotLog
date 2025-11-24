@@ -3,11 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
 } from 'react-native';
 import { loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
+import TabBar from '../components/common/TabBar';
 
 interface TimeLeft {
   years: number;
@@ -126,14 +126,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateTo
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.settingsButton}
-        onPress={onNavigateToSettings}
-      >
-        <Text style={styles.settingsButtonText}>⚙️</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.title}>残りの時間</Text>
+      <View style={styles.content}>
+        <Text style={styles.title}>残りの時間</Text>
 
       {/* カウントダウン表示 */}
       <View style={styles.countdownContainer}>
@@ -182,13 +176,17 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ onNavigateToDiary, onNavigateTo
 
       {/* ボタン */}
       <View style={styles.buttonContainer}>
-        <Button title="記録する" onPress={handleRecordToday} />
-        <Button
-          title="記録一覧"
-          onPress={onNavigateToList}
-          variant="secondary"
-        />
+        <Button title="今日を記録する" onPress={handleRecordToday} />
       </View>
+      </View>
+
+      <TabBar
+        activeTab="home"
+        onTabChange={(tab) => {
+          if (tab === 'diaryList') onNavigateToList();
+          if (tab === 'settings') onNavigateToSettings();
+        }}
+      />
     </View>
   );
 };
@@ -197,21 +195,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  content: {
+    flex: 1,
     padding: spacing.padding.screen,
     justifyContent: 'center',
   },
-  settingsButton: {
-    position: 'absolute',
-    top: spacing.padding.screen,
-    right: spacing.padding.screen,
-    padding: spacing.md,
-    zIndex: 1,
-  },
-  settingsButtonText: {
-    fontSize: 28,
-  },
   buttonContainer: {
-    gap: spacing.md,
+    marginTop: spacing.xl,
   },
   title: {
     fontSize: fonts.size.title,
