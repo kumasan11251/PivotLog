@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { colors, spacing } from '../../theme';
 
-type TabType = 'home' | 'diaryList' | 'settings';
+type TabType = 'home' | 'diaryList';
 
 interface TabBarProps {
   activeTab: TabType;
@@ -39,21 +39,6 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
         </View>
         <Text style={[styles.label, activeTab === 'diaryList' && styles.activeLabel]}>
           記録一覧
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.tab}
-        onPress={() => onTabChange('settings')}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.iconContainer, activeTab === 'settings' && styles.activeIcon]}>
-          <Text style={[styles.icon, activeTab === 'settings' && styles.activeIconText]}>
-            ⚙︎
-          </Text>
-        </View>
-        <Text style={[styles.label, activeTab === 'settings' && styles.activeLabel]}>
-          設定
         </Text>
       </TouchableOpacity>
     </View>

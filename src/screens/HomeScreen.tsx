@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
@@ -123,6 +124,18 @@ const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {/* ヘッダー */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>ホーム</Text>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate('Settings')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.settingsIcon}>⚙︎</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.content}>
         <Text style={styles.title}>残りの時間</Text>
 
@@ -181,7 +194,6 @@ const HomeScreen: React.FC = () => {
         activeTab="home"
         onTabChange={(tab) => {
           if (tab === 'diaryList') navigation.navigate('DiaryList');
-          if (tab === 'settings') navigation.navigate('Settings');
         }}
       />
     </View>
@@ -192,6 +204,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.padding.screen,
+    paddingTop: spacing.xl + 10,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontSize: fonts.size.body,
+    fontWeight: fonts.weight.regular,
+    color: colors.text.primary,
+    fontFamily: fonts.family.regular,
+    letterSpacing: 1,
+  },
+  settingsButton: {
+    padding: spacing.xs,
+  },
+  settingsIcon: {
+    fontSize: 24,
+    color: colors.text.primary,
   },
   content: {
     flex: 1,

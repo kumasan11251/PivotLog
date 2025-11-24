@@ -11,7 +11,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
 import { loadUserSettings } from '../utils/storage';
-import TabBar from '../components/common/TabBar';
 
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
@@ -81,13 +80,7 @@ const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
       </ScrollView>
 
-      <TabBar
-        activeTab="settings"
-        onTabChange={(tab) => {
-          if (tab === 'home') navigation.navigate('Home');
-          if (tab === 'diaryList') navigation.navigate('DiaryList');
-        }}
-      />
+
     </SafeAreaView>
   );
 };

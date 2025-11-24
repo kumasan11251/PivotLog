@@ -85,7 +85,6 @@ const DiaryListScreen: React.FC = () => {
         activeTab="diaryList"
         onTabChange={(tab) => {
           if (tab === 'home') navigation.navigate('Home');
-          if (tab === 'settings') navigation.navigate('Settings');
         }}
       />
     </SafeAreaView>
