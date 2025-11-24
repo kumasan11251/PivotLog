@@ -6,7 +6,6 @@ export type RootStackParamList = {
   InitialSetup: undefined;
   Home: undefined;
   DiaryEntry: { initialDate?: string };
-  DiaryList: undefined;
   DiaryDetail: { date: string };
   Settings: undefined;
   EditBirthday: undefined;
@@ -18,7 +17,7 @@ export type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackPara
 export type InitialSetupScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'InitialSetup'>;
 export type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 export type DiaryEntryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DiaryEntry'>;
-export type DiaryListScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DiaryList'>;
+export type DiaryListScreenNavigationProp = HomeScreenNavigationProp; // 互換性のため残す
 export type DiaryDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DiaryDetail'>;
 export type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 export type EditBirthdayScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditBirthday'>;

@@ -9,8 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
-import Button from '../components/common/Button';
-import TabBar from '../components/common/TabBar';
+import Button from './common/Button';
 
 interface TimeLeft {
   years: number;
@@ -21,7 +20,7 @@ interface TimeLeft {
   seconds: number;
 }
 
-const HomeScreen: React.FC = () => {
+const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     years: 0,
@@ -139,61 +138,56 @@ const HomeScreen: React.FC = () => {
       <View style={styles.content}>
         <Text style={styles.title}>残りの時間</Text>
 
-      {/* カウントダウン表示 */}
-      <View style={styles.countdownContainer}>
-        <View style={styles.timeBlock}>
-          <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabel}>年</Text>
+        {/* カウントダウン表示 */}
+        <View style={styles.countdownContainer}>
+          <View style={styles.timeBlock}>
+            <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
+            <Text style={styles.timeLabel}>年</Text>
+          </View>
+          <View style={styles.timeBlock}>
+            <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
+            <Text style={styles.timeLabel}>月</Text>
+          </View>
+          <View style={styles.timeBlock}>
+            <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
+            <Text style={styles.timeLabel}>日</Text>
+          </View>
+          <View style={styles.timeBlockSmall}>
+            <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
+            <Text style={styles.timeLabelSmall}>時間</Text>
+          </View>
+          <View style={styles.timeBlockSmall}>
+            <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
+            <Text style={styles.timeLabelSmall}>分</Text>
+          </View>
+          <View style={styles.timeBlockSmall}>
+            <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
+            <Text style={styles.timeLabelSmall}>秒</Text>
+          </View>
         </View>
-        <View style={styles.timeBlock}>
-          <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabel}>月</Text>
-        </View>
-        <View style={styles.timeBlock}>
-          <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabel}>日</Text>
-        </View>
-        <View style={styles.timeBlockSmall}>
-          <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabelSmall}>時間</Text>
-        </View>
-        <View style={styles.timeBlockSmall}>
-          <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabelSmall}>分</Text>
-        </View>
-        <View style={styles.timeBlockSmall}>
-          <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabelSmall}>秒</Text>
-        </View>
-      </View>
 
-      {/* 進捗バー */}
-      <View style={styles.progressSection}>
-        <View style={styles.progressLabelContainer}>
-          <Text style={styles.progressLabel}>誕生</Text>
-          <Text style={styles.progressLabel}>{targetLifespan}歳</Text>
+        {/* 進捗バー */}
+        <View style={styles.progressSection}>
+          <View style={styles.progressLabelContainer}>
+            <Text style={styles.progressLabel}>誕生</Text>
+            <Text style={styles.progressLabel}>{targetLifespan}歳</Text>
+          </View>
+          <View style={styles.progressBarContainer}>
+            <View
+              style={[
+                styles.progressBar,
+                { width: `${lifeProgress}%` },
+              ]}
+            />
+          </View>
+          <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
         </View>
-        <View style={styles.progressBarContainer}>
-          <View
-            style={[
-              styles.progressBar,
-              { width: `${lifeProgress}%` },
-            ]}
-          />
+
+        {/* ボタン */}
+        <View style={styles.buttonContainer}>
+          <Button title="今日を記録する" onPress={handleRecordToday} />
         </View>
-        <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
       </View>
-
-      {/* ボタン */}
-      <View style={styles.buttonContainer}>
-        <Button title="今日を記録する" onPress={handleRecordToday} />
-      </View>
-      </View>
-
-      <TabBar
-        activeTab="home"
-        onTabChange={() => {}}
-      />
     </View>
   );
 };
@@ -208,8 +202,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.padding.screen,
-    paddingTop: spacing.xl + 10,
-    paddingBottom: spacing.md,
+    paddingVertical: spacing.lg,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -331,4 +324,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HomeScreen;
+export default HomeContent;

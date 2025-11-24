@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,21 +6,15 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { DiaryListScreenNavigationProp } from '../types/navigation';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
-import TabBar from '../components/common/TabBar';
 
-const DiaryListScreen: React.FC = () => {
-  const navigation = useNavigation<DiaryListScreenNavigationProp>();
+const DiaryListContent: React.FC = () => {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadDiaries();
-  }, []);
 
   const loadDiaries = async () => {
     setIsLoading(true);
@@ -34,11 +28,20 @@ const DiaryListScreen: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    loadDiaries();
+  }, []);
+
+  // タブが表示されるたびにデータを再読み込み
+  useFocusEffect(
+    useCallback(() => {
+      loadDiaries();
+    }, [])
+  );
+
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
     const weekday = weekdays[date.getDay()];
     return `${year}年${month}月${day}日（${weekday}）`;
@@ -66,7 +69,7 @@ const DiaryListScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>記録一覧</Text>
       </View>
@@ -80,12 +83,7 @@ const DiaryListScreen: React.FC = () => {
         refreshing={isLoading}
         onRefresh={loadDiaries}
       />
-
-      <TabBar
-        activeTab="diaryList"
-        onTabChange={() => {}}
-      />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -108,6 +106,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing.padding.screen,
+    flexGrow: 1,
   },
   diaryItem: {
     flexDirection: 'row',
@@ -153,4 +152,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DiaryListScreen;
+export default DiaryListContent;

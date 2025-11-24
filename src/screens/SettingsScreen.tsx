@@ -45,7 +45,14 @@ const SettingsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Text style={styles.backIcon}>‹</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>設定</Text>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.content}>
@@ -91,10 +98,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: spacing.padding.screen,
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  backButton: {
+    padding: spacing.xs,
+  },
+  backIcon: {
+    fontSize: 32,
+    color: colors.text.primary,
+    fontWeight: fonts.weight.light,
+  },
+  placeholder: {
+    width: 32 + spacing.xs * 2,
   },
   headerTitle: {
     fontSize: fonts.size.heading,

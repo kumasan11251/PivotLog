@@ -6,9 +6,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SplashScreen } from './src/screens/SplashScreen';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
-import HomeScreen from './src/screens/HomeScreen';
+import MainTabScreen from './src/screens/MainTabScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
-import DiaryListScreen from './src/screens/DiaryListScreen';
 import DiaryDetailScreen from './src/screens/DiaryDetailScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
@@ -72,9 +71,8 @@ export default function App() {
           }}
         >
           <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Home" component={MainTabScreen} />
           <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />
-          <Stack.Screen name="DiaryList" component={DiaryListScreen} />
           <Stack.Screen name="DiaryDetail" component={DiaryDetailScreen} />
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
