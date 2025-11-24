@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,17 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
+import Header from './common/Header';
 
-const DiaryListContent: React.FC = () => {
+interface DiaryListContentProps {
+  shouldRefresh?: boolean;
+}
+
+const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,12 +37,11 @@ const DiaryListContent: React.FC = () => {
     loadDiaries();
   }, []);
 
-  // タブが表示されるたびにデータを再読み込み
-  useFocusEffect(
-    useCallback(() => {
+  useEffect(() => {
+    if (shouldRefresh) {
       loadDiaries();
-    }, [])
-  );
+    }
+  }, [shouldRefresh]);
 
   const formatDate = (dateString: string): string => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -70,9 +74,7 @@ const DiaryListContent: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>記録一覧</Text>
-      </View>
+      <Header title="記録一覧" />
 
       <FlatList
         data={diaries}
@@ -91,18 +93,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.padding.screen,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTitle: {
-    fontSize: fonts.size.heading,
-    fontWeight: fonts.weight.regular,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
   },
   listContent: {
     padding: spacing.padding.screen,
