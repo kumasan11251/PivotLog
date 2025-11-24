@@ -263,14 +263,23 @@ const DiaryEntryScreen: React.FC = () => {
                 <View style={styles.modalOverlay}>
                   <TouchableWithoutFeedback>
                     <View style={styles.modalContent}>
-                      <DateTimePicker
-                        value={selectedDate}
-                        mode="date"
-                        display="inline"
-                        onChange={handleDateChange}
-                        maximumDate={new Date()}
-                        locale="ja-JP"
-                      />
+                      <View style={styles.pickerContainer}>
+                        <DateTimePicker
+                          value={selectedDate}
+                          mode="date"
+                          display="inline"
+                          onChange={handleDateChange}
+                          maximumDate={new Date()}
+                          locale="ja-JP"
+                          themeVariant="light"
+                        />
+                      </View>
+                      <TouchableOpacity
+                        style={styles.doneButton}
+                        onPress={() => setShowDatePicker(false)}
+                      >
+                        <Text style={styles.doneButtonText}>完了</Text>
+                      </TouchableOpacity>
                     </View>
                   </TouchableWithoutFeedback>
                 </View>
@@ -374,6 +383,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  pickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: spacing.borderRadius.small,
+    overflow: 'hidden',
+  },
+  doneButton: {
+    backgroundColor: colors.primary,
+    borderRadius: spacing.borderRadius.medium,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  doneButtonText: {
+    fontSize: fonts.size.body,
+    color: '#FFFFFF',
+    fontFamily: fonts.family.bold,
   },
   inputContainer: {
     backgroundColor: colors.surface,
