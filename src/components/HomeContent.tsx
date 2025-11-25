@@ -19,10 +19,11 @@ interface TimeLeft {
   hours: number;
   minutes: number;
   seconds: number;
-  totalDays: number; // 日のみ表示用（小数点以下含む）
+  totalDays: number; // 日のみ表示用(小数点以下含む)
+  totalYears: number; // 年のみ表示用(小数点以下含む)
 }
 
-type CountdownMode = 'detailed' | 'daysOnly';
+type CountdownMode = 'detailed' | 'daysOnly' | 'yearsOnly';
 
 const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -34,6 +35,7 @@ const HomeContent: React.FC = () => {
     minutes: 0,
     seconds: 0,
     totalDays: 0,
+    totalYears: 0,
   });
   const [lifeProgress, setLifeProgress] = useState(0); // 0-100の進捗率
   const [targetLifespan, setTargetLifespan] = useState(0);
@@ -65,6 +67,7 @@ const HomeContent: React.FC = () => {
           minutes: 0,
           seconds: 0,
           totalDays: 0,
+          totalYears: 0,
         });
         setLifeProgress(100);
         return;
@@ -99,8 +102,11 @@ const HomeContent: React.FC = () => {
       const remainingMs = targetDate.getTime() - tempDate.getTime();
       const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
 
-      // 総日数の計算（日のみ表示用、小数点以下も含む）
+      // 総日数の計算(日のみ表示用、小数点以下も含む)
       const totalDays = diffMs / (1000 * 60 * 60 * 24);
+
+      // 総年数の計算(年のみ表示用、小数点以下も含む)
+      const totalYears = totalDays / 365.25;
 
       setTimeLeft({
         years,
@@ -110,6 +116,7 @@ const HomeContent: React.FC = () => {
         minutes: totalMinutes % 60,
         seconds: totalSeconds % 60,
         totalDays,
+        totalYears,
       });
 
       // 進捗率の計算
@@ -133,7 +140,11 @@ const HomeContent: React.FC = () => {
   };
 
   const toggleCountdownMode = () => {
-    setCountdownMode((prev) => (prev === 'detailed' ? 'daysOnly' : 'detailed'));
+    setCountdownMode((prev) => {
+      if (prev === 'detailed') return 'yearsOnly';
+      if (prev === 'yearsOnly') return 'daysOnly';
+      return 'detailed';
+    });
   };
 
   return (
@@ -183,6 +194,16 @@ const HomeContent: React.FC = () => {
                   <Text style={styles.timeLabelSmall}>秒</Text>
                 </View>
               </>
+            ) : countdownMode === 'yearsOnly' ? (
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeValue}>
+                  {Math.floor(timeLeft.totalYears)}
+                  <Text style={styles.decimalPart}>
+                    {(timeLeft.totalYears % 1).toFixed(8).substring(1)}
+                  </Text>
+                </Text>
+                <Text style={styles.timeLabel}>年</Text>
+              </View>
             ) : (
               <View style={styles.timeBlock}>
                 <Text style={styles.timeValue}>
