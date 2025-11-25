@@ -11,6 +11,7 @@ import { loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import Button from './common/Button';
 import Header from './common/Header';
+import Svg, { Circle } from 'react-native-svg';
 
 interface TimeLeft {
   years: number;
@@ -24,6 +25,7 @@ interface TimeLeft {
 }
 
 type CountdownMode = 'detailed' | 'daysOnly' | 'yearsOnly';
+type ProgressMode = 'bar' | 'circle';
 
 const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -40,6 +42,7 @@ const HomeContent: React.FC = () => {
   const [lifeProgress, setLifeProgress] = useState(0); // 0-100の進捗率
   const [targetLifespan, setTargetLifespan] = useState(0);
   const [countdownMode, setCountdownMode] = useState<CountdownMode>('detailed');
+  const [progressMode, setProgressMode] = useState<ProgressMode>('bar');
 
   useEffect(() => {
     const calculateTimeLeft = async () => {
@@ -147,6 +150,10 @@ const HomeContent: React.FC = () => {
     });
   };
 
+  const toggleProgressMode = () => {
+    setProgressMode((prev) => (prev === 'bar' ? 'circle' : 'bar'));
+  };
+
   return (
     <View style={styles.container}>
       <Header title="ホーム" />
@@ -218,23 +225,77 @@ const HomeContent: React.FC = () => {
           </View>
         </View>
 
-        {/* 中央セクション：プログレスバーエリア（今後切り替え可能） */}
+        {/* 中央セクション:プログレスバーエリア(今後切り替え可能) */}
         <View style={styles.centerSection}>
-          {/* 進捗バー */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressLabelContainer}>
-              <Text style={styles.progressLabel}>誕生</Text>
-              <Text style={styles.progressLabel}>{targetLifespan}歳</Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  { width: `${lifeProgress}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
+          {/* プログレス表示タイトルと切り替えボタン */}
+          <View style={styles.progressTitleContainer}>
+            <Text style={styles.progressTitle}>人生の進捗</Text>
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={toggleProgressMode}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.toggleButtonText}>切替</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.progressContentContainer}>
+            {progressMode === 'bar' ? (
+              /* 進捗バー */
+              <View style={styles.progressSection}>
+                <View style={styles.progressLabelContainer}>
+                  <Text style={styles.progressLabel}>誕生</Text>
+                  <Text style={styles.progressLabel}>{targetLifespan}歳</Text>
+                </View>
+                <View style={styles.progressBarContainer}>
+                  <View
+                    style={[
+                      styles.progressBar,
+                      { width: `${lifeProgress}%` },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
+              </View>
+            ) : (
+              /* 円形プログレス */
+              <View style={styles.circleProgressSection}>
+                <View style={styles.circleProgressContainer}>
+                  <Svg width="200" height="200" style={styles.circleSvg}>
+                    {/* 背景円 */}
+                    <Circle
+                      cx="100"
+                      cy="100"
+                      r="90"
+                      stroke={colors.progress.background}
+                      strokeWidth="12"
+                      fill="none"
+                    />
+                    {/* プログレス円 */}
+                    <Circle
+                      cx="100"
+                      cy="100"
+                      r="90"
+                      stroke={colors.progress.bar}
+                      strokeWidth="12"
+                      fill="none"
+                      strokeDasharray={`${2 * Math.PI * 90}`}
+                      strokeDashoffset={`${2 * Math.PI * 90 * (1 - lifeProgress / 100)}`}
+                      strokeLinecap="round"
+                      transform="rotate(-90 100 100)"
+                    />
+                  </Svg>
+                  <View style={styles.circleProgressTextContainer}>
+                    <Text style={styles.circleProgressText}>
+                      {lifeProgress.toFixed(1)}%
+                    </Text>
+                    <Text style={styles.circleProgressSubText}>
+                      {targetLifespan}歳まで
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
@@ -354,9 +415,32 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     fontFamily: fonts.family.regular,
   },
+  progressTitleContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    position: 'relative',
+  },
+  progressTitle: {
+    fontSize: fonts.size.body,
+    fontWeight: fonts.weight.medium,
+    color: colors.text.primary,
+    textAlign: 'center',
+    letterSpacing: 2,
+    fontFamily: fonts.family.regular,
+  },
+  progressContentContainer: {
+    width: '100%',
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   progressSection: {
     width: '100%',
     maxWidth: 320,
+    justifyContent: 'center',
   },
   progressLabelContainer: {
     flexDirection: 'row',
@@ -387,6 +471,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: fonts.weight.regular,
     fontFamily: fonts.family.regular,
+  },
+  circleProgressSection: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleProgressContainer: {
+    position: 'relative',
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleSvg: {
+    position: 'absolute',
+  },
+  circleProgressTextContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleProgressText: {
+    fontSize: fonts.size.countdownLarge,
+    fontWeight: fonts.weight.light,
+    color: colors.text.primary,
+    fontFamily: fonts.family.regular,
+    marginBottom: spacing.xs,
+  },
+  circleProgressSubText: {
+    fontSize: fonts.size.label,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    letterSpacing: 1,
   },
 });
 
