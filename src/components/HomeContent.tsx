@@ -126,55 +126,61 @@ const HomeContent: React.FC = () => {
       <Header title="ホーム" />
 
       <View style={styles.content}>
-        <Text style={styles.title}>残りの時間</Text>
+        {/* 上部セクション：タイトルとカウントダウン */}
+        <View style={styles.topSection}>
+          <Text style={styles.title}>残りの時間</Text>
 
-        {/* カウントダウン表示 */}
-        <View style={styles.countdownContainer}>
-          <View style={styles.timeBlock}>
-            <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
-            <Text style={styles.timeLabel}>年</Text>
-          </View>
-          <View style={styles.timeBlock}>
-            <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
-            <Text style={styles.timeLabel}>月</Text>
-          </View>
-          <View style={styles.timeBlock}>
-            <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
-            <Text style={styles.timeLabel}>日</Text>
-          </View>
-          <View style={styles.timeBlockSmall}>
-            <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
-            <Text style={styles.timeLabelSmall}>時間</Text>
-          </View>
-          <View style={styles.timeBlockSmall}>
-            <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
-            <Text style={styles.timeLabelSmall}>分</Text>
-          </View>
-          <View style={styles.timeBlockSmall}>
-            <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
-            <Text style={styles.timeLabelSmall}>秒</Text>
+          {/* カウントダウン表示 */}
+          <View style={styles.countdownContainer}>
+            <View style={styles.timeBlock}>
+              <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
+              <Text style={styles.timeLabel}>年</Text>
+            </View>
+            <View style={styles.timeBlock}>
+              <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
+              <Text style={styles.timeLabel}>月</Text>
+            </View>
+            <View style={styles.timeBlock}>
+              <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
+              <Text style={styles.timeLabel}>日</Text>
+            </View>
+            <View style={styles.timeBlockSmall}>
+              <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
+              <Text style={styles.timeLabelSmall}>時間</Text>
+            </View>
+            <View style={styles.timeBlockSmall}>
+              <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
+              <Text style={styles.timeLabelSmall}>分</Text>
+            </View>
+            <View style={styles.timeBlockSmall}>
+              <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
+              <Text style={styles.timeLabelSmall}>秒</Text>
+            </View>
           </View>
         </View>
 
-        {/* 進捗バー */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressLabelContainer}>
-            <Text style={styles.progressLabel}>誕生</Text>
-            <Text style={styles.progressLabel}>{targetLifespan}歳</Text>
+        {/* 中央セクション：プログレスバーエリア（今後切り替え可能） */}
+        <View style={styles.centerSection}>
+          {/* 進捗バー */}
+          <View style={styles.progressSection}>
+            <View style={styles.progressLabelContainer}>
+              <Text style={styles.progressLabel}>誕生</Text>
+              <Text style={styles.progressLabel}>{targetLifespan}歳</Text>
+            </View>
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[
+                  styles.progressBar,
+                  { width: `${lifeProgress}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
           </View>
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[
-                styles.progressBar,
-                { width: `${lifeProgress}%` },
-              ]}
-            />
-          </View>
-          <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
         </View>
 
-        {/* ボタン */}
-        <View style={styles.buttonContainer}>
+        {/* 下部セクション：ボタン */}
+        <View style={styles.bottomSection}>
           <Button title="今日を記録する" onPress={handleRecordToday} />
         </View>
       </View>
@@ -190,10 +196,19 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.padding.screen,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
   },
-  buttonContainer: {
-    marginTop: spacing.xl,
+  topSection: {
+    alignItems: 'center',
+  },
+  centerSection: {
+    width: '100%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bottomSection: {
+    width: '100%',
   },
   title: {
     fontSize: fonts.size.title,
@@ -208,7 +223,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-end',
-    marginBottom: spacing.xxl,
     flexWrap: 'wrap',
     gap: spacing.xs,
   },
@@ -255,8 +269,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
   },
   progressSection: {
-    marginTop: spacing.xxl,
-    marginBottom: spacing.xxl,
+    width: '100%',
+    maxWidth: 320,
   },
   progressLabelContainer: {
     flexDirection: 'row',
