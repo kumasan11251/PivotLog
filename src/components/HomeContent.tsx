@@ -3,6 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
@@ -18,7 +19,10 @@ interface TimeLeft {
   hours: number;
   minutes: number;
   seconds: number;
+  totalDays: number; // 日のみ表示用（小数点以下含む）
 }
+
+type CountdownMode = 'detailed' | 'daysOnly';
 
 const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -29,9 +33,11 @@ const HomeContent: React.FC = () => {
     hours: 0,
     minutes: 0,
     seconds: 0,
+    totalDays: 0,
   });
   const [lifeProgress, setLifeProgress] = useState(0); // 0-100の進捗率
   const [targetLifespan, setTargetLifespan] = useState(0);
+  const [countdownMode, setCountdownMode] = useState<CountdownMode>('detailed');
 
   useEffect(() => {
     const calculateTimeLeft = async () => {
@@ -58,6 +64,7 @@ const HomeContent: React.FC = () => {
           hours: 0,
           minutes: 0,
           seconds: 0,
+          totalDays: 0,
         });
         setLifeProgress(100);
         return;
@@ -92,6 +99,9 @@ const HomeContent: React.FC = () => {
       const remainingMs = targetDate.getTime() - tempDate.getTime();
       const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
 
+      // 総日数の計算（日のみ表示用、小数点以下も含む）
+      const totalDays = diffMs / (1000 * 60 * 60 * 24);
+
       setTimeLeft({
         years,
         months,
@@ -99,6 +109,7 @@ const HomeContent: React.FC = () => {
         hours: totalHours % 24,
         minutes: totalMinutes % 60,
         seconds: totalSeconds % 60,
+        totalDays,
       });
 
       // 進捗率の計算
@@ -121,6 +132,10 @@ const HomeContent: React.FC = () => {
     navigation.navigate('DiaryEntry', {});
   };
 
+  const toggleCountdownMode = () => {
+    setCountdownMode((prev) => (prev === 'detailed' ? 'daysOnly' : 'detailed'));
+  };
+
   return (
     <View style={styles.container}>
       <Header title="ホーム" />
@@ -128,34 +143,57 @@ const HomeContent: React.FC = () => {
       <View style={styles.content}>
         {/* 上部セクション：タイトルとカウントダウン */}
         <View style={styles.topSection}>
-          <Text style={styles.title}>残りの時間</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>残りの時間</Text>
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={toggleCountdownMode}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.toggleButtonText}>切替</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* カウントダウン表示 */}
           <View style={styles.countdownContainer}>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
-              <Text style={styles.timeLabel}>年</Text>
-            </View>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
-              <Text style={styles.timeLabel}>月</Text>
-            </View>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
-              <Text style={styles.timeLabel}>日</Text>
-            </View>
-            <View style={styles.timeBlockSmall}>
-              <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
-              <Text style={styles.timeLabelSmall}>時間</Text>
-            </View>
-            <View style={styles.timeBlockSmall}>
-              <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
-              <Text style={styles.timeLabelSmall}>分</Text>
-            </View>
-            <View style={styles.timeBlockSmall}>
-              <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
-              <Text style={styles.timeLabelSmall}>秒</Text>
-            </View>
+            {countdownMode === 'detailed' ? (
+              <>
+                <View style={styles.timeBlock}>
+                  <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
+                  <Text style={styles.timeLabel}>年</Text>
+                </View>
+                <View style={styles.timeBlock}>
+                  <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
+                  <Text style={styles.timeLabel}>月</Text>
+                </View>
+                <View style={styles.timeBlock}>
+                  <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
+                  <Text style={styles.timeLabel}>日</Text>
+                </View>
+                <View style={styles.timeBlockSmall}>
+                  <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
+                  <Text style={styles.timeLabelSmall}>時間</Text>
+                </View>
+                <View style={styles.timeBlockSmall}>
+                  <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
+                  <Text style={styles.timeLabelSmall}>分</Text>
+                </View>
+                <View style={styles.timeBlockSmall}>
+                  <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
+                  <Text style={styles.timeLabelSmall}>秒</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeValue}>
+                  {Math.floor(timeLeft.totalDays).toLocaleString('ja-JP')}
+                  <Text style={styles.decimalPart}>
+                    {(timeLeft.totalDays % 1).toFixed(5).substring(1)}
+                  </Text>
+                </Text>
+                <Text style={styles.timeLabel}>日</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -210,14 +248,35 @@ const styles = StyleSheet.create({
   bottomSection: {
     width: '100%',
   },
+  titleContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    position: 'relative',
+  },
   title: {
-    fontSize: fonts.size.title,
-    fontWeight: fonts.weight.regular,
+    fontSize: fonts.size.body,
+    fontWeight: fonts.weight.medium,
     color: colors.text.primary,
     textAlign: 'center',
-    marginBottom: spacing.xxl,
     letterSpacing: 2,
     fontFamily: fonts.family.regular,
+  },
+  toggleButton: {
+    position: 'absolute',
+    right: 0,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    backgroundColor: 'rgba(139, 157, 131, 0.1)',
+    borderRadius: spacing.borderRadius.small,
+  },
+  toggleButtonText: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    letterSpacing: 0.5,
   },
   countdownContainer: {
     flexDirection: 'row',
@@ -245,6 +304,12 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.label,
     color: colors.text.secondary,
     letterSpacing: 1,
+    fontFamily: fonts.family.regular,
+  },
+  decimalPart: {
+    fontSize: fonts.size.countdownSmall,
+    fontWeight: fonts.weight.light,
+    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
   },
   timeBlockSmall: {
