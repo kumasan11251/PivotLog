@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
-import { loadUserSettings } from '../utils/storage';
+import { loadUserSettings, loadHomeDisplaySettings, saveHomeDisplaySettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import Button from './common/Button';
 import Header from './common/Header';
@@ -52,6 +52,18 @@ const HomeContent: React.FC = () => {
   // アニメーション用の値
   const [progressAnim] = useState(() => new Animated.Value(0));
   const [hasAnimated, setHasAnimated] = useState(false);
+
+  // 初回マウント時に表示設定を読み込む
+  useEffect(() => {
+    const loadDisplaySettings = async () => {
+      const settings = await loadHomeDisplaySettings();
+      if (settings) {
+        setCountdownMode(settings.countdownMode);
+        setProgressMode(settings.progressMode);
+      }
+    };
+    loadDisplaySettings();
+  }, []);
 
   useEffect(() => {
     const calculateTimeLeft = async () => {
@@ -163,15 +175,16 @@ const HomeContent: React.FC = () => {
     navigation.navigate('DiaryEntry', {});
   };
 
-  const toggleCountdownMode = () => {
-    setCountdownMode((prev) => {
-      if (prev === 'detailed') return 'yearsOnly';
-      if (prev === 'yearsOnly') return 'daysOnly';
-      return 'detailed';
+  const toggleCountdownMode = async () => {
+    const newMode = countdownMode === 'detailed' ? 'yearsOnly' : countdownMode === 'yearsOnly' ? 'daysOnly' : 'detailed';
+    setCountdownMode(newMode);
+    await saveHomeDisplaySettings({
+      countdownMode: newMode,
+      progressMode,
     });
   };
 
-  const toggleProgressMode = () => {
+  const toggleProgressMode = async () => {
     // モード切り替え時にアニメーションをリセットして再実行
     progressAnim.setValue(0);
     Animated.timing(progressAnim, {
@@ -181,7 +194,12 @@ const HomeContent: React.FC = () => {
       useNativeDriver: false,
     }).start();
 
-    setProgressMode((prev) => (prev === 'bar' ? 'circle' : 'bar'));
+    const newMode = progressMode === 'bar' ? 'circle' : 'bar';
+    setProgressMode(newMode);
+    await saveHomeDisplaySettings({
+      countdownMode,
+      progressMode: newMode,
+    });
   };
 
   // アニメーション用の幅とストローク計算
@@ -231,7 +249,7 @@ const HomeContent: React.FC = () => {
                 </View>
                 <View style={styles.timeBlockSmall}>
                   <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
-                  <Text style={styles.timeLabelSmall}>時間</Text>
+                  <Text style={styles.timeLabelSmall}>時</Text>
                 </View>
                 <View style={styles.timeBlockSmall}>
                   <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>

@@ -15,8 +15,14 @@ export interface DiaryEntry {
   updatedAt: string; // 更新日時 ISO 8601
 }
 
+export interface HomeDisplaySettings {
+  countdownMode: 'detailed' | 'daysOnly' | 'yearsOnly'; // カウントダウン表示モード
+  progressMode: 'bar' | 'circle'; // 進捗表示モード
+}
+
 const STORAGE_KEY = '@pivot_log_settings';
 const DIARY_KEY = '@pivot_log_diaries';
+const HOME_DISPLAY_KEY = '@pivot_log_home_display';
 
 /**
  * ユーザー設定を保存する
@@ -40,6 +46,32 @@ export const loadUserSettings = async (): Promise<UserSettings | null> => {
     return jsonValue != null ? JSON.parse(jsonValue) : null;
   } catch (error) {
     console.error('設定の読み込みに失敗しました:', error);
+    return null;
+  }
+};
+
+/**
+ * ホーム画面の表示設定を保存する
+ */
+export const saveHomeDisplaySettings = async (settings: HomeDisplaySettings): Promise<void> => {
+  try {
+    const jsonValue = JSON.stringify(settings);
+    await AsyncStorage.setItem(HOME_DISPLAY_KEY, jsonValue);
+  } catch (error) {
+    console.error('ホーム画面表示設定の保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * ホーム画面の表示設定を読み込む
+ */
+export const loadHomeDisplaySettings = async (): Promise<HomeDisplaySettings | null> => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(HOME_DISPLAY_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : null;
+  } catch (error) {
+    console.error('ホーム画面表示設定の読み込みに失敗しました:', error);
     return null;
   }
 };
