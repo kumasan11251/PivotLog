@@ -155,7 +155,7 @@ const HomeContent: React.FC = () => {
         setHasAnimated(true);
         Animated.timing(progressAnim, {
           toValue: finalProgress,
-          duration: 1000,
+          duration: 1200,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: false,
         }).start();
@@ -189,7 +189,7 @@ const HomeContent: React.FC = () => {
     progressAnim.setValue(0);
     Animated.timing(progressAnim, {
       toValue: lifeProgress,
-      duration: 1000,
+      duration: 1200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
