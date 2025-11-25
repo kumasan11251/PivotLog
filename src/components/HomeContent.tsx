@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
@@ -12,6 +14,9 @@ import { colors, fonts, spacing } from '../theme';
 import Button from './common/Button';
 import Header from './common/Header';
 import Svg, { Circle } from 'react-native-svg';
+
+// AnimatedCircleの作成
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface TimeLeft {
   years: number;
@@ -43,6 +48,10 @@ const HomeContent: React.FC = () => {
   const [targetLifespan, setTargetLifespan] = useState(0);
   const [countdownMode, setCountdownMode] = useState<CountdownMode>('detailed');
   const [progressMode, setProgressMode] = useState<ProgressMode>('bar');
+
+  // アニメーション用の値
+  const [progressAnim] = useState(() => new Animated.Value(0));
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   useEffect(() => {
     const calculateTimeLeft = async () => {
@@ -126,7 +135,19 @@ const HomeContent: React.FC = () => {
       const totalLifeMs = targetDate.getTime() - birthday.getTime();
       const livedMs = now.getTime() - birthday.getTime();
       const progress = (livedMs / totalLifeMs) * 100;
-      setLifeProgress(Math.min(progress, 100));
+      const finalProgress = Math.min(progress, 100);
+      setLifeProgress(finalProgress);
+
+      // 初回のみアニメーションを実行
+      if (!hasAnimated) {
+        setHasAnimated(true);
+        Animated.timing(progressAnim, {
+          toValue: finalProgress,
+          duration: 1000,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start();
+      }
     };
 
     // 初回計算
@@ -136,7 +157,7 @@ const HomeContent: React.FC = () => {
     const interval = setInterval(calculateTimeLeft, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [progressAnim, hasAnimated]);
 
   const handleRecordToday = () => {
     navigation.navigate('DiaryEntry', {});
@@ -151,8 +172,28 @@ const HomeContent: React.FC = () => {
   };
 
   const toggleProgressMode = () => {
+    // モード切り替え時にアニメーションをリセットして再実行
+    progressAnim.setValue(0);
+    Animated.timing(progressAnim, {
+      toValue: lifeProgress,
+      duration: 1000,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+
     setProgressMode((prev) => (prev === 'bar' ? 'circle' : 'bar'));
   };
+
+  // アニメーション用の幅とストローク計算
+  const animatedWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  const animatedStrokeDashoffset = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: [2 * Math.PI * 90, 0],
+  });
 
   return (
     <View style={styles.container}>
@@ -248,10 +289,10 @@ const HomeContent: React.FC = () => {
                   <Text style={styles.progressLabel}>{targetLifespan}歳</Text>
                 </View>
                 <View style={styles.progressBarContainer}>
-                  <View
+                  <Animated.View
                     style={[
                       styles.progressBar,
-                      { width: `${lifeProgress}%` },
+                      { width: animatedWidth },
                     ]}
                   />
                 </View>
@@ -272,7 +313,7 @@ const HomeContent: React.FC = () => {
                       fill="none"
                     />
                     {/* プログレス円 */}
-                    <Circle
+                    <AnimatedCircle
                       cx="100"
                       cy="100"
                       r="90"
@@ -280,7 +321,7 @@ const HomeContent: React.FC = () => {
                       strokeWidth="12"
                       fill="none"
                       strokeDasharray={`${2 * Math.PI * 90}`}
-                      strokeDashoffset={`${2 * Math.PI * 90 * (1 - lifeProgress / 100)}`}
+                      strokeDashoffset={animatedStrokeDashoffset}
                       strokeLinecap="round"
                       transform="rotate(-90 100 100)"
                     />
