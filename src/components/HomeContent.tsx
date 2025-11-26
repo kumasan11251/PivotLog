@@ -26,10 +26,11 @@ interface TimeLeft {
   minutes: number;
   seconds: number;
   totalDays: number; // 日のみ表示用(小数点以下含む)
+  totalWeeks: number; // 週のみ表示用(小数点以下含む)
   totalYears: number; // 年のみ表示用(小数点以下含む)
 }
 
-type CountdownMode = 'detailed' | 'daysOnly' | 'yearsOnly';
+type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
 type ProgressMode = 'bar' | 'circle';
 
 const HomeContent: React.FC = () => {
@@ -42,6 +43,7 @@ const HomeContent: React.FC = () => {
     minutes: 0,
     seconds: 0,
     totalDays: 0,
+    totalWeeks: 0,
     totalYears: 0,
   });
   const [lifeProgress, setLifeProgress] = useState(0); // 0-100の進捗率
@@ -91,6 +93,7 @@ const HomeContent: React.FC = () => {
           minutes: 0,
           seconds: 0,
           totalDays: 0,
+          totalWeeks: 0,
           totalYears: 0,
         });
         setLifeProgress(100);
@@ -129,6 +132,9 @@ const HomeContent: React.FC = () => {
       // 総日数の計算(日のみ表示用、小数点以下も含む)
       const totalDays = diffMs / (1000 * 60 * 60 * 24);
 
+      // 総週数の計算(週のみ表示用、小数点以下も含む)
+      const totalWeeks = totalDays / 7;
+
       // 総年数の計算(年のみ表示用、小数点以下も含む)
       const totalYears = totalDays / 365.25;
 
@@ -140,6 +146,7 @@ const HomeContent: React.FC = () => {
         minutes: totalMinutes % 60,
         seconds: totalSeconds % 60,
         totalDays,
+        totalWeeks,
         totalYears,
       });
 
@@ -176,7 +183,11 @@ const HomeContent: React.FC = () => {
   };
 
   const toggleCountdownMode = async () => {
-    const newMode = countdownMode === 'detailed' ? 'yearsOnly' : countdownMode === 'yearsOnly' ? 'daysOnly' : 'detailed';
+    const newMode =
+      countdownMode === 'detailed' ? 'yearsOnly' :
+      countdownMode === 'yearsOnly' ? 'weeksOnly' :
+      countdownMode === 'weeksOnly' ? 'daysOnly' :
+      'detailed';
     setCountdownMode(newMode);
     await saveHomeDisplaySettings({
       countdownMode: newMode,
@@ -269,6 +280,16 @@ const HomeContent: React.FC = () => {
                   </Text>
                 </Text>
                 <Text style={styles.timeLabel}>年</Text>
+              </View>
+            ) : countdownMode === 'weeksOnly' ? (
+              <View style={styles.timeBlock}>
+                <Text style={styles.timeValue}>
+                  {Math.floor(timeLeft.totalWeeks).toLocaleString('ja-JP')}
+                  <Text style={styles.decimalPart}>
+                    {(timeLeft.totalWeeks % 1).toFixed(6).substring(1)}
+                  </Text>
+                </Text>
+                <Text style={styles.timeLabel}>週</Text>
               </View>
             ) : (
               <View style={styles.timeBlock}>
