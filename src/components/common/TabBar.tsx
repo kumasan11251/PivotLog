@@ -71,14 +71,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 2,
+    paddingVertical: spacing.xs,
   },
   iconContainer: {
     width: 32,
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    marginBottom: 0,
   },
   activeIcon: {
     backgroundColor: colors.primary + '15', // 15% opacity
