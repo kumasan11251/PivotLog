@@ -1,0 +1,61 @@
+import { useState, useEffect, useCallback } from 'react';
+import { loadHomeDisplaySettings, saveHomeDisplaySettings } from '../utils/storage';
+
+export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
+export type ProgressMode = 'bar' | 'circle';
+
+interface UseDisplaySettingsResult {
+  countdownMode: CountdownMode;
+  progressMode: ProgressMode;
+  toggleCountdownMode: () => Promise<void>;
+  toggleProgressMode: () => Promise<void>;
+}
+
+/**
+ * ホーム画面の表示設定を管理するカスタムフック
+ */
+export const useDisplaySettings = (): UseDisplaySettingsResult => {
+  const [countdownMode, setCountdownMode] = useState<CountdownMode>('detailed');
+  const [progressMode, setProgressMode] = useState<ProgressMode>('bar');
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await loadHomeDisplaySettings();
+      if (settings) {
+        setCountdownMode(settings.countdownMode);
+        setProgressMode(settings.progressMode);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const toggleCountdownMode = useCallback(async () => {
+    const newMode =
+      countdownMode === 'detailed' ? 'yearsOnly' :
+      countdownMode === 'yearsOnly' ? 'weeksOnly' :
+      countdownMode === 'weeksOnly' ? 'daysOnly' :
+      'detailed';
+
+    setCountdownMode(newMode);
+    await saveHomeDisplaySettings({
+      countdownMode: newMode,
+      progressMode,
+    });
+  }, [countdownMode, progressMode]);
+
+  const toggleProgressMode = useCallback(async () => {
+    const newMode = progressMode === 'bar' ? 'circle' : 'bar';
+    setProgressMode(newMode);
+    await saveHomeDisplaySettings({
+      countdownMode,
+      progressMode: newMode,
+    });
+  }, [countdownMode, progressMode]);
+
+  return {
+    countdownMode,
+    progressMode,
+    toggleCountdownMode,
+    toggleProgressMode,
+  };
+};
