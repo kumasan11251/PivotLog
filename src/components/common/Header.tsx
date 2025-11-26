@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import type { HomeScreenNavigationProp } from '../../types/navigation';
 import { colors, fonts, spacing } from '../../theme';
 
@@ -21,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ title, showSettings = true }) => {
           onPress={() => navigation.navigate('Settings')}
           activeOpacity={0.7}
         >
-          <Text style={styles.settingsIcon}>⚙︎</Text>
+          <Ionicons name="settings-outline" size={20} color={colors.text.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -46,10 +47,6 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     padding: spacing.sm,
-  },
-  settingsIcon: {
-    fontSize: fonts.size.title,
-    color: colors.text.primary,
   },
 });
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing } from '../../theme';
 
 type TabType = 'home' | 'diaryList';
@@ -18,9 +19,11 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
         activeOpacity={0.7}
       >
         <View style={[styles.iconContainer, activeTab === 'home' && styles.activeIcon]}>
-          <Text style={[styles.icon, activeTab === 'home' && styles.activeIconText]}>
-            ◷
-          </Text>
+          <Ionicons
+            name={activeTab === 'home' ? 'home' : 'home-outline'}
+            size={20}
+            color={activeTab === 'home' ? colors.primary : colors.text.secondary}
+          />
         </View>
         <Text style={[styles.label, activeTab === 'home' && styles.activeLabel]}>
           ホーム
@@ -33,9 +36,11 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
         activeOpacity={0.7}
       >
         <View style={[styles.iconContainer, activeTab === 'diaryList' && styles.activeIcon]}>
-          <Text style={[styles.icon, activeTab === 'diaryList' && styles.activeIconText]}>
-            ◫
-          </Text>
+          <Ionicons
+            name={activeTab === 'diaryList' ? 'list' : 'list-outline'}
+            size={20}
+            color={activeTab === 'diaryList' ? colors.primary : colors.text.secondary}
+          />
         </View>
         <Text style={[styles.label, activeTab === 'diaryList' && styles.activeLabel]}>
           記録一覧
@@ -66,28 +71,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xs,
+    paddingVertical: 2,
   },
   iconContainer: {
     width: 32,
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   activeIcon: {
     backgroundColor: colors.primary + '15', // 15% opacity
     borderRadius: 16,
   },
-  icon: {
-    fontSize: 20,
-    color: colors.text.secondary,
-  },
-  activeIconText: {
-    color: colors.primary,
-  },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.text.secondary,
     fontFamily: 'NotoSansJP_400Regular',
   },
