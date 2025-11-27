@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, spacing } from '../theme';
 import Button from './common/Button';
-import Header from './common/Header';
+import ScreenHeader from './common/ScreenHeader';
 import CountdownDisplay from './home/CountdownDisplay';
 import ProgressBar from './home/ProgressBar';
 import CircleProgress from './home/CircleProgress';
@@ -45,7 +45,13 @@ const HomeContent: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Header title="ホーム" />
+      <ScreenHeader
+        title="ホーム"
+        rightAction={{
+          type: 'settings',
+          onPress: () => navigation.navigate('Settings'),
+        }}
+      />
 
       <View style={styles.content}>
         {/* 上部セクション：タイトルとカウントダウン */}

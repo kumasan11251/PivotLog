@@ -10,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
-import Header from './common/Header';
+import ScreenHeader from './common/ScreenHeader';
 
 interface DiaryListContentProps {
   shouldRefresh?: boolean;
@@ -74,7 +74,13 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
 
   return (
     <View style={styles.container}>
-      <Header title="記録一覧" />
+      <ScreenHeader
+        title="記録一覧"
+        rightAction={{
+          type: 'settings',
+          onPress: () => navigation.navigate('Settings'),
+        }}
+      />
 
       <FlatList
         data={diaries}

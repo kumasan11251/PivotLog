@@ -13,6 +13,7 @@ import type { DiaryDetailScreenNavigationProp, RootStackParamList } from '../typ
 import { colors, fonts, spacing } from '../theme';
 import { getDiaryByDate, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
+import ScreenHeader from '../components/common/ScreenHeader';
 
 type DiaryDetailScreenRouteProp = RouteProp<RootStackParamList, 'DiaryDetail'>;
 
@@ -64,11 +65,12 @@ const DiaryDetailScreen: React.FC = () => {
   if (!diary) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>← 戻る</Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader
+          leftAction={{
+            type: 'backIcon',
+            onPress: () => navigation.goBack(),
+          }}
+        />
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>記録が見つかりませんでした</Text>
         </View>
@@ -78,14 +80,17 @@ const DiaryDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← 戻る</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('DiaryEntry', { initialDate: date })} style={styles.editButton}>
-          <Text style={styles.editButtonText}>編集</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        leftAction={{
+          type: 'backIcon',
+          onPress: () => navigation.goBack(),
+        }}
+        rightAction={{
+          type: 'text',
+          label: '編集',
+          onPress: () => navigation.navigate('DiaryEntry', { initialDate: date }),
+        }}
+      />
 
       <ScrollView
         style={styles.scrollView}
@@ -134,32 +139,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.padding.screen,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    paddingVertical: spacing.md,
-  },
-  backButtonText: {
-    fontSize: fonts.size.body,
-    color: colors.primary,
-    fontFamily: fonts.family.regular,
-  },
-  editButton: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  editButtonText: {
-    fontSize: fonts.size.body,
-    color: colors.primary,
-    fontFamily: fonts.family.regular,
   },
   loadingContainer: {
     flex: 1,

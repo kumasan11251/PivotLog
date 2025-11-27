@@ -18,6 +18,7 @@ import type { DiaryEntryScreenNavigationProp, RootStackParamList } from '../type
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
+import ScreenHeader from '../components/common/ScreenHeader';
 import { saveDiaryEntry, getDiaryByDate, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
 
@@ -155,10 +156,12 @@ const DiaryEntryScreen: React.FC = () => {
         keyboardVerticalOffset={0}
       >
         <View style={styles.innerContainer}>
-          {/* 戻るボタン */}
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Text style={styles.backButtonText}>← 戻る</Text>
-          </TouchableOpacity>
+          <ScreenHeader
+            leftAction={{
+              type: 'backIcon',
+              onPress: handleBack,
+            }}
+          />
 
           <ScrollView
             ref={scrollViewRef}
@@ -309,16 +312,6 @@ const styles = StyleSheet.create({
   },
   innerContainer: {
     flex: 1,
-  },
-  backButton: {
-    paddingTop: spacing.md,
-    paddingLeft: spacing.padding.screen,
-    paddingBottom: spacing.md,
-  },
-  backButtonText: {
-    fontSize: fonts.size.body,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
   },
   scrollView: {
     flex: 1,
