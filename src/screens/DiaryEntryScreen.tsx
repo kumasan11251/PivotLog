@@ -19,6 +19,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, fonts, spacing } from '../theme';
 import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
+import { Ionicons } from '@expo/vector-icons';
 import { saveDiaryEntry, getDiaryByDate, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
 
@@ -170,13 +171,12 @@ const DiaryEntryScreen: React.FC = () => {
             keyboardShouldPersistTaps="handled"
           >
           {/* 記録日 */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>記録日</Text>
+          <View style={styles.dateFieldContainer}>
             <TouchableOpacity
               style={styles.dateInputContainer}
               onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.calendarIcon}>📅</Text>
+              <Ionicons name="calendar-outline" size={20} color={colors.primary} style={styles.calendarIcon} />
               <Text style={styles.dateInputText}>{formatDate(dateString)}</Text>
             </TouchableOpacity>
           </View>
@@ -192,8 +192,8 @@ const DiaryEntryScreen: React.FC = () => {
                 style={styles.textInput}
                 value={goodTime}
                 onChangeText={setGoodTime}
-                onFocus={() => scrollViewRef.current?.scrollTo({ y: 50, animated: true })}
-                placeholder="例：朝の運動、集中した作業時間など"
+                onFocus={() => scrollViewRef.current?.scrollTo({ y: 76, animated: true })}
+                placeholder="例：朝の運動、家族との食事"
                 placeholderTextColor={colors.text.secondary}
                 multiline
                 textAlignVertical="top"
@@ -213,8 +213,8 @@ const DiaryEntryScreen: React.FC = () => {
                 style={styles.textInput}
                 value={wastedTime}
                 onChangeText={setWastedTime}
-                onFocus={() => scrollViewRef.current?.scrollTo({ y: 230, animated: true })}
-                placeholder="例：SNSの見すぎ、意味のない会議など"
+                onFocus={() => scrollViewRef.current?.scrollTo({ y: 208, animated: true })}
+                placeholder="例：SNSの見すぎ、無駄な会議"
                 placeholderTextColor={colors.text.secondary}
                 multiline
                 textAlignVertical="top"
@@ -234,8 +234,8 @@ const DiaryEntryScreen: React.FC = () => {
                 style={styles.textInput}
                 value={tomorrow}
                 onChangeText={setTomorrow}
-                onFocus={() => scrollViewRef.current?.scrollTo({ y: 410, animated: true })}
-                placeholder="例：早起きして読書、重要な仕事に取り組むなど"
+                onFocus={() => scrollViewRef.current?.scrollTo({ y: 340, animated: true })}
+                placeholder="例：早起きして読書、笑顔で挨拶"
                 placeholderTextColor={colors.text.secondary}
                 multiline
                 textAlignVertical="top"
@@ -321,7 +321,12 @@ const styles = StyleSheet.create({
   },
   fieldContainer: {
     paddingHorizontal: spacing.padding.screen,
-    marginBottom: spacing.xl,
+    marginBottom: 32,
+  },
+  dateFieldContainer: {
+    paddingHorizontal: spacing.padding.screen,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xxl,
   },
   labelContainer: {
     flexDirection: 'row',
@@ -399,18 +404,20 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.medium,
     borderWidth: spacing.borderWidth,
     borderColor: colors.border,
-    minHeight: 120,
     padding: spacing.md,
   },
   textInput: {
-    flex: 1,
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
     lineHeight: 22,
+    minHeight: 22,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   saveButton: {
     marginHorizontal: spacing.padding.screen,
+    marginTop: spacing.xxl,
     marginBottom: spacing.xxl * 2,
   },
 });
