@@ -66,8 +66,16 @@ const DiaryDetailScreen: React.FC = () => {
     return `${year}年${month}月${day}日（${weekday}）`;
   };
 
-  const navigateToDate = (targetDate: string) => {
-    navigation.replace('DiaryDetail', { date: targetDate });
+  const navigateToDate = (targetDate: string, direction: 'prev' | 'next') => {
+    // スタックをリセットして、Home（記録一覧タブ） → DiaryDetail のみにする
+    // これにより戻るボタンで記録一覧に戻れる
+    navigation.reset({
+      index: 1,
+      routes: [
+        { name: 'Home', params: { initialTab: 'diaryList' } },
+        { name: 'DiaryDetail', params: { date: targetDate, direction } },
+      ],
+    });
   };
 
   if (isLoading) {
@@ -162,7 +170,7 @@ const DiaryDetailScreen: React.FC = () => {
         <View style={styles.navigationBar}>
           <TouchableOpacity
             style={[styles.navButton, !adjacentDates.prev && styles.navButtonDisabled]}
-            onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev)}
+            onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev, 'prev')}
             disabled={!adjacentDates.prev}
           >
             <Ionicons
@@ -176,7 +184,7 @@ const DiaryDetailScreen: React.FC = () => {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.navButton, !adjacentDates.next && styles.navButtonDisabled]}
-            onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next)}
+            onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next, 'next')}
             disabled={!adjacentDates.next}
           >
             <Text style={[styles.navButtonText, !adjacentDates.next && styles.navButtonTextDisabled]}>

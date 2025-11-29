@@ -1,16 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import TabBar from '../components/common/TabBar';
 import HomeContent from '../components/HomeContent';
 import DiaryListContent from '../components/DiaryListContent';
 import { colors } from '../theme';
+import type { RootStackParamList } from '../types/navigation';
 
 type TabType = 'home' | 'diaryList';
+type MainTabScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;
 
 const MainTabScreen: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const route = useRoute<MainTabScreenRouteProp>();
+  const initialTab = route.params?.initialTab ?? 'home';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+
+  // パラメータが変わったときにタブを更新
+  useEffect(() => {
+    if (route.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route.params?.initialTab]);
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
   useFocusEffect(

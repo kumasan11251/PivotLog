@@ -4,9 +4,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 export type RootStackParamList = {
   Splash: undefined;
   InitialSetup: undefined;
-  Home: undefined;
+  Home: { initialTab?: 'home' | 'diaryList' } | undefined;
   DiaryEntry: { initialDate?: string };
-  DiaryDetail: { date: string };
+  DiaryDetail: { date: string; direction?: 'prev' | 'next' };
   Settings: undefined;
   EditBirthday: undefined;
   EditLifespan: undefined;
