@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl * 2,
   },
   title: {
-    fontSize: fonts.size.title,
+    fontSize: fonts.size.body,
     fontWeight: fonts.weight.semibold,
     color: colors.text.primary,
     fontFamily: fonts.family.bold,
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     ...textBase,
   },
   description: {
-    fontSize: fonts.size.body,
+    fontSize: fonts.size.labelSmall,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
