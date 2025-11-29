@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing } from '../theme';
@@ -16,6 +17,8 @@ import ScreenHeader from './common/ScreenHeader';
 
 const CARD_HEIGHT = 140; // 固定カードの高さ
 
+type ViewMode = 'list' | 'calendar';
+
 interface DiaryListContentProps {
   shouldRefresh?: boolean;
 }
@@ -24,6 +27,46 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1);
+
+  // 選択した月の日記をフィルタリング
+  const filteredDiaries = useMemo(() => {
+    const monthStr = String(selectedMonth).padStart(2, '0');
+    const prefix = `${selectedYear}-${monthStr}`;
+    return diaries.filter((diary) => diary.date.startsWith(prefix));
+  }, [diaries, selectedYear, selectedMonth]);
+
+  // 前月に移動
+  const goToPreviousMonth = () => {
+    if (selectedMonth === 1) {
+      setSelectedYear(selectedYear - 1);
+      setSelectedMonth(12);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  // 翌月に移動
+  const goToNextMonth = () => {
+    const now = new Date();
+    const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+    if (isCurrentMonth) return; // 未来には進めない
+
+    if (selectedMonth === 12) {
+      setSelectedYear(selectedYear + 1);
+      setSelectedMonth(1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  };
+
+  // 翌月ボタンが無効かどうか
+  const isNextDisabled = useMemo(() => {
+    const now = new Date();
+    return selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+  }, [selectedYear, selectedMonth]);
 
   const loadDiaries = async () => {
     setIsLoading(true);
@@ -47,15 +90,28 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     }
   }, [shouldRefresh]);
 
-  const formatDateParts = (dateString: string): { day: string; weekday: string; month: string } => {
+  const formatDateParts = (dateString: string): { day: string; weekday: string; dayOfWeek: number } => {
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day);
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    const dayOfWeek = date.getDay();
     return {
       day: String(day),
-      weekday: weekdays[date.getDay()],
-      month: `${month}月`,
+      weekday: weekdays[dayOfWeek],
+      dayOfWeek,
     };
+  };
+
+  const getDateSectionStyle = (dayOfWeek: number) => {
+    if (dayOfWeek === 0) return styles.dateSectionSunday;
+    if (dayOfWeek === 6) return styles.dateSectionSaturday;
+    return null;
+  };
+
+  const getDateTextStyle = (dayOfWeek: number) => {
+    if (dayOfWeek === 0) return styles.sundayText;
+    if (dayOfWeek === 6) return styles.saturdayText;
+    return null;
   };
 
   const getFilledQuestions = (item: DiaryEntry): { label: string; content: string }[] => {
@@ -79,16 +135,17 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const renderDiaryItem = ({ item }: { item: DiaryEntry }) => {
     const dateParts = formatDateParts(item.date);
     const filledQuestions = getFilledQuestions(item);
+    const dateSectionStyle = getDateSectionStyle(dateParts.dayOfWeek);
+    const dateTextStyle = getDateTextStyle(dateParts.dayOfWeek);
 
     return (
       <TouchableOpacity
         style={styles.diaryItem}
         onPress={() => navigation.navigate('DiaryDetail', { date: item.date })}
       >
-        <View style={styles.dateSection}>
-          <Text style={styles.weekdayText}>{dateParts.weekday}</Text>
-          <Text style={styles.dayText}>{dateParts.day}</Text>
-          <Text style={styles.monthText}>{dateParts.month}</Text>
+        <View style={[styles.dateSection, dateSectionStyle]}>
+          <Text style={[styles.weekdayText, dateTextStyle]}>{dateParts.weekday}</Text>
+          <Text style={[styles.dayText, dateTextStyle]}>{dateParts.day}</Text>
         </View>
         <View style={styles.contentWrapper}>
           <View style={styles.contentSection}>
@@ -114,10 +171,183 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
 
   const renderEmptyList = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyTitle}>まだ記録がありません</Text>
+      <Text style={styles.emptyTitle}>この月の記録はありません</Text>
       <Text style={styles.emptyDescription}>
         日記を記録して、毎日を振り返りましょう
       </Text>
+    </View>
+  );
+
+  // カレンダービュー用のデータ生成
+  const calendarData = useMemo(() => {
+    const year = selectedYear;
+    const month = selectedMonth;
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay(); // 0 = 日曜日
+
+    // 日記がある日のセット
+    const diaryDates = new Set(
+      filteredDiaries.map((d) => parseInt(d.date.split('-')[2], 10))
+    );
+
+    const weeks: (number | null)[][] = [];
+    let currentWeek: (number | null)[] = [];
+
+    // 最初の週の空白
+    for (let i = 0; i < startDayOfWeek; i++) {
+      currentWeek.push(null);
+    }
+
+    // 日にちを埋める
+    for (let day = 1; day <= daysInMonth; day++) {
+      currentWeek.push(day);
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+    }
+
+    // 最後の週の空白
+    if (currentWeek.length > 0) {
+      while (currentWeek.length < 7) {
+        currentWeek.push(null);
+      }
+      weeks.push(currentWeek);
+    }
+
+    return { weeks, diaryDates };
+  }, [selectedYear, selectedMonth, filteredDiaries]);
+
+  const handleCalendarDayPress = (day: number) => {
+    const monthStr = String(selectedMonth).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${selectedYear}-${monthStr}-${dayStr}`;
+
+    // その日に日記があるか確認
+    const hasDiary = filteredDiaries.some((d) => d.date === dateStr);
+    if (hasDiary) {
+      navigation.navigate('DiaryDetail', { date: dateStr });
+    }
+  };
+
+  const renderCalendarView = () => {
+    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+    const { weeks, diaryDates } = calendarData;
+
+    return (
+      <View style={styles.calendarContainer}>
+        {/* 曜日ヘッダー */}
+        <View style={styles.weekdayHeader}>
+          {weekdays.map((day, index) => (
+            <View key={index} style={styles.weekdayCell}>
+              <Text style={[
+                styles.weekdayHeaderText,
+                index === 0 && styles.sundayText,
+                index === 6 && styles.saturdayText,
+              ]}>
+                {day}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* カレンダーグリッド */}
+        {weeks.map((week, weekIndex) => (
+          <View key={weekIndex} style={styles.weekRow}>
+            {week.map((day, dayIndex) => {
+              const hasDiary = day !== null && diaryDates.has(day);
+              const isToday =
+                day !== null &&
+                selectedYear === new Date().getFullYear() &&
+                selectedMonth === new Date().getMonth() + 1 &&
+                day === new Date().getDate();
+
+              return (
+                <TouchableOpacity
+                  key={dayIndex}
+                  style={styles.dayCell}
+                  onPress={() => day !== null && handleCalendarDayPress(day)}
+                  disabled={day === null}
+                >
+                  {day !== null && (
+                    <View style={[
+                      styles.dayContent,
+                      isToday && styles.todayContent,
+                    ]}>
+                      <Text style={[
+                        styles.dayNumber,
+                        dayIndex === 0 && styles.sundayText,
+                        dayIndex === 6 && styles.saturdayText,
+                        isToday && styles.todayText,
+                      ]}>
+                        {day}
+                      </Text>
+                      {hasDiary && (
+                        <View style={styles.diaryMarker} />
+                      )}
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
+
+        {/* この月の記録サマリー */}
+        <View style={styles.calendarSummary}>
+          <Text style={styles.summaryText}>
+            この月の記録: {filteredDiaries.length}件
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderMonthSelector = () => (
+    <View style={styles.monthSelectorContainer}>
+      <View style={styles.monthSelector}>
+        <TouchableOpacity onPress={goToPreviousMonth} style={styles.arrowButton}>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
+        <Text style={styles.monthText}>
+          {selectedYear}年{selectedMonth}月
+        </Text>
+        <TouchableOpacity
+          onPress={goToNextMonth}
+          style={styles.arrowButton}
+          disabled={isNextDisabled}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={24}
+            color={isNextDisabled ? colors.text.secondary : colors.text.primary}
+          />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.viewModeToggle}>
+        <TouchableOpacity
+          style={[styles.toggleButton, viewMode === 'list' && styles.toggleButtonActive]}
+          onPress={() => setViewMode('list')}
+        >
+          <Ionicons
+            name="list"
+            size={20}
+            color={viewMode === 'list' ? colors.text.inverse : colors.text.secondary}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleButton, viewMode === 'calendar' && styles.toggleButtonActive]}
+          onPress={() => setViewMode('calendar')}
+        >
+          <Ionicons
+            name="calendar"
+            size={20}
+            color={viewMode === 'calendar' ? colors.text.inverse : colors.text.secondary}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -131,15 +361,21 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         }}
       />
 
-      <FlatList
-        data={diaries}
-        renderItem={renderDiaryItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={!isLoading ? renderEmptyList : null}
-        refreshing={isLoading}
-        onRefresh={loadDiaries}
-      />
+      {renderMonthSelector()}
+
+      {viewMode === 'list' ? (
+        <FlatList
+          data={filteredDiaries}
+          renderItem={renderDiaryItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={!isLoading ? renderEmptyList : null}
+          refreshing={isLoading}
+          onRefresh={loadDiaries}
+        />
+      ) : (
+        renderCalendarView()
+      )}
     </View>
   );
 };
@@ -148,6 +384,44 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  monthSelectorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.padding.screen,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: spacing.borderWidth,
+    borderBottomColor: colors.border,
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  arrowButton: {
+    padding: spacing.xs,
+  },
+  monthText: {
+    fontSize: fonts.size.body,
+    fontFamily: fonts.family.bold,
+    color: colors.text.primary,
+    marginHorizontal: spacing.md,
+    minWidth: 100,
+    textAlign: 'center',
+  },
+  viewModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+    borderRadius: spacing.borderRadius.small,
+    padding: 2,
+  },
+  toggleButton: {
+    padding: spacing.sm,
+    borderRadius: spacing.borderRadius.small,
+  },
+  toggleButtonActive: {
+    backgroundColor: colors.primary,
   },
   listContent: {
     padding: spacing.padding.screen,
@@ -167,10 +441,17 @@ const styles = StyleSheet.create({
   },
   dateSection: {
     width: 44,
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
-    paddingVertical: spacing.xs,
+    borderRadius: spacing.borderRadius.small,
+  },
+  dateSectionSunday: {
+    backgroundColor: 'rgba(229, 115, 115, 0.12)',
+  },
+  dateSectionSaturday: {
+    backgroundColor: 'rgba(100, 181, 246, 0.12)',
   },
   dayText: {
     fontSize: 20,
@@ -183,12 +464,6 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     marginBottom: 2,
-  },
-  monthText: {
-    fontSize: 10,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    marginTop: 2,
   },
   contentWrapper: {
     flex: 1,
@@ -245,6 +520,80 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
+  },
+  // カレンダービュー用スタイル
+  calendarContainer: {
+    flex: 1,
+    padding: spacing.padding.screen,
+  },
+  weekdayHeader: {
+    flexDirection: 'row',
+    marginBottom: spacing.sm,
+  },
+  weekdayCell: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  weekdayHeaderText: {
+    fontSize: fonts.size.labelSmall,
+    fontFamily: fonts.family.bold,
+    color: colors.text.secondary,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    marginBottom: spacing.xs,
+  },
+  dayCell: {
+    flex: 1,
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 2,
+  },
+  dayContent: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: spacing.borderRadius.small,
+  },
+  todayContent: {
+    backgroundColor: colors.primary,
+  },
+  dayNumber: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.regular,
+    color: colors.text.primary,
+  },
+  todayText: {
+    color: colors.text.inverse,
+    fontFamily: fonts.family.bold,
+  },
+  sundayText: {
+    color: '#E57373',
+  },
+  saturdayText: {
+    color: '#64B5F6',
+  },
+  diaryMarker: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    marginTop: 2,
+  },
+  calendarSummary: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: spacing.borderWidth,
+    borderTopColor: colors.border,
+    alignItems: 'center',
+  },
+  summaryText: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.regular,
+    color: colors.text.secondary,
   },
 });
 
