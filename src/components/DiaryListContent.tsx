@@ -298,7 +298,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
               <Text style={styles.noEntryText}>この日の記録はありません</Text>
               <TouchableOpacity
                 style={styles.createEntryButton}
-                onPress={() => navigation.navigate('DiaryEntry', { date: selectedDate })}
+                onPress={() => navigation.navigate('DiaryEntry', { initialDate: selectedDate })}
               >
                 <Ionicons name="add-circle-outline" size={18} color={colors.text.inverse} />
                 <Text style={styles.createEntryButtonText}>日記を書く</Text>
@@ -539,10 +539,10 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.small,
   },
   dateSectionSunday: {
-    backgroundColor: 'rgba(229, 115, 115, 0.12)',
+    // 背景色なし
   },
   dateSectionSaturday: {
-    backgroundColor: 'rgba(100, 181, 246, 0.12)',
+    // 背景色なし
   },
   dayText: {
     fontSize: 20,
@@ -578,10 +578,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   questionLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: colors.primary,
     fontFamily: fonts.family.bold,
-    marginBottom: 3,
+    backgroundColor: 'rgba(139, 157, 131, 0.15)',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 4,
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
     ...textBase,
   },
   questionContent: {
