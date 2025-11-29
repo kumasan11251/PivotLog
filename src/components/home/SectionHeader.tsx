@@ -32,12 +32,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   title: {
-    fontSize: fonts.size.body,
-    fontWeight: fonts.weight.medium,
+    fontSize: fonts.size.sectionTitle,
+    fontWeight: fonts.weight.semibold,
     color: colors.text.primary,
     textAlign: 'center',
-    letterSpacing: 2,
-    fontFamily: fonts.family.regular,
+    letterSpacing: 3,
+    fontFamily: fonts.family.bold,
     ...textBase,
   },
   toggleButton: {

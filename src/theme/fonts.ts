@@ -24,6 +24,9 @@ export const fonts = {
     countdownLarge: 32, // 年・月・日
     countdownSmall: 22, // 時・分・秒
 
+    // セクションタイトル
+    sectionTitle: 20, // 「残りの時間」「人生の進捗」
+
     // タイトル・見出し
     title: 24,
     heading: 28,
