@@ -13,29 +13,23 @@ interface CountdownDisplayProps {
 const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode }) => {
   if (mode === 'detailed') {
     return (
-      <View style={styles.countdownContainer}>
-        <View style={styles.timeBlock}>
+      <View style={styles.detailedContainer}>
+        {/* 数字の行 */}
+        <View style={styles.valuesRow}>
           <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabel}>年</Text>
-        </View>
-        <View style={styles.timeBlock}>
           <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabel}>月</Text>
-        </View>
-        <View style={styles.timeBlock}>
           <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabel}>日</Text>
-        </View>
-        <View style={styles.timeBlockSmall}>
           <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabelSmall}>時</Text>
-        </View>
-        <View style={styles.timeBlockSmall}>
           <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
-          <Text style={styles.timeLabelSmall}>分</Text>
-        </View>
-        <View style={styles.timeBlockSmall}>
           <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
+        </View>
+        {/* ラベルの行 */}
+        <View style={styles.labelsRow}>
+          <Text style={styles.timeLabel}>年</Text>
+          <Text style={styles.timeLabel}>月</Text>
+          <Text style={styles.timeLabel}>日</Text>
+          <Text style={styles.timeLabelSmall}>時</Text>
+          <Text style={styles.timeLabelSmall}>分</Text>
           <Text style={styles.timeLabelSmall}>秒</Text>
         </View>
       </View>
@@ -98,6 +92,22 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.xs,
   },
+  detailedContainer: {
+    alignItems: 'center',
+  },
+  valuesRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+  },
+  labelsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    marginTop: 4,
+    gap: spacing.sm,
+  },
   timeBlock: {
     alignItems: 'center',
     marginHorizontal: 2,
@@ -107,12 +117,9 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.countdownLarge,
     fontWeight: fonts.weight.light,
     color: colors.text.primary,
-    marginBottom: 2,
     fontFamily: fonts.family.regular,
     minWidth: spacing.countdown.blockWidthLarge,
     textAlign: 'center',
-    lineHeight: fonts.lineHeight.countdownLarge,
-    paddingTop: 4, // 上部に余白を追加
     ...textBase,
   },
   timeLabel: {
@@ -120,6 +127,8 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     letterSpacing: 1,
     fontFamily: fonts.family.regular,
+    minWidth: spacing.countdown.blockWidthLarge,
+    textAlign: 'center',
     ...textBase,
   },
   decimalPart: {
@@ -129,27 +138,22 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     ...textBase,
   },
-  timeBlockSmall: {
-    alignItems: 'center',
-    marginHorizontal: 2,
-    minWidth: spacing.countdown.blockWidthSmall,
-  },
   timeValueSmall: {
     fontSize: fonts.size.countdownSmall,
     fontWeight: fonts.weight.light,
     color: colors.text.primary,
-    marginBottom: 2,
     fontFamily: fonts.family.regular,
     minWidth: spacing.countdown.blockWidthSmall,
     textAlign: 'center',
-    lineHeight: fonts.lineHeight.countdownSmall,
     ...textBase,
   },
   timeLabelSmall: {
-    fontSize: fonts.size.labelSmall,
+    fontSize: fonts.size.label,
     color: colors.text.secondary,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
     fontFamily: fonts.family.regular,
+    minWidth: spacing.countdown.blockWidthSmall,
+    textAlign: 'center',
     ...textBase,
   },
 });

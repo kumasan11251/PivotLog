@@ -1,13 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Animated, Easing } from 'react-native';
 
+// プログレス円の定数
+const CIRCLE_RADIUS = 90;
+const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
+
+interface AnimatedValues {
+  /** プログレスバー用のアニメーション幅（0%〜100%） */
+  width: Animated.AnimatedInterpolation<string | number>;
+  /** プログレス円用のアニメーションストロークオフセット */
+  strokeDashoffset: Animated.AnimatedInterpolation<string | number>;
+}
+
 interface UseProgressAnimationResult {
-  progressAnim: Animated.Value;
+  /** アニメーション化された値 */
+  animatedValues: AnimatedValues;
+  /** アニメーションを再実行する */
   triggerAnimation: () => void;
+  /** プログレス円の定数 */
+  circleConstants: {
+    radius: number;
+    circumference: number;
+  };
 }
 
 /**
  * プログレスバー/円のアニメーションを管理するカスタムフック
+ * アニメーション値の計算もフック内で完結させる
  */
 export const useProgressAnimation = (
   targetProgress: number,
@@ -39,5 +58,22 @@ export const useProgressAnimation = (
     }).start();
   };
 
-  return { progressAnim, triggerAnimation };
+  // アニメーション値の計算をメモ化
+  const animatedValues = useMemo<AnimatedValues>(() => ({
+    width: progressAnim.interpolate({
+      inputRange: [0, 100],
+      outputRange: ['0%', '100%'],
+    }),
+    strokeDashoffset: progressAnim.interpolate({
+      inputRange: [0, 100],
+      outputRange: [CIRCLE_CIRCUMFERENCE, 0],
+    }),
+  }), [progressAnim]);
+
+  const circleConstants = useMemo(() => ({
+    radius: CIRCLE_RADIUS,
+    circumference: CIRCLE_CIRCUMFERENCE,
+  }), []);
+
+  return { animatedValues, triggerAnimation, circleConstants };
 };
