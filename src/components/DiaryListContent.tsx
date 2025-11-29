@@ -30,6 +30,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // 選択した月の日記をフィルタリング
   const filteredDiaries = useMemo(() => {
@@ -220,15 +221,92 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     return { weeks, diaryDates };
   }, [selectedYear, selectedMonth, filteredDiaries]);
 
+  // 選択された日付の日記を取得
+  const selectedDiary = useMemo(() => {
+    if (!selectedDate) return null;
+    return filteredDiaries.find((d) => d.date === selectedDate) || null;
+  }, [selectedDate, filteredDiaries]);
+
   const handleCalendarDayPress = (day: number) => {
     const monthStr = String(selectedMonth).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
     const dateStr = `${selectedYear}-${monthStr}-${dayStr}`;
 
-    // その日に日記があるか確認
-    const hasDiary = filteredDiaries.some((d) => d.date === dateStr);
-    if (hasDiary) {
-      navigation.navigate('DiaryDetail', { date: dateStr });
+    // 同じ日付を再度タップした場合は選択解除
+    if (selectedDate === dateStr) {
+      setSelectedDate(null);
+    } else {
+      setSelectedDate(dateStr);
+    }
+  };
+
+  // 月を変更したら選択日付をリセット
+  useEffect(() => {
+    setSelectedDate(null);
+  }, [selectedYear, selectedMonth]);
+
+  const renderSelectedDateCard = () => {
+    if (!selectedDate) return null;
+
+    const dateParts = formatDateParts(selectedDate);
+    const dateSectionStyle = getDateSectionStyle(dateParts.dayOfWeek);
+    const dateTextStyle = getDateTextStyle(dateParts.dayOfWeek);
+
+    if (selectedDiary) {
+      const filledQuestions = getFilledQuestions(selectedDiary);
+      return (
+        <View style={styles.selectedCardContainer}>
+          <TouchableOpacity
+            style={styles.diaryItem}
+            onPress={() => navigation.navigate('DiaryDetail', { date: selectedDate })}
+          >
+            <View style={[styles.dateSection, dateSectionStyle]}>
+              <Text style={[styles.weekdayText, dateTextStyle]}>{dateParts.weekday}</Text>
+              <Text style={[styles.dayText, dateTextStyle]}>{dateParts.day}</Text>
+            </View>
+            <View style={styles.contentWrapper}>
+              <View style={styles.contentSection}>
+                {filledQuestions.length > 0 ? (
+                  filledQuestions.map((q, index) => (
+                    <View key={index} style={styles.questionItem}>
+                      <Text style={styles.questionLabel}>{q.label}</Text>
+                      <Text style={styles.questionContent}>{q.content}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyContent}>内容がありません</Text>
+                )}
+              </View>
+              <LinearGradient
+                colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
+                style={styles.fadeOverlay}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    } else {
+      // 日記がない場合は新規作成ボタンを表示
+      return (
+        <View style={styles.selectedCardContainer}>
+          <View style={styles.noEntryCard}>
+            <View style={[styles.dateSection, dateSectionStyle]}>
+              <Text style={[styles.weekdayText, dateTextStyle]}>{dateParts.weekday}</Text>
+              <Text style={[styles.dayText, dateTextStyle]}>{dateParts.day}</Text>
+            </View>
+            <View style={styles.noEntryContent}>
+              <Text style={styles.noEntryText}>この日の記録はありません</Text>
+              <TouchableOpacity
+                style={styles.createEntryButton}
+                onPress={() => navigation.navigate('DiaryEntry', { date: selectedDate })}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={colors.text.inverse} />
+                <Text style={styles.createEntryButtonText}>日記を書く</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      );
     }
   };
 
@@ -258,6 +336,8 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
           <View key={weekIndex} style={styles.weekRow}>
             {week.map((day, dayIndex) => {
               const hasDiary = day !== null && diaryDates.has(day);
+              const dayStr = day !== null ? `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}` : null;
+              const isSelected = dayStr === selectedDate;
               const isToday =
                 day !== null &&
                 selectedYear === new Date().getFullYear() &&
@@ -275,17 +355,22 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
                     <View style={[
                       styles.dayContent,
                       isToday && styles.todayContent,
+                      isSelected && !isToday && styles.selectedContent,
                     ]}>
                       <Text style={[
                         styles.dayNumber,
                         dayIndex === 0 && styles.sundayText,
                         dayIndex === 6 && styles.saturdayText,
                         isToday && styles.todayText,
+                        isSelected && !isToday && styles.selectedText,
                       ]}>
                         {day}
                       </Text>
-                      {hasDiary && (
+                      {hasDiary && !isToday && !isSelected && (
                         <View style={styles.diaryMarker} />
+                      )}
+                      {hasDiary && (isToday || isSelected) && (
+                        <View style={styles.diaryMarkerLight} />
                       )}
                     </View>
                   )}
@@ -295,12 +380,17 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
           </View>
         ))}
 
+        {/* 選択された日付のカード表示 */}
+        {renderSelectedDateCard()}
+
         {/* この月の記録サマリー */}
-        <View style={styles.calendarSummary}>
-          <Text style={styles.summaryText}>
-            この月の記録: {filteredDiaries.length}件
-          </Text>
-        </View>
+        {!selectedDate && (
+          <View style={styles.calendarSummary}>
+            <Text style={styles.summaryText}>
+              この月の記録: {filteredDiaries.length}件
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -592,6 +682,65 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: colors.primary,
     marginTop: 2,
+  },
+  diaryMarkerLight: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  selectedContent: {
+    backgroundColor: colors.text.secondary,
+  },
+  selectedText: {
+    color: colors.text.inverse,
+    fontFamily: fonts.family.bold,
+  },
+  selectedCardContainer: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: spacing.borderWidth,
+    borderTopColor: colors.border,
+  },
+  noEntryCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.surface,
+    borderRadius: spacing.borderRadius.medium,
+    borderWidth: spacing.borderWidth,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    height: CARD_HEIGHT,
+    overflow: 'hidden',
+  },
+  noEntryContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  noEntryText: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.regular,
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
+    ...textBase,
+  },
+  createEntryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: spacing.borderRadius.small,
+    gap: spacing.xs,
+  },
+  createEntryButtonText: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.bold,
+    color: colors.text.inverse,
+    ...textBase,
   },
   calendarSummary: {
     marginTop: spacing.lg,
