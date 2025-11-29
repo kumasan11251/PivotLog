@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, textBase } from '../theme';
 import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
 import ScreenHeader from './common/ScreenHeader';
@@ -409,6 +409,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     minWidth: 100,
     textAlign: 'center',
+    ...textBase,
   },
   viewModeToggle: {
     flexDirection: 'row',
@@ -458,12 +459,14 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weight.semibold,
     color: colors.text.primary,
     fontFamily: fonts.family.bold,
+    ...textBase,
   },
   weekdayText: {
     fontSize: 10,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     marginBottom: 2,
+    ...textBase,
   },
   contentWrapper: {
     flex: 1,
@@ -489,18 +492,21 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fonts.family.bold,
     marginBottom: 3,
+    ...textBase,
   },
   questionContent: {
     fontSize: 13,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
     lineHeight: 18,
+    ...textBase,
   },
   emptyContent: {
     fontSize: 12,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     fontStyle: 'italic',
+    ...textBase,
   },
   emptyContainer: {
     flex: 1,
@@ -514,12 +520,14 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: fonts.family.bold,
     marginBottom: spacing.sm,
+    ...textBase,
   },
   emptyDescription: {
     fontSize: fonts.size.body,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
+    ...textBase,
   },
   // カレンダービュー用スタイル
   calendarContainer: {
@@ -539,6 +547,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.labelSmall,
     fontFamily: fonts.family.bold,
     color: colors.text.secondary,
+    ...textBase,
   },
   weekRow: {
     flexDirection: 'row',
@@ -565,6 +574,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,
     color: colors.text.primary,
+    ...textBase,
   },
   todayText: {
     color: colors.text.inverse,
@@ -594,6 +604,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,
     color: colors.text.secondary,
+    ...textBase,
   },
 });
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 
 type TabType = 'home' | 'diaryList';
 
@@ -87,10 +87,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 10,
     color: colors.text.secondary,
-    fontFamily: 'NotoSansJP_400Regular',
+    fontFamily: fonts.family.regular,
+    ...textBase,
   },
   activeLabel: {
     color: colors.primary,
-    fontFamily: 'NotoSansJP_700Bold',
+    fontFamily: fonts.family.bold,
   },
 });

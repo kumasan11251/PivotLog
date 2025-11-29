@@ -11,7 +11,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { InitialSetupScreenNavigationProp } from '../types/navigation';
 import { saveUserSettings } from '../utils/storage';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, textBase } from '../theme';
 import Button from '../components/common/Button';
 
 const InitialSetupScreen: React.FC = () => {
@@ -178,6 +178,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 1,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   section: {
     marginBottom: 32,
@@ -188,6 +189,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     letterSpacing: 0.5,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   birthdayInputContainer: {
     flexDirection: 'row',
@@ -210,12 +212,14 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     padding: 0,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   inputLabel: {
     fontSize: fonts.size.body,
     color: colors.text.secondary,
     marginLeft: 4,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   lifespanInputContainer: {
     flexDirection: 'row',
@@ -233,6 +237,7 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     padding: 0,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
 });
 

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import type { HomeScreenNavigationProp } from '../../types/navigation';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 
 interface HeaderProps {
   title: string;
@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weight.regular,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   settingsButton: {
     padding: spacing.sm,

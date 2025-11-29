@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, textBase } from '../theme';
 import { loadUserSettings } from '../utils/storage';
 
 const SettingsScreen: React.FC = () => {
@@ -113,6 +113,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     color: colors.text.primary,
     fontWeight: fonts.weight.light,
+    ...textBase,
   },
   placeholder: {
     width: 32 + spacing.xs * 2,
@@ -122,6 +123,7 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weight.regular,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   content: {
     flex: 1,
@@ -145,16 +147,19 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     marginBottom: spacing.xs,
+    ...textBase,
   },
   settingValue: {
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.bold,
+    ...textBase,
   },
   arrowIcon: {
     fontSize: fonts.size.title,
     color: colors.text.secondary,
     fontWeight: fonts.weight.light,
+    ...textBase,
   },
 });
 

@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { EditLifespanScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, textBase } from '../theme';
 import Button from '../components/common/Button';
 
 const EditLifespanScreen: React.FC = () => {
@@ -134,6 +134,7 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weight.regular,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   content: {
     flex: 1,
@@ -149,6 +150,7 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     marginBottom: spacing.md,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   lifespanInputContainer: {
     flexDirection: 'row',
@@ -166,17 +168,20 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   lifespanUnit: {
     fontSize: fonts.size.body,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   hint: {
     fontSize: fonts.size.labelSmall,
     color: colors.text.secondary,
     marginTop: spacing.sm,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   buttonContainer: {
     gap: spacing.md,
@@ -190,6 +195,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
 });
 

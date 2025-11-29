@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -85,12 +85,14 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
     marginBottom: spacing.xs,
+    ...textBase,
   },
   circleProgressSubText: {
     fontSize: fonts.size.label,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     letterSpacing: 1,
+    ...textBase,
   },
 });
 

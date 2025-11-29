@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 import type { TimeLeft } from '../../utils/timeCalculations';
 
 export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
@@ -112,18 +112,21 @@ const styles = StyleSheet.create({
     minWidth: spacing.countdown.blockWidthLarge,
     textAlign: 'center',
     lineHeight: fonts.lineHeight.countdownLarge,
+    ...textBase,
   },
   timeLabel: {
     fontSize: fonts.size.label,
     color: colors.text.secondary,
     letterSpacing: 1,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   decimalPart: {
     fontSize: fonts.size.countdownSmall,
     fontWeight: fonts.weight.light,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   timeBlockSmall: {
     alignItems: 'center',
@@ -139,12 +142,14 @@ const styles = StyleSheet.create({
     minWidth: spacing.countdown.blockWidthSmall,
     textAlign: 'center',
     lineHeight: fonts.lineHeight.countdownSmall,
+    ...textBase,
   },
   timeLabelSmall: {
     fontSize: fonts.size.labelSmall,
     color: colors.text.secondary,
     letterSpacing: 0.5,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
 });
 

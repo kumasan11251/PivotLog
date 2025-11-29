@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { DiaryDetailScreenNavigationProp, RootStackParamList } from '../types/navigation';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, textBase } from '../theme';
 import { getDiaryByDate, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
 import ScreenHeader from '../components/common/ScreenHeader';
@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
+    ...textBase,
   },
   scrollView: {
     flex: 1,
@@ -169,6 +170,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.bold,
     marginBottom: spacing.xl,
     textAlign: 'center',
+    ...textBase,
   },
   section: {
     marginBottom: spacing.xl,
@@ -178,12 +180,14 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     marginBottom: spacing.sm,
+    ...textBase,
   },
   answerText: {
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
     lineHeight: fonts.size.body * 1.6,
+    ...textBase,
   },
 });
 

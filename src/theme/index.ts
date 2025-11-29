@@ -1,6 +1,6 @@
 // テーマ全体をまとめてエクスポート
 export { colors } from './colors';
-export { fonts } from './fonts';
+export { fonts, textBase } from './fonts';
 export { spacing } from './spacing';
 
 // まとめたthemeオブジェクト

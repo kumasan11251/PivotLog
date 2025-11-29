@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../theme/colors';
-import { fonts } from '../theme/fonts';
+import { fonts, textBase } from '../theme/fonts';
 import { spacing } from '../theme/spacing';
 
 interface SplashScreenProps {
@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.bold,
     color: colors.text.primary,
     letterSpacing: 2,
+    ...textBase,
   },
   conceptContainer: {
     flex: 2,
@@ -71,6 +72,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     color: colors.text.secondary,
     textAlign: 'center',
+    ...textBase,
   },
   bottomSpacer: {
     flex: 1,

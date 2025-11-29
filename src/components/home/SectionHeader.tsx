@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 
 interface SectionHeaderProps {
   title: string;
@@ -38,6 +38,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 2,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   toggleButton: {
     position: 'absolute',
@@ -52,6 +53,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     letterSpacing: 0.5,
+    ...textBase,
   },
 });
 

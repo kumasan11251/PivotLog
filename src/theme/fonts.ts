@@ -1,3 +1,15 @@
+import { Platform } from 'react-native';
+
+// Android用のフォントパディング無効化（iOSとの高さ差を解消）
+export const textBase = Platform.select({
+  android: {
+    includeFontPadding: false,
+    textAlignVertical: 'center' as const,
+  },
+  ios: {},
+  default: {},
+});
+
 // フォント定義
 export const fonts = {
   // フォントファミリー

@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { DiaryEntryScreenNavigationProp, RootStackParamList } from '../types/navigation';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { colors, fonts, spacing } from '../theme';
+import { colors, fonts, spacing, textBase } from '../theme';
 import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
@@ -338,11 +338,13 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   charCount: {
     fontSize: fonts.size.labelSmall,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   dateInputContainer: {
     flexDirection: 'row',
@@ -362,6 +364,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   modalOverlay: {
     flex: 1,
@@ -398,6 +401,7 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     color: '#FFFFFF',
     fontFamily: fonts.family.bold,
+    ...textBase,
   },
   inputContainer: {
     backgroundColor: colors.surface,
@@ -414,6 +418,7 @@ const styles = StyleSheet.create({
     minHeight: 22,
     paddingTop: 0,
     paddingBottom: 0,
+    ...textBase,
   },
   saveButton: {
     marginHorizontal: spacing.padding.screen,

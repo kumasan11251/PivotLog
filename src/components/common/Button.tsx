@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 
 interface ButtonProps {
   title: string;
@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weight.semibold,
     letterSpacing: 1,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   primaryButtonText: {
     color: colors.text.inverse,

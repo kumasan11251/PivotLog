@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 
 interface ProgressBarProps {
   lifeProgress: number;
@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     letterSpacing: 0.5,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   progressBarContainer: {
     height: spacing.progressBar.height,
@@ -67,6 +68,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: fonts.weight.regular,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
 });
 

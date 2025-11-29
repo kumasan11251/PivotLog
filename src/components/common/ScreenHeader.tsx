@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing } from '../../theme';
+import { colors, fonts, spacing, textBase } from '../../theme';
 
 interface LeftAction {
   type: 'back' | 'backIcon' | 'close' | 'custom';
@@ -161,6 +161,7 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
+    ...textBase,
   },
   actionButton: {
     paddingVertical: spacing.xs,
@@ -177,11 +178,13 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     color: colors.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   actionText: {
     fontSize: fonts.size.body,
     color: colors.primary,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
 });
 
