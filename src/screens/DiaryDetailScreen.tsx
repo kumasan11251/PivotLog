@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import type { DiaryDetailScreenNavigationProp, RootStackParamList } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
-import { getDiaryByDate, DiaryEntry } from '../utils/storage';
+import { getDiaryByDate, loadDiaryEntries, DiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
 import ScreenHeader from '../components/common/ScreenHeader';
 
@@ -23,12 +25,24 @@ const DiaryDetailScreen: React.FC = () => {
 
   const [diary, setDiary] = useState<DiaryEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [adjacentDates, setAdjacentDates] = useState<{ prev: string | null; next: string | null }>({
+    prev: null,
+    next: null,
+  });
 
   const loadDiary = async () => {
     setIsLoading(true);
     try {
       const entry = await getDiaryByDate(date);
       setDiary(entry);
+
+      // 前後の日記を取得
+      const allDiaries = await loadDiaryEntries();
+      const currentIndex = allDiaries.findIndex((d) => d.date === date);
+      setAdjacentDates({
+        prev: currentIndex < allDiaries.length - 1 ? allDiaries[currentIndex + 1]?.date : null,
+        next: currentIndex > 0 ? allDiaries[currentIndex - 1]?.date : null,
+      });
     } catch (error) {
       console.error('日記の読み込みに失敗しました:', error);
     } finally {
@@ -36,10 +50,13 @@ const DiaryDetailScreen: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    loadDiary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+  // 画面フォーカス時に日記を再読み込み（編集後の反映用）
+  useFocusEffect(
+    useCallback(() => {
+      loadDiary();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [date])
+  );
 
   const formatDate = (dateString: string): string => {
     const [year, month, day] = dateString.split('-').map(Number);
@@ -47,6 +64,10 @@ const DiaryDetailScreen: React.FC = () => {
     const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
     const weekday = weekdays[dateObj.getDay()];
     return `${year}年${month}月${day}日（${weekday}）`;
+  };
+
+  const navigateToDate = (targetDate: string) => {
+    navigation.replace('DiaryDetail', { date: targetDate });
   };
 
   if (isLoading) {
@@ -135,6 +156,40 @@ const DiaryDetailScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* 前後の日記への移動ボタン */}
+      {(adjacentDates.prev || adjacentDates.next) && (
+        <View style={styles.navigationBar}>
+          <TouchableOpacity
+            style={[styles.navButton, !adjacentDates.prev && styles.navButtonDisabled]}
+            onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev)}
+            disabled={!adjacentDates.prev}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={20}
+              color={adjacentDates.prev ? colors.primary : colors.border}
+            />
+            <Text style={[styles.navButtonText, !adjacentDates.prev && styles.navButtonTextDisabled]}>
+              前の記録
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.navButton, !adjacentDates.next && styles.navButtonDisabled]}
+            onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next)}
+            disabled={!adjacentDates.next}
+          >
+            <Text style={[styles.navButtonText, !adjacentDates.next && styles.navButtonTextDisabled]}>
+              次の記録
+            </Text>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={adjacentDates.next ? colors.primary : colors.border}
+            />
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -194,7 +249,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...textBase,
   },
-  // 案2: 引用スタイル
   answerContainer: {
     borderLeftWidth: 3,
     borderLeftColor: colors.primary,
@@ -207,6 +261,34 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     lineHeight: fonts.size.body * 1.6,
     ...textBase,
+  },
+  navigationBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.padding.screen,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    gap: spacing.xs,
+  },
+  navButtonDisabled: {
+    opacity: 0.5,
+  },
+  navButtonText: {
+    fontSize: fonts.size.label,
+    color: colors.primary,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  navButtonTextDisabled: {
+    color: colors.text.secondary,
   },
 });
 
