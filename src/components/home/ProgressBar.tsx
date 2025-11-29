@@ -27,7 +27,9 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           ]}
         />
       </View>
-      <Text style={styles.progressText}>{lifeProgress.toFixed(1)}%</Text>
+      <Text style={styles.progressText}>
+        {lifeProgress.toFixed(1)}<Text style={styles.percentSign}>%</Text>
+      </Text>
     </View>
   );
 };
@@ -63,12 +65,17 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.small,
   },
   progressText: {
-    fontSize: fonts.size.body,
+    fontSize: fonts.size.progressLarge,
     color: colors.text.primary,
     textAlign: 'center',
-    fontWeight: fonts.weight.regular,
+    fontWeight: fonts.weight.light,
     fontFamily: fonts.family.regular,
     ...textBase,
+  },
+  percentSign: {
+    fontSize: 24,
+    fontWeight: fonts.weight.light,
+    color: colors.text.primary,
   },
 });
 

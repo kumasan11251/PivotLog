@@ -21,12 +21,14 @@ export const fonts = {
   // フォントサイズ
   size: {
     // カウントダウン数字
-    countdownLarge: 32, // 年・月・日
-    countdownSmall: 22, // 時・分・秒
+    countdownLarge: 38, // 年・月・日（少し大きく）
+    countdownSmall: 26, // 時・分・秒（少し大きく）
 
     // セクションタイトル
     sectionTitle: 20, // 「残りの時間」「人生の進捗」
 
+    // プログレス用（円グラフ中央のパーセンテージにも流用）
+    progressLarge: 38, // プログレスのパーセンテージ（少し大きく）
     // タイトル・見出し
     title: 24,
     heading: 28,
@@ -42,8 +44,8 @@ export const fonts = {
 
   // 行の高さ
   lineHeight: {
-    countdownLarge: 36,
-    countdownSmall: 26,
+    countdownLarge: 44, // フォントサイズ38より大きく
+    countdownSmall: 32, // フォントサイズ26より大きく
   },
 
   // フォントウェイト

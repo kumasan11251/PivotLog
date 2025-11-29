@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
     minWidth: spacing.countdown.blockWidthLarge,
     textAlign: 'center',
     lineHeight: fonts.lineHeight.countdownLarge,
+    paddingTop: 4, // 上部に余白を追加
     ...textBase,
   },
   timeLabel: {

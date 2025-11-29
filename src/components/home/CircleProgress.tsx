@@ -48,7 +48,7 @@ const CircleProgress: React.FC<CircleProgressProps> = ({
         </Svg>
         <View style={styles.circleProgressTextContainer}>
           <Text style={styles.circleProgressText}>
-            {lifeProgress.toFixed(1)}%
+            {lifeProgress.toFixed(1)}<Text style={styles.percentSign}>%</Text>
           </Text>
           <Text style={styles.circleProgressSubText}>
             {targetLifespan}歳まで
@@ -80,12 +80,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   circleProgressText: {
-    fontSize: fonts.size.countdownLarge,
+    fontSize: fonts.size.progressLarge,
     fontWeight: fonts.weight.light,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
     marginBottom: spacing.xs,
     ...textBase,
+  },
+  percentSign: {
+    fontSize: 24,
+    fontWeight: fonts.weight.light,
+    color: colors.text.primary,
   },
   circleProgressSubText: {
     fontSize: fonts.size.label,
