@@ -31,6 +31,7 @@ const DiaryDetailScreen: React.FC = () => {
   // 現在表示中の日付をstateで管理
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [diary, setDiary] = useState<DiaryEntry | null>(null);
+  const [nextDiary, setNextDiary] = useState<DiaryEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [adjacentDates, setAdjacentDates] = useState<{ prev: string | null; next: string | null }>({
@@ -38,9 +39,12 @@ const DiaryDetailScreen: React.FC = () => {
     next: null,
   });
 
-  // アニメーション用
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  // アニメーション用（現在のコンテンツ）
+  const currentSlideAnim = useRef(new Animated.Value(0)).current;
+  const currentFadeAnim = useRef(new Animated.Value(1)).current;
+  // アニメーション用（次のコンテンツ）
+  const nextSlideAnim = useRef(new Animated.Value(0)).current;
+  const nextFadeAnim = useRef(new Animated.Value(0)).current;
 
   const loadDiary = async (targetDate: string) => {
     try {
@@ -92,45 +96,63 @@ const DiaryDetailScreen: React.FC = () => {
 
     setIsTransitioning(true);
 
-    // スライドアウト方向を決定（次→左へ、前→右へ）
-    const slideOutValue = direction === 'next' ? -SCREEN_WIDTH : SCREEN_WIDTH;
-    const slideInValue = direction === 'next' ? SCREEN_WIDTH : -SCREEN_WIDTH;
+    // 次のコンテンツを先にロード
+    const nextEntry = await getDiaryByDate(targetDate);
+    setNextDiary(nextEntry);
 
-    // フェードアウト + スライドアウト
+    // スライド方向を決定（次→左へ、前→右へ）
+    const slideOutValue = direction === 'next' ? -SCREEN_WIDTH : SCREEN_WIDTH;
+    const slideInStartValue = direction === 'next' ? SCREEN_WIDTH : -SCREEN_WIDTH;
+
+    // 次のコンテンツの初期位置を設定
+    nextSlideAnim.setValue(slideInStartValue);
+    nextFadeAnim.setValue(0);
+
+    // 同時アニメーション：現在のコンテンツがスライドアウト + 次のコンテンツがスライドイン
     Animated.parallel([
-      Animated.timing(slideAnim, {
+      // 現在のコンテンツ: スライドアウト + フェードアウト
+      Animated.timing(currentSlideAnim, {
         toValue: slideOutValue,
         duration: ANIMATION_DURATION,
         useNativeDriver: true,
       }),
-      Animated.timing(fadeAnim, {
+      Animated.timing(currentFadeAnim, {
         toValue: 0,
         duration: ANIMATION_DURATION,
         useNativeDriver: true,
       }),
+      // 次のコンテンツ: スライドイン + フェードイン
+      Animated.timing(nextSlideAnim, {
+        toValue: 0,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }),
+      Animated.timing(nextFadeAnim, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }),
     ]).start(async () => {
-      // データを更新
+      // アニメーション完了後、状態を更新
       setCurrentDate(targetDate);
-      await loadDiary(targetDate);
+      setDiary(nextEntry);
+      setNextDiary(null);
 
-      // 反対側からスライドイン開始位置に設定
-      slideAnim.setValue(slideInValue);
-
-      // フェードイン + スライドイン
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: ANIMATION_DURATION,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setIsTransitioning(false);
+      // 前後の日記情報を更新
+      const allDiaries = await loadDiaryEntries();
+      const currentIndex = allDiaries.findIndex((d) => d.date === targetDate);
+      setAdjacentDates({
+        prev: currentIndex < allDiaries.length - 1 ? allDiaries[currentIndex + 1]?.date : null,
+        next: currentIndex > 0 ? allDiaries[currentIndex - 1]?.date : null,
       });
+
+      // アニメーション値をリセット
+      currentSlideAnim.setValue(0);
+      currentFadeAnim.setValue(1);
+      nextSlideAnim.setValue(0);
+      nextFadeAnim.setValue(0);
+
+      setIsTransitioning(false);
     });
   };
 
@@ -174,62 +196,124 @@ const DiaryDetailScreen: React.FC = () => {
         }}
       />
 
-      <Animated.View
-        style={[
-          styles.contentWrapper,
-          {
-            transform: [{ translateX: slideAnim }],
-            opacity: fadeAnim,
-          },
-        ]}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.content}
+      <View style={styles.contentContainer}>
+        <Animated.View
+          style={[
+            styles.contentWrapper,
+            {
+              transform: [{ translateX: currentSlideAnim }],
+              opacity: currentFadeAnim,
+            },
+          ]}
         >
-          {/* 日付表示 */}
-          <Text style={styles.dateText}>{formatDate(diary.date)}</Text>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.content}
+          >
+            {/* 日付表示 */}
+            <Text style={styles.dateText}>{formatDate(diary.date)}</Text>
 
-          {diary.goodTime && (
-            <View style={styles.section}>
-              <Text style={styles.questionLabel}>
-                {DIARY_QUESTIONS.goodTime.label}
-              </Text>
-              <View style={styles.answerContainer}>
-                <Text style={styles.answerText}>
-                  {diary.goodTime}
+            {diary.goodTime && (
+              <View style={styles.section}>
+                <Text style={styles.questionLabel}>
+                  {DIARY_QUESTIONS.goodTime.label}
                 </Text>
+                <View style={styles.answerContainer}>
+                  <Text style={styles.answerText}>
+                    {diary.goodTime}
+                  </Text>
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
-          {diary.wastedTime && (
-            <View style={styles.section}>
-              <Text style={styles.questionLabel}>
-                {DIARY_QUESTIONS.wastedTime.label}
-              </Text>
-              <View style={styles.answerContainer}>
-                <Text style={styles.answerText}>
-                  {diary.wastedTime}
+            {diary.wastedTime && (
+              <View style={styles.section}>
+                <Text style={styles.questionLabel}>
+                  {DIARY_QUESTIONS.wastedTime.label}
                 </Text>
+                <View style={styles.answerContainer}>
+                  <Text style={styles.answerText}>
+                    {diary.wastedTime}
+                  </Text>
+                </View>
               </View>
-            </View>
-          )}
+            )}
 
-          {diary.tomorrow && (
-            <View style={styles.section}>
-              <Text style={styles.questionLabel}>
-                {DIARY_QUESTIONS.tomorrow.label}
-              </Text>
-              <View style={styles.answerContainer}>
-                <Text style={styles.answerText}>
-                  {diary.tomorrow}
+            {diary.tomorrow && (
+              <View style={styles.section}>
+                <Text style={styles.questionLabel}>
+                  {DIARY_QUESTIONS.tomorrow.label}
                 </Text>
+                <View style={styles.answerContainer}>
+                  <Text style={styles.answerText}>
+                    {diary.tomorrow}
+                  </Text>
+                </View>
               </View>
-            </View>
-          )}
-        </ScrollView>
-      </Animated.View>
+            )}
+          </ScrollView>
+        </Animated.View>
+
+        {/* 次のコンテンツ（トランジション中のみ表示） */}
+        {nextDiary && (
+          <Animated.View
+            style={[
+              styles.contentWrapper,
+              styles.nextContentWrapper,
+              {
+                transform: [{ translateX: nextSlideAnim }],
+                opacity: nextFadeAnim,
+              },
+            ]}
+          >
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.content}
+            >
+              <Text style={styles.dateText}>{formatDate(nextDiary.date)}</Text>
+
+              {nextDiary.goodTime && (
+                <View style={styles.section}>
+                  <Text style={styles.questionLabel}>
+                    {DIARY_QUESTIONS.goodTime.label}
+                  </Text>
+                  <View style={styles.answerContainer}>
+                    <Text style={styles.answerText}>
+                      {nextDiary.goodTime}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {nextDiary.wastedTime && (
+                <View style={styles.section}>
+                  <Text style={styles.questionLabel}>
+                    {DIARY_QUESTIONS.wastedTime.label}
+                  </Text>
+                  <View style={styles.answerContainer}>
+                    <Text style={styles.answerText}>
+                      {nextDiary.wastedTime}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {nextDiary.tomorrow && (
+                <View style={styles.section}>
+                  <Text style={styles.questionLabel}>
+                    {DIARY_QUESTIONS.tomorrow.label}
+                  </Text>
+                  <View style={styles.answerContainer}>
+                    <Text style={styles.answerText}>
+                      {nextDiary.tomorrow}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          </Animated.View>
+        )}
+      </View>
 
       {/* 前後の日記への移動ボタン */}
       {(adjacentDates.prev || adjacentDates.next) && (
@@ -291,8 +375,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     ...textBase,
   },
+  contentContainer: {
+    flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
   contentWrapper: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  nextContentWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   scrollView: {
     flex: 1,
