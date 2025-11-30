@@ -4,7 +4,6 @@ import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SplashScreen } from './src/screens/SplashScreen';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import MainTabScreen from './src/screens/MainTabScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
@@ -20,7 +19,6 @@ import type { RootStackParamList } from './src/types/navigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
   const [fontsLoaded] = useFonts({
@@ -44,15 +42,6 @@ export default function App() {
         <View style={styles.container}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      </SafeAreaProvider>
-    );
-  }
-
-  if (showSplash) {
-    return (
-      <SafeAreaProvider>
-        <SplashScreen onComplete={() => setShowSplash(false)} />
-        <StatusBar style="auto" />
       </SafeAreaProvider>
     );
   }

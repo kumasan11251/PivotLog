@@ -212,31 +212,39 @@ const DiaryDetailScreen: React.FC = () => {
           >
             {/* 日付表示とナビゲーション */}
             <View style={styles.dateNavigation}>
-              <TouchableOpacity
-                style={[styles.dateNavButton, !adjacentDates.prev && styles.dateNavButtonHidden]}
-                onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev, 'prev')}
-                disabled={!adjacentDates.prev || isTransitioning}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={24}
-                  color={adjacentDates.prev && !isTransitioning ? colors.text.secondary : 'transparent'}
-                />
-              </TouchableOpacity>
+              {adjacentDates.prev ? (
+                <TouchableOpacity
+                  style={styles.dateNavButton}
+                  onPress={() => navigateToDate(adjacentDates.prev!, 'prev')}
+                  disabled={isTransitioning}
+                >
+                  <Ionicons
+                    name="caret-back"
+                    size={18}
+                    color={!isTransitioning ? colors.primary : colors.border}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.dateNavButtonPlaceholder} />
+              )}
               <View style={styles.dateTextContainer}>
                 <Text style={styles.dateText}>{formatDate(diary.date)}</Text>
               </View>
-              <TouchableOpacity
-                style={[styles.dateNavButton, !adjacentDates.next && styles.dateNavButtonHidden]}
-                onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next, 'next')}
-                disabled={!adjacentDates.next || isTransitioning}
-              >
-                <Ionicons
-                  name="chevron-forward"
-                  size={24}
-                  color={adjacentDates.next && !isTransitioning ? colors.text.secondary : 'transparent'}
-                />
-              </TouchableOpacity>
+              {adjacentDates.next ? (
+                <TouchableOpacity
+                  style={styles.dateNavButton}
+                  onPress={() => navigateToDate(adjacentDates.next!, 'next')}
+                  disabled={isTransitioning}
+                >
+                  <Ionicons
+                    name="caret-forward"
+                    size={18}
+                    color={!isTransitioning ? colors.primary : colors.border}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.dateNavButtonPlaceholder} />
+              )}
             </View>
 
             {diary.goodTime && (
@@ -298,31 +306,39 @@ const DiaryDetailScreen: React.FC = () => {
             >
               {/* 日付表示とナビゲーション */}
               <View style={styles.dateNavigation}>
-                <TouchableOpacity
-                  style={[styles.dateNavButton, !adjacentDates.prev && styles.dateNavButtonHidden]}
-                  onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev, 'prev')}
-                  disabled={!adjacentDates.prev || isTransitioning}
-                >
-                  <Ionicons
-                    name="chevron-back"
-                    size={24}
-                    color={adjacentDates.prev && !isTransitioning ? colors.text.secondary : 'transparent'}
-                  />
-                </TouchableOpacity>
+                {adjacentDates.prev ? (
+                  <TouchableOpacity
+                    style={styles.dateNavButton}
+                    onPress={() => navigateToDate(adjacentDates.prev!, 'prev')}
+                    disabled={isTransitioning}
+                  >
+                    <Ionicons
+                      name="caret-back"
+                      size={18}
+                      color={!isTransitioning ? colors.primary : colors.border}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.dateNavButtonPlaceholder} />
+                )}
                 <View style={styles.dateTextContainer}>
                   <Text style={styles.dateText}>{formatDate(nextDiary.date)}</Text>
                 </View>
-                <TouchableOpacity
-                  style={[styles.dateNavButton, !adjacentDates.next && styles.dateNavButtonHidden]}
-                  onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next, 'next')}
-                  disabled={!adjacentDates.next || isTransitioning}
-                >
-                  <Ionicons
-                    name="chevron-forward"
-                    size={24}
-                    color={adjacentDates.next && !isTransitioning ? colors.text.secondary : 'transparent'}
-                  />
-                </TouchableOpacity>
+                {adjacentDates.next ? (
+                  <TouchableOpacity
+                    style={styles.dateNavButton}
+                    onPress={() => navigateToDate(adjacentDates.next!, 'next')}
+                    disabled={isTransitioning}
+                  >
+                    <Ionicons
+                      name="caret-forward"
+                      size={18}
+                      color={!isTransitioning ? colors.primary : colors.border}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.dateNavButtonPlaceholder} />
+                )}
               </View>
 
               {nextDiary.goodTime && (
@@ -421,16 +437,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xxl,
     paddingHorizontal: spacing.sm,
   },
   dateNavButton: {
-    padding: spacing.sm,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(139, 157, 131, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  dateNavButtonHidden: {
-    opacity: 0,
+  dateNavButtonPlaceholder: {
+    width: 36,
+    height: 36,
   },
   dateTextContainer: {
     flex: 1,
