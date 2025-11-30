@@ -210,8 +210,34 @@ const DiaryDetailScreen: React.FC = () => {
             style={styles.scrollView}
             contentContainerStyle={styles.content}
           >
-            {/* 日付表示 */}
-            <Text style={styles.dateText}>{formatDate(diary.date)}</Text>
+            {/* 日付表示とナビゲーション */}
+            <View style={styles.dateNavigation}>
+              <TouchableOpacity
+                style={[styles.dateNavButton, !adjacentDates.prev && styles.dateNavButtonHidden]}
+                onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev, 'prev')}
+                disabled={!adjacentDates.prev || isTransitioning}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={24}
+                  color={adjacentDates.prev && !isTransitioning ? colors.text.secondary : 'transparent'}
+                />
+              </TouchableOpacity>
+              <View style={styles.dateTextContainer}>
+                <Text style={styles.dateText}>{formatDate(diary.date)}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.dateNavButton, !adjacentDates.next && styles.dateNavButtonHidden]}
+                onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next, 'next')}
+                disabled={!adjacentDates.next || isTransitioning}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={24}
+                  color={adjacentDates.next && !isTransitioning ? colors.text.secondary : 'transparent'}
+                />
+              </TouchableOpacity>
+            </View>
 
             {diary.goodTime && (
               <View style={styles.section}>
@@ -270,7 +296,34 @@ const DiaryDetailScreen: React.FC = () => {
               style={styles.scrollView}
               contentContainerStyle={styles.content}
             >
-              <Text style={styles.dateText}>{formatDate(nextDiary.date)}</Text>
+              {/* 日付表示とナビゲーション */}
+              <View style={styles.dateNavigation}>
+                <TouchableOpacity
+                  style={[styles.dateNavButton, !adjacentDates.prev && styles.dateNavButtonHidden]}
+                  onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev, 'prev')}
+                  disabled={!adjacentDates.prev || isTransitioning}
+                >
+                  <Ionicons
+                    name="chevron-back"
+                    size={24}
+                    color={adjacentDates.prev && !isTransitioning ? colors.text.secondary : 'transparent'}
+                  />
+                </TouchableOpacity>
+                <View style={styles.dateTextContainer}>
+                  <Text style={styles.dateText}>{formatDate(nextDiary.date)}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.dateNavButton, !adjacentDates.next && styles.dateNavButtonHidden]}
+                  onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next, 'next')}
+                  disabled={!adjacentDates.next || isTransitioning}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={24}
+                    color={adjacentDates.next && !isTransitioning ? colors.text.secondary : 'transparent'}
+                  />
+                </TouchableOpacity>
+              </View>
 
               {nextDiary.goodTime && (
                 <View style={styles.section}>
@@ -314,40 +367,6 @@ const DiaryDetailScreen: React.FC = () => {
           </Animated.View>
         )}
       </View>
-
-      {/* 前後の日記への移動ボタン */}
-      {(adjacentDates.prev || adjacentDates.next) && (
-        <View style={styles.navigationBar}>
-          <TouchableOpacity
-            style={[styles.navButton, (!adjacentDates.prev || isTransitioning) && styles.navButtonDisabled]}
-            onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev, 'prev')}
-            disabled={!adjacentDates.prev || isTransitioning}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={20}
-              color={adjacentDates.prev && !isTransitioning ? colors.primary : colors.border}
-            />
-            <Text style={[styles.navButtonText, (!adjacentDates.prev || isTransitioning) && styles.navButtonTextDisabled]}>
-              前の記録
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.navButton, (!adjacentDates.next || isTransitioning) && styles.navButtonDisabled]}
-            onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next, 'next')}
-            disabled={!adjacentDates.next || isTransitioning}
-          >
-            <Text style={[styles.navButtonText, (!adjacentDates.next || isTransitioning) && styles.navButtonTextDisabled]}>
-              次の記録
-            </Text>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={adjacentDates.next && !isTransitioning ? colors.primary : colors.border}
-            />
-          </TouchableOpacity>
-        </View>
-      )}
     </SafeAreaView>
   );
 };
@@ -398,13 +417,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.padding.screen,
     paddingBottom: spacing.xxl,
   },
+  dateNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.sm,
+  },
+  dateNavButton: {
+    padding: spacing.sm,
+    borderRadius: 20,
+  },
+  dateNavButtonHidden: {
+    opacity: 0,
+  },
+  dateTextContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
   dateText: {
-    fontSize: fonts.size.title,
+    fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.bold,
     textAlign: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.xxl,
     ...textBase,
   },
   section: {
@@ -435,34 +471,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     lineHeight: fonts.size.body * 1.6,
     ...textBase,
-  },
-  navigationBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.padding.screen,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  navButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    gap: spacing.xs,
-  },
-  navButtonDisabled: {
-    opacity: 0.5,
-  },
-  navButtonText: {
-    fontSize: fonts.size.label,
-    color: colors.primary,
-    fontFamily: fonts.family.regular,
-    ...textBase,
-  },
-  navButtonTextDisabled: {
-    color: colors.text.secondary,
   },
 });
 
