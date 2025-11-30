@@ -14,6 +14,7 @@ import type { EditLifespanScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
 import { colors, fonts, spacing, textBase } from '../theme';
 import Button from '../components/common/Button';
+import ScreenHeader from '../components/common/ScreenHeader';
 
 const EditLifespanScreen: React.FC = () => {
   const navigation = useNavigation<EditLifespanScreenNavigationProp>();
@@ -85,9 +86,13 @@ const EditLifespanScreen: React.FC = () => {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>目標寿命の変更</Text>
-        </View>
+        <ScreenHeader
+          title="目標寿命の変更"
+          leftAction={{
+            type: 'backIcon',
+            onPress: () => navigation.goBack(),
+          }}
+        />
 
         <View style={styles.content}>
           <View style={styles.section}>
@@ -122,19 +127,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.padding.screen,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  title: {
-    fontSize: fonts.size.heading,
-    fontWeight: fonts.weight.regular,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
-    ...textBase,
   },
   content: {
     flex: 1,
