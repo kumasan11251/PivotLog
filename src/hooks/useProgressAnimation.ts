@@ -34,17 +34,36 @@ export const useProgressAnimation = (
 ): UseProgressAnimationResult => {
   const [progressAnim] = useState(() => new Animated.Value(0));
   const hasAnimatedRef = useRef(false);
+  const previousProgressRef = useRef<number>(0);
 
   useEffect(() => {
-    // 初回のみアニメーション実行
-    if (!hasAnimatedRef.current && targetProgress > 0) {
-      hasAnimatedRef.current = true;
-      Animated.timing(progressAnim, {
-        toValue: targetProgress,
-        duration,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: false,
-      }).start();
+    // 初回アニメーション、または進捗値が変更された場合に実行
+    if (targetProgress > 0) {
+      const isProgressChanged = Math.abs(previousProgressRef.current - targetProgress) > 0.01;
+
+      if (!hasAnimatedRef.current || isProgressChanged) {
+        hasAnimatedRef.current = true;
+        previousProgressRef.current = targetProgress;
+
+        // 値が変わった場合は0からではなく、現在値からアニメーション
+        if (isProgressChanged && hasAnimatedRef.current) {
+          Animated.timing(progressAnim, {
+            toValue: targetProgress,
+            duration: duration / 2, // 更新時は短めのアニメーション
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }).start();
+        } else {
+          // 初回は0からアニメーション
+          progressAnim.setValue(0);
+          Animated.timing(progressAnim, {
+            toValue: targetProgress,
+            duration,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+          }).start();
+        }
+      }
     }
   }, [targetProgress, progressAnim, duration]);
 

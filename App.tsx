@@ -73,7 +73,13 @@ export default function App() {
           <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
           <Stack.Screen name="Home" component={MainTabScreen} />
           <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />
-          <Stack.Screen name="DiaryDetail" component={DiaryDetailScreen} />
+          <Stack.Screen
+            name="DiaryDetail"
+            component={DiaryDetailScreen}
+            options={({ route }) => ({
+              animation: route.params?.direction === 'prev' ? 'slide_from_left' : 'slide_from_right',
+            })}
+          />
           <Stack.Screen name="Settings" component={SettingsScreen} />
           <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
           <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
