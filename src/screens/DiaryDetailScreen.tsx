@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -18,44 +20,63 @@ import ScreenHeader from '../components/common/ScreenHeader';
 
 type DiaryDetailScreenRouteProp = RouteProp<RootStackParamList, 'DiaryDetail'>;
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ANIMATION_DURATION = 250;
+
 const DiaryDetailScreen: React.FC = () => {
   const navigation = useNavigation<DiaryDetailScreenNavigationProp>();
   const route = useRoute<DiaryDetailScreenRouteProp>();
-  const { date } = route.params;
+  const { date: initialDate } = route.params;
 
+  // 現在表示中の日付をstateで管理
+  const [currentDate, setCurrentDate] = useState(initialDate);
   const [diary, setDiary] = useState<DiaryEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [adjacentDates, setAdjacentDates] = useState<{ prev: string | null; next: string | null }>({
     prev: null,
     next: null,
   });
 
-  const loadDiary = async () => {
-    setIsLoading(true);
+  // アニメーション用
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const loadDiary = async (targetDate: string) => {
     try {
-      const entry = await getDiaryByDate(date);
+      const entry = await getDiaryByDate(targetDate);
       setDiary(entry);
 
       // 前後の日記を取得
       const allDiaries = await loadDiaryEntries();
-      const currentIndex = allDiaries.findIndex((d) => d.date === date);
+      const currentIndex = allDiaries.findIndex((d) => d.date === targetDate);
       setAdjacentDates({
         prev: currentIndex < allDiaries.length - 1 ? allDiaries[currentIndex + 1]?.date : null,
         next: currentIndex > 0 ? allDiaries[currentIndex - 1]?.date : null,
       });
     } catch (error) {
       console.error('日記の読み込みに失敗しました:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  // 初回読み込み
+  useEffect(() => {
+    const initialLoad = async () => {
+      setIsLoading(true);
+      await loadDiary(initialDate);
+      setIsLoading(false);
+    };
+    initialLoad();
+  }, [initialDate]);
 
   // 画面フォーカス時に日記を再読み込み（編集後の反映用）
   useFocusEffect(
     useCallback(() => {
-      loadDiary();
+      if (!isLoading) {
+        loadDiary(currentDate);
+      }
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [date])
+    }, [currentDate])
   );
 
   const formatDate = (dateString: string): string => {
@@ -66,15 +87,50 @@ const DiaryDetailScreen: React.FC = () => {
     return `${year}年${month}月${day}日（${weekday}）`;
   };
 
-  const navigateToDate = (targetDate: string, direction: 'prev' | 'next') => {
-    // スタックをリセットして、Home（記録一覧タブ） → DiaryDetail のみにする
-    // これにより戻るボタンで記録一覧に戻れる
-    navigation.reset({
-      index: 1,
-      routes: [
-        { name: 'Home', params: { initialTab: 'diaryList' } },
-        { name: 'DiaryDetail', params: { date: targetDate, direction } },
-      ],
+  const navigateToDate = async (targetDate: string, direction: 'prev' | 'next') => {
+    if (isTransitioning) return;
+
+    setIsTransitioning(true);
+
+    // スライドアウト方向を決定（次→左へ、前→右へ）
+    const slideOutValue = direction === 'next' ? -SCREEN_WIDTH : SCREEN_WIDTH;
+    const slideInValue = direction === 'next' ? SCREEN_WIDTH : -SCREEN_WIDTH;
+
+    // フェードアウト + スライドアウト
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: slideOutValue,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: ANIMATION_DURATION,
+        useNativeDriver: true,
+      }),
+    ]).start(async () => {
+      // データを更新
+      setCurrentDate(targetDate);
+      await loadDiary(targetDate);
+
+      // 反対側からスライドイン開始位置に設定
+      slideAnim.setValue(slideInValue);
+
+      // フェードイン + スライドイン
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsTransitioning(false);
+      });
     });
   };
 
@@ -114,86 +170,96 @@ const DiaryDetailScreen: React.FC = () => {
         rightAction={{
           type: 'text',
           label: '編集',
-          onPress: () => navigation.navigate('DiaryEntry', { initialDate: date }),
+          onPress: () => navigation.navigate('DiaryEntry', { initialDate: currentDate }),
         }}
       />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
+      <Animated.View
+        style={[
+          styles.contentWrapper,
+          {
+            transform: [{ translateX: slideAnim }],
+            opacity: fadeAnim,
+          },
+        ]}
       >
-        {/* 日付表示 */}
-        <Text style={styles.dateText}>{formatDate(diary.date)}</Text>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+        >
+          {/* 日付表示 */}
+          <Text style={styles.dateText}>{formatDate(diary.date)}</Text>
 
-        {diary.goodTime && (
-          <View style={styles.section}>
-            <Text style={styles.questionLabel}>
-              {DIARY_QUESTIONS.goodTime.label}
-            </Text>
-            <View style={styles.answerContainer}>
-              <Text style={styles.answerText}>
-                {diary.goodTime}
+          {diary.goodTime && (
+            <View style={styles.section}>
+              <Text style={styles.questionLabel}>
+                {DIARY_QUESTIONS.goodTime.label}
               </Text>
+              <View style={styles.answerContainer}>
+                <Text style={styles.answerText}>
+                  {diary.goodTime}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {diary.wastedTime && (
-          <View style={styles.section}>
-            <Text style={styles.questionLabel}>
-              {DIARY_QUESTIONS.wastedTime.label}
-            </Text>
-            <View style={styles.answerContainer}>
-              <Text style={styles.answerText}>
-                {diary.wastedTime}
+          {diary.wastedTime && (
+            <View style={styles.section}>
+              <Text style={styles.questionLabel}>
+                {DIARY_QUESTIONS.wastedTime.label}
               </Text>
+              <View style={styles.answerContainer}>
+                <Text style={styles.answerText}>
+                  {diary.wastedTime}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {diary.tomorrow && (
-          <View style={styles.section}>
-            <Text style={styles.questionLabel}>
-              {DIARY_QUESTIONS.tomorrow.label}
-            </Text>
-            <View style={styles.answerContainer}>
-              <Text style={styles.answerText}>
-                {diary.tomorrow}
+          {diary.tomorrow && (
+            <View style={styles.section}>
+              <Text style={styles.questionLabel}>
+                {DIARY_QUESTIONS.tomorrow.label}
               </Text>
+              <View style={styles.answerContainer}>
+                <Text style={styles.answerText}>
+                  {diary.tomorrow}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+      </Animated.View>
 
       {/* 前後の日記への移動ボタン */}
       {(adjacentDates.prev || adjacentDates.next) && (
         <View style={styles.navigationBar}>
           <TouchableOpacity
-            style={[styles.navButton, !adjacentDates.prev && styles.navButtonDisabled]}
+            style={[styles.navButton, (!adjacentDates.prev || isTransitioning) && styles.navButtonDisabled]}
             onPress={() => adjacentDates.prev && navigateToDate(adjacentDates.prev, 'prev')}
-            disabled={!adjacentDates.prev}
+            disabled={!adjacentDates.prev || isTransitioning}
           >
             <Ionicons
               name="chevron-back"
               size={20}
-              color={adjacentDates.prev ? colors.primary : colors.border}
+              color={adjacentDates.prev && !isTransitioning ? colors.primary : colors.border}
             />
-            <Text style={[styles.navButtonText, !adjacentDates.prev && styles.navButtonTextDisabled]}>
+            <Text style={[styles.navButtonText, (!adjacentDates.prev || isTransitioning) && styles.navButtonTextDisabled]}>
               前の記録
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.navButton, !adjacentDates.next && styles.navButtonDisabled]}
+            style={[styles.navButton, (!adjacentDates.next || isTransitioning) && styles.navButtonDisabled]}
             onPress={() => adjacentDates.next && navigateToDate(adjacentDates.next, 'next')}
-            disabled={!adjacentDates.next}
+            disabled={!adjacentDates.next || isTransitioning}
           >
-            <Text style={[styles.navButtonText, !adjacentDates.next && styles.navButtonTextDisabled]}>
+            <Text style={[styles.navButtonText, (!adjacentDates.next || isTransitioning) && styles.navButtonTextDisabled]}>
               次の記録
             </Text>
             <Ionicons
               name="chevron-forward"
               size={20}
-              color={adjacentDates.next ? colors.primary : colors.border}
+              color={adjacentDates.next && !isTransitioning ? colors.primary : colors.border}
             />
           </TouchableOpacity>
         </View>
@@ -224,6 +290,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     textAlign: 'center',
     ...textBase,
+  },
+  contentWrapper: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
