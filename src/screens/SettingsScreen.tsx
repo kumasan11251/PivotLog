@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -12,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
 import { loadUserSettings } from '../utils/storage';
+import { signOut, getCurrentUser } from '../services/firebase';
 import ScreenHeader from '../components/common/ScreenHeader';
 
 interface SettingItemProps {
@@ -56,6 +58,7 @@ const SettingsScreen: React.FC = () => {
   const [birthday, setBirthday] = useState<string>('');
   const [targetLifespan, setTargetLifespan] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
+  const user = getCurrentUser();
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -78,6 +81,28 @@ const SettingsScreen: React.FC = () => {
       loadSettings();
     }, [loadSettings])
   );
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'ログアウト',
+      'ログアウトしますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'ログアウト',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              // AuthProviderが自動的に状態を更新し、ログイン画面に遷移
+            } catch {
+              Alert.alert('エラー', 'ログアウトに失敗しました');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const formatBirthday = (dateString: string): string => {
     const [year, month, day] = dateString.split('-');
@@ -166,6 +191,37 @@ const SettingsScreen: React.FC = () => {
                 <Text style={styles.settingValue}>1.0.0</Text>
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* アカウント */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>アカウント</Text>
+          <View style={styles.sectionCard}>
+            <View style={[styles.infoItem]}>
+              <View style={styles.settingIconContainer}>
+                <Ionicons name="person-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>ログイン中</Text>
+                <Text style={styles.settingValue}>
+                  {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast]}
+              onPress={handleSignOut}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.settingIconContainer, styles.logoutIconContainer]}>
+                <Ionicons name="log-out-outline" size={20} color="#D32F2F" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, styles.logoutText]}>ログアウト</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -318,6 +374,12 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
+  },
+  logoutIconContainer: {
+    backgroundColor: '#D32F2F15',
+  },
+  logoutText: {
+    color: '#D32F2F',
   },
 });
 
