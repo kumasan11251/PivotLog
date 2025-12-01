@@ -9,6 +9,7 @@ import {
   loadDiaryEntriesFromFirestore,
   getDiaryByDateFromFirestore,
   deleteDiaryEntryFromFirestore,
+  deleteAllUserDataFromFirestore,
 } from '../services/firebase/firestore';
 
 export interface UserSettings {
@@ -302,6 +303,24 @@ export const deleteDiaryEntry = async (id: string): Promise<void> => {
     }
   } catch (error) {
     console.error('日記の削除に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * ユーザーの全データを削除する（アカウント削除時に使用）
+ */
+export const deleteAllUserData = async (): Promise<void> => {
+  try {
+    if (isLoggedIn()) {
+      // Firestoreのデータを削除
+      await deleteAllUserDataFromFirestore();
+    }
+    // ローカルストレージもクリア
+    await AsyncStorage.multiRemove([STORAGE_KEY, DIARY_KEY, HOME_DISPLAY_KEY, MIGRATION_KEY]);
+    console.log('すべてのユーザーデータを削除しました');
+  } catch (error) {
+    console.error('ユーザーデータの削除に失敗しました:', error);
     throw error;
   }
 };

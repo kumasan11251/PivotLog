@@ -123,6 +123,24 @@ export const linkAnonymousAccountWithEmail = async (
 };
 
 /**
+ * アカウントを削除
+ */
+export const deleteAccount = async (): Promise<void> => {
+  try {
+    const currentUser = auth().currentUser;
+
+    if (!currentUser) {
+      throw new Error('ログインしていません');
+    }
+
+    await currentUser.delete();
+  } catch (error) {
+    console.error('アカウント削除エラー:', error);
+    throw error;
+  }
+};
+
+/**
  * Firebaseエラーメッセージを日本語に変換
  */
 export const getErrorMessage = (error: unknown): string => {

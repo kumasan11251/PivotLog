@@ -224,3 +224,36 @@ export const getDiariesByMonthFromFirestore = async (
     return [];
   }
 };
+
+/**
+ * ユーザーのすべてのデータを削除（アカウント削除時に使用）
+ */
+export const deleteAllUserDataFromFirestore = async (): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    const batch = firestore().batch();
+
+    // 設定を削除
+    const settingsSnapshot = await userDoc.collection(COLLECTIONS.SETTINGS).get();
+    settingsSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    // すべての日記を削除
+    const diariesSnapshot = await userDoc.collection(COLLECTIONS.DIARIES).get();
+    diariesSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
+    // バッチ処理を実行
+    await batch.commit();
+
+    // ユーザードキュメント自体を削除（存在する場合）
+    await userDoc.delete();
+
+    console.log('Firestoreのユーザーデータを削除しました');
+  } catch (error) {
+    console.error('Firestoreデータの削除に失敗しました:', error);
+    throw error;
+  }
+};

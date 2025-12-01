@@ -13,7 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
 import { loadUserSettings } from '../utils/storage';
-import { signOut, getCurrentUser } from '../services/firebase';
+import { signOut, getCurrentUser, deleteAccount } from '../services/firebase';
+import { deleteAllUserData } from '../utils/storage';
 import ScreenHeader from '../components/common/ScreenHeader';
 
 interface SettingItemProps {
@@ -98,6 +99,46 @@ const SettingsScreen: React.FC = () => {
             } catch {
               Alert.alert('エラー', 'ログアウトに失敗しました');
             }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'アカウント削除',
+      'アカウントを削除すると、すべてのデータが完全に削除され、復元できません。本当に削除しますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除する',
+          style: 'destructive',
+          onPress: () => {
+            // 二重確認
+            Alert.alert(
+              '最終確認',
+              'この操作は取り消せません。アカウントとすべてのデータを削除してもよろしいですか？',
+              [
+                { text: 'キャンセル', style: 'cancel' },
+                {
+                  text: '完全に削除',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      // Firestoreのユーザーデータを削除
+                      await deleteAllUserData();
+                      // Firebaseアカウントを削除
+                      await deleteAccount();
+                      // AuthProviderが自動的に状態を更新し、ログイン画面に遷移
+                    } catch (error) {
+                      const errorMessage = error instanceof Error ? error.message : 'アカウントの削除に失敗しました';
+                      Alert.alert('エラー', errorMessage);
+                    }
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -210,7 +251,7 @@ const SettingsScreen: React.FC = () => {
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.settingItem, styles.settingItemLast]}
+              style={[styles.settingItem]}
               onPress={handleSignOut}
               activeOpacity={0.6}
             >
@@ -219,6 +260,20 @@ const SettingsScreen: React.FC = () => {
               </View>
               <View style={styles.settingContent}>
                 <Text style={[styles.settingLabel, styles.logoutText]}>ログアウト</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast]}
+              onPress={handleDeleteAccount}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.settingIconContainer, styles.deleteIconContainer]}>
+                <Ionicons name="trash-outline" size={20} color="#D32F2F" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, styles.deleteText]}>アカウントを削除</Text>
+                <Text style={styles.deleteSubtext}>すべてのデータが削除されます</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
             </TouchableOpacity>
@@ -380,6 +435,19 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#D32F2F',
+  },
+  deleteIconContainer: {
+    backgroundColor: '#D32F2F15',
+  },
+  deleteText: {
+    color: '#D32F2F',
+  },
+  deleteSubtext: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    marginTop: 2,
+    ...textBase,
   },
 });
 

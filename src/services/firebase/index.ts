@@ -15,6 +15,7 @@ export {
   sendPasswordResetEmail,
   onAuthStateChanged,
   linkAnonymousAccountWithEmail,
+  deleteAccount,
   getErrorMessage,
 } from './auth';
 export type { User } from './auth';

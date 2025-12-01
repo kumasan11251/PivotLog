@@ -9,6 +9,7 @@ import {
   Platform,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { colors, fonts, spacing, textBase } from '../theme';
 import Button from '../components/common/Button';
@@ -16,6 +17,7 @@ import {
   signInWithEmail,
   signUpWithEmail,
   signInAnonymously,
+  sendPasswordResetEmail,
   getErrorMessage,
 } from '../services/firebase';
 
@@ -72,6 +74,32 @@ const AuthScreen: React.FC = () => {
     try {
       await signInAnonymously();
       // 認証成功後はAuthProviderが自動的に状態を更新
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert(
+        'メールアドレスを入力',
+        'パスワードリセット用のメールを送信するため、メールアドレスを入力してください。'
+      );
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await sendPasswordResetEmail(email);
+      Alert.alert(
+        'メールを送信しました',
+        `${email} にパスワードリセット用のメールを送信しました。メール内のリンクからパスワードを再設定してください。`,
+        [{ text: 'OK' }]
+      );
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -148,6 +176,16 @@ const AuthScreen: React.FC = () => {
             )}
 
             {error && <Text style={styles.errorText}>{error}</Text>}
+
+            {mode === 'login' && (
+              <TouchableOpacity
+                onPress={handleForgotPassword}
+                disabled={isLoading}
+                style={styles.forgotPasswordButton}
+              >
+                <Text style={styles.forgotPasswordText}>パスワードを忘れた場合</Text>
+              </TouchableOpacity>
+            )}
 
             <Button
               title={isLoading ? '' : mode === 'login' ? 'ログイン' : 'アカウント作成'}
@@ -263,6 +301,16 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.label,
     textAlign: 'center',
     marginBottom: spacing.md,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: spacing.md,
+  },
+  forgotPasswordText: {
+    fontSize: fonts.size.label,
+    color: colors.primary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
