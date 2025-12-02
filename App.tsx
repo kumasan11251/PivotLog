@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import MainTabScreen from './src/screens/MainTabScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
 import DiaryDetailScreen from './src/screens/DiaryDetailScreen';
@@ -13,7 +14,7 @@ import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
 import EditLifespanScreen from './src/screens/EditLifespanScreen';
 import LinkAccountScreen from './src/screens/LinkAccountScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
-import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete } from './src/utils/storage';
+import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts } from './src/theme';
 import type { RootStackParamList } from './src/types/navigation';
@@ -25,10 +26,14 @@ function MainNavigator() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isMigrating, setIsMigrating] = useState<boolean>(false);
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // オンボーディングが完了しているかチェック
+        const onboardingDone = await isOnboardingComplete();
+
         // ローカルデータがあり、まだ移行されていない場合は移行を実行
         const hasLocal = await hasLocalData();
         const migrationDone = await isMigrationComplete();
@@ -43,6 +48,11 @@ function MainNavigator() {
         // 設定を読み込み（Firestoreから）
         const settings = await loadUserSettings();
         setIsSetupComplete(settings !== null);
+
+        // 設定が完了していない場合のみオンボーディングを表示
+        if (!settings && !onboardingDone) {
+          setShowOnboarding(true);
+        }
       } catch (error) {
         console.error('初期化エラー:', error);
         setIsSetupComplete(false);
@@ -65,7 +75,8 @@ function MainNavigator() {
     );
   }
 
-  const initialRouteName = isSetupComplete ? 'Home' : 'InitialSetup';
+  // ルーティングの決定: 設定完了 → Home、オンボーディング未完了 → Onboarding、それ以外 → InitialSetup
+  const initialRouteName = isSetupComplete ? 'Home' : showOnboarding ? 'Onboarding' : 'InitialSetup';
 
   return (
     <Stack.Navigator
@@ -76,6 +87,7 @@ function MainNavigator() {
         animation: 'slide_from_right',
       }}
     >
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
       <Stack.Screen name="Home" component={MainTabScreen} />
       <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />

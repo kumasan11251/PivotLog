@@ -36,12 +36,38 @@ const STORAGE_KEY = '@pivot_log_settings';
 const DIARY_KEY = '@pivot_log_diaries';
 const HOME_DISPLAY_KEY = '@pivot_log_home_display';
 const MIGRATION_KEY = '@pivot_log_migrated';
+const ONBOARDING_KEY = '@pivot_log_onboarding_complete';
 
 /**
  * Firebaseにログイン中かどうかを確認
  */
 const isLoggedIn = (): boolean => {
   return getCurrentUser() !== null;
+};
+
+/**
+ * オンボーディングが完了しているかチェック
+ */
+export const isOnboardingComplete = async (): Promise<boolean> => {
+  try {
+    const value = await AsyncStorage.getItem(ONBOARDING_KEY);
+    return value === 'true';
+  } catch (error) {
+    console.error('オンボーディング状態の読み込みに失敗:', error);
+    return false;
+  }
+};
+
+/**
+ * オンボーディングを完了としてマーク
+ */
+export const setOnboardingComplete = async (): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+  } catch (error) {
+    console.error('オンボーディング状態の保存に失敗:', error);
+    throw error;
+  }
 };
 
 /**

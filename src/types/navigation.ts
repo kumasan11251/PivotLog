@@ -3,6 +3,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 // ルートナビゲーションのパラメータ定義
 export type RootStackParamList = {
   Splash: undefined;
+  Onboarding: undefined;
   InitialSetup: undefined;
   Home: { initialTab?: 'home' | 'diaryList' } | undefined;
   DiaryEntry: { initialDate?: string };
@@ -15,6 +16,7 @@ export type RootStackParamList = {
 
 // 各画面のナビゲーションプロップの型定義
 export type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
+export type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Onboarding'>;
 export type InitialSetupScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'InitialSetup'>;
 export type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 export type DiaryEntryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DiaryEntry'>;
