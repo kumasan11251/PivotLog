@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Animated,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import type { InitialSetupScreenNavigationProp } from '../types/navigation';
 import { saveUserSettings } from '../utils/storage';
 import { colors, fonts, spacing, textBase } from '../theme';
@@ -21,8 +21,6 @@ import {
   AnimatedHourglassIcon,
   AnimatedSparkleIcon,
 } from '../components/icons/AnimatedOnboardingIcons';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // 年月日の選択肢を生成
 const generateYears = () => {
@@ -35,11 +33,17 @@ const generateYears = () => {
 };
 
 const generateMonths = () => Array.from({ length: 12 }, (_, i) => i + 1);
-const generateDays = () => Array.from({ length: 31 }, (_, i) => i + 1);
+
+// 月と年に応じた日数を取得
+const getDaysInMonth = (year: number, month: number): number => {
+  // monthは1-12形式なので、Date APIでは翌月の0日目を取得することでその月の最終日を得る
+  return new Date(year, month, 0).getDate();
+};
+
+const generateDays = (daysCount: number) => Array.from({ length: daysCount }, (_, i) => i + 1);
 
 const YEARS = generateYears();
 const MONTHS = generateMonths();
-const DAYS = generateDays();
 
 // ステップの定義
 type Step = 'birthday' | 'lifespan';
@@ -127,35 +131,77 @@ const InitialSetupScreen: React.FC = () => {
   // 今日の日付
   const today = useMemo(() => new Date(), []);
 
+  // 選択された年・月に応じた日数を計算
+  const daysInMonth = useMemo(
+    () => getDaysInMonth(selectedYear, selectedMonth),
+    [selectedYear, selectedMonth]
+  );
+
+  // 日の選択肢を動的に生成
+  const DAYS = useMemo(() => generateDays(daysInMonth), [daysInMonth]);
+
+  // 選択された日を、現在の月の日数に収まるように調整した値
+  const adjustedDay = useMemo(() => {
+    return selectedDay > daysInMonth ? daysInMonth : selectedDay;
+  }, [selectedDay, daysInMonth]);
+
   // 選択された日付が未来かどうかをチェック
   const isFutureDate = useMemo(() => {
-    const selectedDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
+    const selectedDate = new Date(selectedYear, selectedMonth - 1, adjustedDay);
     // 時間を無視して日付だけで比較
     const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     return selectedDate > todayDate;
-  }, [selectedYear, selectedMonth, selectedDay, today]);
+  }, [selectedYear, selectedMonth, adjustedDay, today]);
 
   // 現在の年齢を計算
   const currentAge = useMemo(() => {
     if (isFutureDate) return 0;
-    const birthDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
+    const birthDate = new Date(selectedYear, selectedMonth - 1, adjustedDay);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
     return Math.max(0, age);
-  }, [selectedYear, selectedMonth, selectedDay, today, isFutureDate]);
+  }, [selectedYear, selectedMonth, adjustedDay, today, isFutureDate]);
 
   // 目標寿命の最小値を計算
   const minLifespan = useMemo(() => Math.max(currentAge + 1, 50), [currentAge]);
 
-  // 目標寿命が最小値を下回らないようにする
-  useEffect(() => {
-    if (targetLifespan < minLifespan) {
-      setTargetLifespan(minLifespan);
+  // 目標寿命の調整済み値
+  const adjustedLifespan = useMemo(() => {
+    return targetLifespan < minLifespan ? minLifespan : targetLifespan;
+  }, [targetLifespan, minLifespan]);
+
+  // ハプティックフィードバック付きのセッター
+  const handleYearSelect = useCallback((year: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedYear(year);
+    // 新しい年月での日数を計算し、選択中の日が範囲外なら調整
+    const newDaysInMonth = getDaysInMonth(year, selectedMonth);
+    if (selectedDay > newDaysInMonth) {
+      setSelectedDay(newDaysInMonth);
     }
-  }, [minLifespan, targetLifespan]);
+  }, [selectedMonth, selectedDay]);
+
+  const handleMonthSelect = useCallback((month: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedMonth(month);
+    // 新しい年月での日数を計算し、選択中の日が範囲外なら調整
+    const newDaysInMonth = getDaysInMonth(selectedYear, month);
+    if (selectedDay > newDaysInMonth) {
+      setSelectedDay(newDaysInMonth);
+    }
+  }, [selectedYear, selectedDay]);
+
+  const handleDaySelect = useCallback((day: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedDay(day);
+  }, []);
+
+  const handleLifespanChange = useCallback((value: number) => {
+    setTargetLifespan(value);
+  }, []);
 
   // ステップ遷移アニメーション
   const animateStepChange = (toIndex: number) => {
@@ -195,22 +241,26 @@ const InitialSetupScreen: React.FC = () => {
   const handleNext = () => {
     // 誕生日ステップで未来の日付が選択されている場合はエラー
     if (currentStep.id === 'birthday' && isFutureDate) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('エラー', '誕生日は今日より前の日付を選択してください');
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (currentStepIndex < STEPS.length - 1) {
       animateStepChange(currentStepIndex + 1);
     }
   };
 
   const handleBack = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (currentStepIndex > 0) {
       animateStepChange(currentStepIndex - 1);
     }
   };
 
   const handleComplete = async () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsSaving(true);
 
     // セレブレーションアニメーション
@@ -229,11 +279,11 @@ const InitialSetupScreen: React.FC = () => {
     ]).start();
 
     try {
-      const birthdayString = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+      const birthdayString = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(adjustedDay).padStart(2, '0')}`;
 
       await saveUserSettings({
         birthday: birthdayString,
-        targetLifespan: targetLifespan,
+        targetLifespan: adjustedLifespan,
       });
 
       // 少し待ってから遷移（アニメーション完了を待つ）
@@ -271,7 +321,7 @@ const InitialSetupScreen: React.FC = () => {
               key={year}
               value={year}
               isSelected={selectedYear === year}
-              onPress={() => setSelectedYear(year)}
+              onPress={() => handleYearSelect(year)}
               suffix="年"
             />
           ))}
@@ -287,7 +337,7 @@ const InitialSetupScreen: React.FC = () => {
               key={month}
               value={month}
               isSelected={selectedMonth === month}
-              onPress={() => setSelectedMonth(month)}
+              onPress={() => handleMonthSelect(month)}
               suffix="月"
             />
           ))}
@@ -302,8 +352,8 @@ const InitialSetupScreen: React.FC = () => {
             <PickerItem
               key={day}
               value={day}
-              isSelected={selectedDay === day}
-              onPress={() => setSelectedDay(day)}
+              isSelected={adjustedDay === day}
+              onPress={() => handleDaySelect(day)}
               suffix="日"
             />
           ))}
@@ -314,7 +364,7 @@ const InitialSetupScreen: React.FC = () => {
       <View style={[styles.selectedDateContainer, isFutureDate && styles.selectedDateContainerError]}>
         <Text style={styles.selectedDateLabel}>選択中：</Text>
         <Text style={[styles.selectedDateValue, isFutureDate && styles.errorText]}>
-          {selectedYear}年{selectedMonth}月{selectedDay}日
+          {selectedYear}年{selectedMonth}月{adjustedDay}日
         </Text>
         {isFutureDate ? (
           <Text style={styles.errorText}>（未来の日付です）</Text>
@@ -329,8 +379,8 @@ const InitialSetupScreen: React.FC = () => {
   const renderLifespanStep = () => (
     <Animated.View style={[styles.lifespanContent, { transform: [{ scale: celebrationScale }] }]}>
       <LifespanSlider
-        value={targetLifespan}
-        onValueChange={setTargetLifespan}
+        value={adjustedLifespan}
+        onValueChange={handleLifespanChange}
         minValue={minLifespan}
         maxValue={120}
         currentAge={currentAge}
@@ -338,7 +388,7 @@ const InitialSetupScreen: React.FC = () => {
 
       <View style={styles.motivationContainer}>
         <Text style={styles.motivationText}>
-          この{targetLifespan - currentAge}年を、最高の時間にしよう
+          この{adjustedLifespan - currentAge}年を、最高の時間にしよう
         </Text>
       </View>
     </Animated.View>

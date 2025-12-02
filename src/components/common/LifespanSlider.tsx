@@ -7,6 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { colors, fonts, spacing } from '../../theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -122,9 +123,11 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
   // タッチ終了
   const handleTouchEnd = useCallback(() => {
     setIsDragging(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
   const handlePresetPress = (presetValue: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onValueChange(presetValue);
   };
 
