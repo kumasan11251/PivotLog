@@ -148,6 +148,7 @@ export const getErrorMessage = (error: unknown): string => {
     const errorCode = (error as FirebaseAuthTypes.NativeFirebaseAuthError).code;
 
     switch (errorCode) {
+      // ユーザー登録関連
       case 'auth/email-already-in-use':
         return 'このメールアドレスは既に使用されています';
       case 'auth/invalid-email':
@@ -156,6 +157,8 @@ export const getErrorMessage = (error: unknown): string => {
         return 'この操作は許可されていません';
       case 'auth/weak-password':
         return 'パスワードが弱すぎます（6文字以上必要です）';
+
+      // ログイン関連
       case 'auth/user-disabled':
         return 'このアカウントは無効になっています';
       case 'auth/user-not-found':
@@ -164,12 +167,55 @@ export const getErrorMessage = (error: unknown): string => {
         return 'パスワードが正しくありません';
       case 'auth/invalid-credential':
         return 'メールアドレスまたはパスワードが正しくありません';
+
+      // レート制限・ネットワーク関連
       case 'auth/too-many-requests':
         return 'リクエストが多すぎます。しばらく待ってから再試行してください';
       case 'auth/network-request-failed':
-        return 'ネットワークエラーが発生しました';
+        return 'ネットワークエラーが発生しました。インターネット接続を確認してください';
+
+      // 匿名認証関連
+      case 'auth/admin-restricted-operation':
+        return 'この操作は制限されています';
+
+      // メール認証関連
+      case 'auth/expired-action-code':
+        return 'このリンクは有効期限が切れています';
+      case 'auth/invalid-action-code':
+        return 'このリンクは無効です';
+
+      // アカウント関連
+      case 'auth/requires-recent-login':
+        return 'セキュリティのため、再度ログインしてください';
+      case 'auth/credential-already-in-use':
+        return 'この認証情報は既に別のアカウントで使用されています';
+      case 'auth/email-change-needs-verification':
+        return 'メールアドレスの変更には確認が必要です';
+
+      // セッション関連
+      case 'auth/user-token-expired':
+        return 'セッションが期限切れです。再度ログインしてください';
+      case 'auth/invalid-user-token':
+        return 'セッションが無効です。再度ログインしてください';
+
+      // その他
+      case 'auth/internal-error':
+        return 'サーバーエラーが発生しました。しばらく待ってから再試行してください';
+      case 'auth/invalid-api-key':
+        return 'アプリの設定に問題があります';
+      case 'auth/app-not-authorized':
+        return 'このアプリは認証サービスの使用を許可されていません';
+      case 'auth/keychain-error':
+        return 'キーチェーンへのアクセスに失敗しました';
+      case 'auth/missing-email':
+        return 'メールアドレスを入力してください';
+      case 'auth/missing-password':
+        return 'パスワードを入力してください';
+
       default:
-        return error.message || '予期せぬエラーが発生しました';
+        // デバッグ用にエラーコードをログ出力
+        console.warn('未対応のFirebaseエラーコード:', errorCode);
+        return '認証エラーが発生しました。しばらく待ってから再試行してください';
     }
   }
   return '予期せぬエラーが発生しました';
