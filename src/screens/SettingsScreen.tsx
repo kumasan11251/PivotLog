@@ -233,7 +233,7 @@ const SettingsScreen: React.FC = () => {
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.settingItem, styles.settingItemLast]}
+              style={[styles.settingItem]}
               onPress={() => {
                 Alert.alert(
                   'オンボーディング再表示',
@@ -265,6 +265,34 @@ const SettingsScreen: React.FC = () => {
               </View>
               <View style={styles.settingContent}>
                 <Text style={styles.settingLabel}>オンボーディングを再表示</Text>
+                <Text style={styles.debugSubtext}>デバッグ用</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast]}
+              onPress={() => {
+                Alert.alert(
+                  '初期設定を再表示',
+                  '初期設定画面を表示しますか？',
+                  [
+                    { text: 'キャンセル', style: 'cancel' },
+                    {
+                      text: '表示する',
+                      onPress: () => {
+                        navigation.navigate('InitialSetup');
+                      },
+                    },
+                  ]
+                );
+              }}
+              activeOpacity={0.6}
+            >
+              <View style={styles.settingIconContainer}>
+                <Ionicons name="settings-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>初期設定を再表示</Text>
                 <Text style={styles.debugSubtext}>デバッグ用</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
