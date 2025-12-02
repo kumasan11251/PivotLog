@@ -16,11 +16,11 @@ import type { OnboardingScreenNavigationProp } from '../types/navigation';
 import { setOnboardingComplete, loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import {
-  HourglassIcon,
-  CountdownTimerIcon,
-  NotebookIcon,
-  SparkleIcon,
-} from '../components/icons/OnboardingIcons';
+  AnimatedHourglassIcon,
+  AnimatedCountdownTimerIcon,
+  AnimatedNotebookIcon,
+  AnimatedSparkleIcon,
+} from '../components/icons/AnimatedOnboardingIcons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -64,19 +64,19 @@ const slides: OnboardingSlide[] = [
 ];
 
 // アイコンをレンダリングするヘルパー関数
-const renderIcon = (iconType: OnboardingSlide['icon']) => {
+const renderIcon = (iconType: OnboardingSlide['icon'], isActive: boolean) => {
   const iconSize = 64;
   switch (iconType) {
     case 'hourglass':
-      return <HourglassIcon size={iconSize} />;
+      return <AnimatedHourglassIcon size={iconSize} isActive={isActive} />;
     case 'countdown':
-      return <CountdownTimerIcon size={iconSize} />;
+      return <AnimatedCountdownTimerIcon size={iconSize} isActive={isActive} />;
     case 'notebook':
-      return <NotebookIcon size={iconSize} />;
+      return <AnimatedNotebookIcon size={iconSize} isActive={isActive} />;
     case 'sparkle':
-      return <SparkleIcon size={iconSize} />;
+      return <AnimatedSparkleIcon size={iconSize} isActive={isActive} />;
     default:
-      return <HourglassIcon size={iconSize} />;
+      return <AnimatedHourglassIcon size={iconSize} isActive={isActive} />;
   }
 };
 
@@ -227,11 +227,11 @@ const OnboardingScreen: React.FC = () => {
             scrollEventThrottle={16}
             contentContainerStyle={styles.scrollContent}
           >
-            {slides.map((slide) => (
+            {slides.map((slide, index) => (
               <View key={slide.id} style={styles.slideContainer}>
                 {/* SVGアイコン */}
                 <View style={styles.iconContainer}>
-                  {renderIcon(slide.icon)}
+                  {renderIcon(slide.icon, index === currentIndex)}
                 </View>
 
                 {/* タイトル */}
