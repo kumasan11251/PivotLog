@@ -1,9 +1,13 @@
-import React from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, Animated, PanResponder } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import ProgressBar from './ProgressBar';
 import CircleProgress from './CircleProgress';
 import SectionHeader from './SectionHeader';
 import type { ProgressMode } from '../../hooks/useDisplaySettings';
+
+const PROGRESS_MODES: ProgressMode[] = ['bar', 'circle'];
+const SWIPE_THRESHOLD = 50;
 
 interface AnimatedValues {
   width: Animated.AnimatedInterpolation<string | number>;
@@ -26,6 +30,7 @@ interface ProgressSectionProps {
 /**
  * プログレス表示セクション
  * バー/円の切替とアニメーション表示を担当
+ * スワイプでモード切替に対応
  */
 const ProgressSection: React.FC<ProgressSectionProps> = ({
   lifeProgress,
@@ -34,11 +39,47 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({
   animatedValues,
   onToggleMode,
 }) => {
+  const translateX = useMemo(() => new Animated.Value(0), []);
+  const currentModeIndex = PROGRESS_MODES.indexOf(progressMode);
+
+  const panResponder = useMemo(
+    () => PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        translateX.setValue(gestureState.dx * 0.3);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onToggleMode();
+        }
+        
+        Animated.spring(translateX, {
+          toValue: 0,
+          useNativeDriver: true,
+          friction: 8,
+        }).start();
+      },
+    }),
+    [translateX, onToggleMode]
+  );
+
   return (
     <View style={styles.container}>
-      <SectionHeader title="人生の進捗" onToggle={onToggleMode} />
+      <SectionHeader 
+        title="人生の進捗" 
+        onToggle={onToggleMode}
+        currentModeIndex={currentModeIndex}
+        totalModes={PROGRESS_MODES.length}
+      />
 
-      <View style={styles.contentContainer}>
+      <Animated.View 
+        style={[styles.contentContainer, { transform: [{ translateX }] }]}
+        {...panResponder.panHandlers}
+      >
         {progressMode === 'bar' ? (
           <ProgressBar
             lifeProgress={lifeProgress}
@@ -52,7 +93,7 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({
             animatedStrokeDashoffset={animatedValues.strokeDashoffset}
           />
         )}
-      </View>
+      </Animated.View>
     </View>
   );
 };

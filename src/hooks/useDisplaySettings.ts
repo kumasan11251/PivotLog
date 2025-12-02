@@ -9,20 +9,21 @@ interface UseDisplaySettingsResult {
   progressMode: ProgressMode;
   toggleCountdownMode: () => Promise<void>;
   toggleProgressMode: () => Promise<void>;
+  setCountdownMode: (mode: CountdownMode) => Promise<void>;
 }
 
 /**
  * ホーム画面の表示設定を管理するカスタムフック
  */
 export const useDisplaySettings = (): UseDisplaySettingsResult => {
-  const [countdownMode, setCountdownMode] = useState<CountdownMode>('detailed');
+  const [countdownMode, setCountdownModeState] = useState<CountdownMode>('detailed');
   const [progressMode, setProgressMode] = useState<ProgressMode>('bar');
 
   useEffect(() => {
     const loadSettings = async () => {
       const settings = await loadHomeDisplaySettings();
       if (settings) {
-        setCountdownMode(settings.countdownMode);
+        setCountdownModeState(settings.countdownMode);
         setProgressMode(settings.progressMode);
       }
     };
@@ -36,12 +37,20 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
       countdownMode === 'weeksOnly' ? 'daysOnly' :
       'detailed';
 
-    setCountdownMode(newMode);
+    setCountdownModeState(newMode);
     await saveHomeDisplaySettings({
       countdownMode: newMode,
       progressMode,
     });
   }, [countdownMode, progressMode]);
+
+  const setCountdownMode = useCallback(async (mode: CountdownMode) => {
+    setCountdownModeState(mode);
+    await saveHomeDisplaySettings({
+      countdownMode: mode,
+      progressMode,
+    });
+  }, [progressMode]);
 
   const toggleProgressMode = useCallback(async () => {
     const newMode = progressMode === 'bar' ? 'circle' : 'bar';
@@ -57,5 +66,6 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
     progressMode,
     toggleCountdownMode,
     toggleProgressMode,
+    setCountdownMode,
   };
 };
