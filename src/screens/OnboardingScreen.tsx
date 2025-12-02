@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,20 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { OnboardingScreenNavigationProp } from '../types/navigation';
-import { setOnboardingComplete } from '../utils/storage';
+import { setOnboardingComplete, loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
+import {
+  HourglassIcon,
+  TargetIcon,
+  NotebookIcon,
+  SparkleIcon,
+} from '../components/icons/OnboardingIcons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface OnboardingSlide {
   id: number;
-  emoji: string;
+  icon: 'hourglass' | 'target' | 'notebook' | 'sparkle';
   title: string;
   subtitle: string;
   description: string;
@@ -25,37 +31,64 @@ interface OnboardingSlide {
 const slides: OnboardingSlide[] = [
   {
     id: 1,
-    emoji: '⏳',
+    icon: 'hourglass',
     title: 'PivotLogへようこそ',
     subtitle: '残りの時間を、大切に生きる',
     description: 'このアプリは、あなたの人生の\n「今」を見つめ直すきっかけを作ります',
   },
   {
     id: 2,
-    emoji: '🎯',
+    icon: 'target',
     title: '人生の残り時間を可視化',
     subtitle: 'カウントダウンで実感する',
     description: '目標年齢までの残り時間を\nリアルタイムで表示します\n今日という日の価値を感じてください',
   },
   {
     id: 3,
-    emoji: '📝',
+    icon: 'notebook',
     title: '毎日の振り返り',
     subtitle: '3つの質問で、自分を知る',
     description: '時間を有効に使えたこと\n無駄にしたこと\n明日への意気込み\nシンプルな記録で成長を実感',
   },
   {
     id: 4,
-    emoji: '✨',
+    icon: 'sparkle',
     title: 'さあ、はじめましょう',
     subtitle: 'あなただけの人生の時間',
     description: '毎日を意識的に過ごすことで\n人生はもっと豊かになります',
   },
 ];
 
+// アイコンをレンダリングするヘルパー関数
+const renderIcon = (iconType: OnboardingSlide['icon']) => {
+  const iconSize = 64;
+  switch (iconType) {
+    case 'hourglass':
+      return <HourglassIcon size={iconSize} />;
+    case 'target':
+      return <TargetIcon size={iconSize} />;
+    case 'notebook':
+      return <NotebookIcon size={iconSize} />;
+    case 'sparkle':
+      return <SparkleIcon size={iconSize} />;
+    default:
+      return <HourglassIcon size={iconSize} />;
+  }
+};
+
 const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation<OnboardingScreenNavigationProp>();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isSetupComplete, setIsSetupComplete] = useState(false);
+
+  // 設定が完了しているかチェック
+  useEffect(() => {
+    const checkSetup = async () => {
+      const settings = await loadUserSettings();
+      setIsSetupComplete(settings !== null);
+    };
+    checkSetup();
+  }, []);
 
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
@@ -63,19 +96,24 @@ const OnboardingScreen: React.FC = () => {
     }
   };
 
+  // 遷移先を決定するヘルパー関数
+  const getNextRoute = () => {
+    return isSetupComplete ? 'Home' : 'InitialSetup';
+  };
+
   const handleStart = async () => {
     try {
       await setOnboardingComplete();
       navigation.reset({
         index: 0,
-        routes: [{ name: 'InitialSetup' }],
+        routes: [{ name: getNextRoute() }],
       });
     } catch (error) {
       console.error('オンボーディング完了フラグの保存に失敗:', error);
       // エラーが発生しても進む
       navigation.reset({
         index: 0,
-        routes: [{ name: 'InitialSetup' }],
+        routes: [{ name: getNextRoute() }],
       });
     }
   };
@@ -85,13 +123,13 @@ const OnboardingScreen: React.FC = () => {
       await setOnboardingComplete();
       navigation.reset({
         index: 0,
-        routes: [{ name: 'InitialSetup' }],
+        routes: [{ name: getNextRoute() }],
       });
     } catch (error) {
       console.error('オンボーディング完了フラグの保存に失敗:', error);
       navigation.reset({
         index: 0,
-        routes: [{ name: 'InitialSetup' }],
+        routes: [{ name: getNextRoute() }],
       });
     }
   };
@@ -111,9 +149,9 @@ const OnboardingScreen: React.FC = () => {
       {/* メインコンテンツ */}
       <View style={styles.content}>
         <View style={styles.slideContainer}>
-          {/* 絵文字アイコン */}
-          <View style={styles.emojiContainer}>
-            <Text style={styles.emoji}>{currentSlide.emoji}</Text>
+          {/* SVGアイコン */}
+          <View style={styles.iconContainer}>
+            {renderIcon(currentSlide.icon)}
           </View>
 
           {/* タイトル */}
@@ -184,7 +222,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: SCREEN_WIDTH - spacing.xl * 2,
   },
-  emojiContainer: {
+  iconContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
@@ -197,12 +235,9 @@ const styles = StyleSheet.create({
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  emoji: {
-    fontSize: 56,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   title: {
     fontSize: 26,

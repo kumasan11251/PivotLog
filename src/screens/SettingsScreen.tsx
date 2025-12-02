@@ -12,7 +12,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
-import { loadUserSettings } from '../utils/storage';
+import { loadUserSettings, resetOnboarding } from '../utils/storage';
 import { signOut, getCurrentUser, deleteAccount } from '../services/firebase';
 import { deleteAllUserData } from '../utils/storage';
 import ScreenHeader from '../components/common/ScreenHeader';
@@ -223,7 +223,7 @@ const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アプリ情報</Text>
           <View style={styles.sectionCard}>
-            <View style={[styles.infoItem, styles.settingItemLast]}>
+            <View style={[styles.infoItem]}>
               <View style={styles.settingIconContainer}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               </View>
@@ -232,6 +232,43 @@ const SettingsScreen: React.FC = () => {
                 <Text style={styles.settingValue}>1.0.0</Text>
               </View>
             </View>
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast]}
+              onPress={() => {
+                Alert.alert(
+                  'オンボーディング再表示',
+                  'オンボーディング画面を表示しますか？',
+                  [
+                    { text: 'キャンセル', style: 'cancel' },
+                    {
+                      text: '表示する',
+                      onPress: async () => {
+                        try {
+                          await resetOnboarding();
+                          // 直接オンボーディング画面に遷移
+                          navigation.reset({
+                            index: 0,
+                            routes: [{ name: 'Onboarding' }],
+                          });
+                        } catch {
+                          Alert.alert('エラー', 'リセットに失敗しました。');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+              activeOpacity={0.6}
+            >
+              <View style={styles.settingIconContainer}>
+                <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>オンボーディングを再表示</Text>
+                <Text style={styles.debugSubtext}>デバッグ用</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -490,6 +527,13 @@ const styles = StyleSheet.create({
     backgroundColor: `${colors.primary}15`,
   },
   linkAccountSubtext: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    marginTop: 2,
+    ...textBase,
+  },
+  debugSubtext: {
     fontSize: fonts.size.labelSmall,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,

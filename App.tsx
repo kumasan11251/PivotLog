@@ -49,8 +49,8 @@ function MainNavigator() {
         const settings = await loadUserSettings();
         setIsSetupComplete(settings !== null);
 
-        // 設定が完了していない場合のみオンボーディングを表示
-        if (!settings && !onboardingDone) {
+        // オンボーディングが完了していない場合は表示（設定の有無に関係なく）
+        if (!onboardingDone) {
           setShowOnboarding(true);
         }
       } catch (error) {

@@ -71,6 +71,18 @@ export const setOnboardingComplete = async (): Promise<void> => {
 };
 
 /**
+ * オンボーディング状態をリセット（デバッグ用）
+ */
+export const resetOnboarding = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(ONBOARDING_KEY);
+  } catch (error) {
+    console.error('オンボーディング状態のリセットに失敗:', error);
+    throw error;
+  }
+};
+
+/**
  * AsyncStorageからFirestoreへデータを移行する
  * 初回ログイン時に一度だけ実行される
  */
