@@ -1,9 +1,10 @@
 /**
  * 認証コンテキスト
  * アプリ全体で認証状態を共有するためのContext
+ * 初回起動時は自動的に匿名ログインを実行
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User } from '../services/firebase';
+import { onAuthStateChanged, signInAnonymously, User } from '../services/firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -27,9 +28,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // 認証状態の変更を監視
-    const unsubscribe = onAuthStateChanged((firebaseUser) => {
-      setUser(firebaseUser);
-      setIsLoading(false);
+    const unsubscribe = onAuthStateChanged(async (firebaseUser) => {
+      if (firebaseUser) {
+        // 既にログイン済み
+        setUser(firebaseUser);
+        setIsLoading(false);
+      } else {
+        // 未ログインの場合は自動的に匿名ログイン
+        try {
+          await signInAnonymously();
+          // onAuthStateChangedが再度呼ばれるので、ここでは何もしない
+        } catch (error) {
+          console.error('自動匿名ログインエラー:', error);
+          setIsLoading(false);
+        }
+      }
     });
 
     // クリーンアップ

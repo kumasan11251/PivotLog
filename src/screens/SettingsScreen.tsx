@@ -244,39 +244,76 @@ const SettingsScreen: React.FC = () => {
                 <Ionicons name="person-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>ログイン中</Text>
+                <Text style={styles.settingLabel}>ログイン状態</Text>
                 <Text style={styles.settingValue}>
                   {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
                 </Text>
               </View>
             </View>
-            <TouchableOpacity
-              style={[styles.settingItem]}
-              onPress={handleSignOut}
-              activeOpacity={0.6}
-            >
-              <View style={[styles.settingIconContainer, styles.logoutIconContainer]}>
-                <Ionicons name="log-out-outline" size={20} color="#D32F2F" />
-              </View>
-              <View style={styles.settingContent}>
-                <Text style={[styles.settingLabel, styles.logoutText]}>ログアウト</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.settingItem, styles.settingItemLast]}
-              onPress={handleDeleteAccount}
-              activeOpacity={0.6}
-            >
-              <View style={[styles.settingIconContainer, styles.deleteIconContainer]}>
-                <Ionicons name="trash-outline" size={20} color="#D32F2F" />
-              </View>
-              <View style={styles.settingContent}>
-                <Text style={[styles.settingLabel, styles.deleteText]}>アカウントを削除</Text>
-                <Text style={styles.deleteSubtext}>すべてのデータが削除されます</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-            </TouchableOpacity>
+            {user?.isAnonymous ? (
+              // 匿名ユーザーの場合：アカウント連携を表示
+              <>
+                <TouchableOpacity
+                  style={[styles.settingItem]}
+                  onPress={() => navigation.navigate('LinkAccount')}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.settingIconContainer, styles.linkAccountIconContainer]}>
+                    <Ionicons name="link-outline" size={20} color={colors.primary} />
+                  </View>
+                  <View style={styles.settingContent}>
+                    <Text style={styles.settingLabel}>アカウントを連携</Text>
+                    <Text style={styles.linkAccountSubtext}>メールアドレスでデータをバックアップ</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.settingItem, styles.settingItemLast]}
+                  onPress={handleDeleteAccount}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.settingIconContainer, styles.deleteIconContainer]}>
+                    <Ionicons name="trash-outline" size={20} color="#D32F2F" />
+                  </View>
+                  <View style={styles.settingContent}>
+                    <Text style={[styles.settingLabel, styles.deleteText]}>データを削除</Text>
+                    <Text style={styles.deleteSubtext}>すべてのデータが削除されます</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              // 非匿名ユーザーの場合：ログアウトとアカウント削除を表示
+              <>
+                <TouchableOpacity
+                  style={[styles.settingItem]}
+                  onPress={handleSignOut}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.settingIconContainer, styles.logoutIconContainer]}>
+                    <Ionicons name="log-out-outline" size={20} color="#D32F2F" />
+                  </View>
+                  <View style={styles.settingContent}>
+                    <Text style={[styles.settingLabel, styles.logoutText]}>ログアウト</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.settingItem, styles.settingItemLast]}
+                  onPress={handleDeleteAccount}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.settingIconContainer, styles.deleteIconContainer]}>
+                    <Ionicons name="trash-outline" size={20} color="#D32F2F" />
+                  </View>
+                  <View style={styles.settingContent}>
+                    <Text style={[styles.settingLabel, styles.deleteText]}>アカウントを削除</Text>
+                    <Text style={styles.deleteSubtext}>すべてのデータが削除されます</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         </View>
 
@@ -443,6 +480,16 @@ const styles = StyleSheet.create({
     color: '#D32F2F',
   },
   deleteSubtext: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    marginTop: 2,
+    ...textBase,
+  },
+  linkAccountIconContainer: {
+    backgroundColor: `${colors.primary}15`,
+  },
+  linkAccountSubtext: {
     fontSize: fonts.size.labelSmall,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,

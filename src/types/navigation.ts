@@ -2,7 +2,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 // ルートナビゲーションのパラメータ定義
 export type RootStackParamList = {
-  Auth: undefined;
   Splash: undefined;
   InitialSetup: undefined;
   Home: { initialTab?: 'home' | 'diaryList' } | undefined;
@@ -11,10 +10,10 @@ export type RootStackParamList = {
   Settings: undefined;
   EditBirthday: undefined;
   EditLifespan: undefined;
+  LinkAccount: undefined;
 };
 
 // 各画面のナビゲーションプロップの型定義
-export type AuthScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Auth'>;
 export type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
 export type InitialSetupScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'InitialSetup'>;
 export type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -23,3 +22,4 @@ export type DiaryDetailScreenNavigationProp = NativeStackNavigationProp<RootStac
 export type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 export type EditBirthdayScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditBirthday'>;
 export type EditLifespanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditLifespan'>;
+export type LinkAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LinkAccount'>;

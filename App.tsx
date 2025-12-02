@@ -4,7 +4,6 @@ import { StyleSheet, View, ActivityIndicator, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import AuthScreen from './src/screens/AuthScreen';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import MainTabScreen from './src/screens/MainTabScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
@@ -12,6 +11,7 @@ import DiaryDetailScreen from './src/screens/DiaryDetailScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
 import EditLifespanScreen from './src/screens/EditLifespanScreen';
+import LinkAccountScreen from './src/screens/LinkAccountScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
@@ -89,20 +89,7 @@ function MainNavigator() {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
       <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
-    </Stack.Navigator>
-  );
-}
-
-// 認証ナビゲーション（未認証ユーザー用）
-function AuthNavigator() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        gestureEnabled: false,
-      }}
-    >
-      <Stack.Screen name="Auth" component={AuthScreen} />
+      <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
     </Stack.Navigator>
   );
 }
@@ -111,7 +98,8 @@ function AuthNavigator() {
 function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
+  if (isLoading || !isAuthenticated) {
+    // 認証処理中（自動匿名ログイン含む）
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -119,7 +107,7 @@ function RootNavigator() {
     );
   }
 
-  return isAuthenticated ? <MainNavigator /> : <AuthNavigator />;
+  return <MainNavigator />;
 }
 
 export default function App() {
