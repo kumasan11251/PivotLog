@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
   TouchableOpacity,
+  ScrollView,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -13,7 +17,7 @@ import { setOnboardingComplete, loadUserSettings } from '../utils/storage';
 import { colors, fonts, spacing } from '../theme';
 import {
   HourglassIcon,
-  TargetIcon,
+  CountdownTimerIcon,
   NotebookIcon,
   SparkleIcon,
 } from '../components/icons/OnboardingIcons';
@@ -22,7 +26,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface OnboardingSlide {
   id: number;
-  icon: 'hourglass' | 'target' | 'notebook' | 'sparkle';
+  icon: 'hourglass' | 'countdown' | 'notebook' | 'sparkle';
   title: string;
   subtitle: string;
   description: string;
@@ -38,7 +42,7 @@ const slides: OnboardingSlide[] = [
   },
   {
     id: 2,
-    icon: 'target',
+    icon: 'countdown',
     title: '人生の残り時間を可視化',
     subtitle: 'カウントダウンで実感する',
     description: '目標年齢までの残り時間を\nリアルタイムで表示します\n今日という日の価値を感じてください',
@@ -65,8 +69,8 @@ const renderIcon = (iconType: OnboardingSlide['icon']) => {
   switch (iconType) {
     case 'hourglass':
       return <HourglassIcon size={iconSize} />;
-    case 'target':
-      return <TargetIcon size={iconSize} />;
+    case 'countdown':
+      return <CountdownTimerIcon size={iconSize} />;
     case 'notebook':
       return <NotebookIcon size={iconSize} />;
     case 'sparkle':
@@ -80,6 +84,11 @@ const OnboardingScreen: React.FC = () => {
   const navigation = useNavigation<OnboardingScreenNavigationProp>();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isSetupComplete, setIsSetupComplete] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // アニメーション用の値
+  const fadeAnim = useMemo(() => new Animated.Value(1), []);
+  const scaleAnim = useMemo(() => new Animated.Value(1), []);
 
   // 設定が完了しているかチェック
   useEffect(() => {
@@ -90,9 +99,70 @@ const OnboardingScreen: React.FC = () => {
     checkSetup();
   }, []);
 
+  // スライド切り替えアニメーション
+  const animateSlideChange = (toIndex: number) => {
+    // フェードアウト & スケールダウン
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0.3,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setCurrentIndex(toIndex);
+      scrollViewRef.current?.scrollTo({
+        x: toIndex * SCREEN_WIDTH,
+        animated: true,
+      });
+
+      // フェードイン & スケールアップ
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 8,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
   const handleNext = () => {
     if (currentIndex < slides.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      animateSlideChange(currentIndex + 1);
+    }
+  };
+
+  // 戻るボタンのハンドラ
+  const handleBack = () => {
+    if (currentIndex > 0) {
+      animateSlideChange(currentIndex - 1);
+    }
+  };
+
+  // スワイプでスクロールした時のハンドラ
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const newIndex = Math.round(offsetX / SCREEN_WIDTH);
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < slides.length) {
+      setCurrentIndex(newIndex);
+    }
+  };
+
+  // インジケータータップ時のハンドラ
+  const handleIndicatorPress = (index: number) => {
+    if (index !== currentIndex) {
+      animateSlideChange(index);
     }
   };
 
@@ -134,7 +204,6 @@ const OnboardingScreen: React.FC = () => {
     }
   };
 
-  const currentSlide = slides[currentIndex];
   const isLastSlide = currentIndex === slides.length - 1;
 
   return (
@@ -146,44 +215,78 @@ const OnboardingScreen: React.FC = () => {
         </TouchableOpacity>
       )}
 
-      {/* メインコンテンツ */}
+      {/* メインコンテンツ - スワイプ可能なScrollView */}
       <View style={styles.content}>
-        <View style={styles.slideContainer}>
-          {/* SVGアイコン */}
-          <View style={styles.iconContainer}>
-            {renderIcon(currentSlide.icon)}
-          </View>
+        <Animated.View style={[styles.animatedContent, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleScroll}
+            scrollEventThrottle={16}
+            contentContainerStyle={styles.scrollContent}
+          >
+            {slides.map((slide) => (
+              <View key={slide.id} style={styles.slideContainer}>
+                {/* SVGアイコン */}
+                <View style={styles.iconContainer}>
+                  {renderIcon(slide.icon)}
+                </View>
 
-          {/* タイトル */}
-          <Text style={styles.title}>{currentSlide.title}</Text>
+                {/* タイトル */}
+                <Text style={styles.title}>{slide.title}</Text>
 
-          {/* サブタイトル */}
-          <Text style={styles.subtitle}>{currentSlide.subtitle}</Text>
+                {/* サブタイトル */}
+                <Text style={styles.subtitle}>{slide.subtitle}</Text>
 
-          {/* 説明文 */}
-          <Text style={styles.description}>{currentSlide.description}</Text>
-        </View>
+                {/* 説明文 */}
+                <Text style={styles.description}>{slide.description}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </Animated.View>
       </View>
 
       {/* インジケーター */}
       <View style={styles.indicatorContainer}>
         {slides.map((slide, index) => (
-          <View
+          <TouchableOpacity
             key={slide.id}
-            style={[
-              styles.indicator,
-              index === currentIndex && styles.indicatorActive,
-            ]}
-          />
+            onPress={() => handleIndicatorPress(index)}
+            style={styles.indicatorTouchable}
+            activeOpacity={0.7}
+          >
+            <View
+              style={[
+                styles.indicator,
+                index === currentIndex && styles.indicatorActive,
+              ]}
+            />
+          </TouchableOpacity>
         ))}
       </View>
 
       {/* ボタン */}
       <View style={styles.buttonContainer}>
         {isLastSlide ? (
-          <TouchableOpacity style={styles.startButton} onPress={handleStart}>
-            <Text style={styles.startButtonText}>はじめる</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Text style={styles.backButtonText}>戻る</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.startButton, styles.buttonFlex]} onPress={handleStart}>
+              <Text style={styles.startButtonText}>はじめる</Text>
+            </TouchableOpacity>
+          </View>
+        ) : currentIndex > 0 ? (
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Text style={styles.backButtonText}>戻る</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.nextButton, styles.buttonFlex]} onPress={handleNext}>
+              <Text style={styles.nextButtonText}>次へ</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
             <Text style={styles.nextButtonText}>次へ</Text>
@@ -215,12 +318,18 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
+  },
+  animatedContent: {
+    flex: 1,
+  },
+  scrollContent: {
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
   },
   slideContainer: {
+    width: SCREEN_WIDTH,
     alignItems: 'center',
-    width: SCREEN_WIDTH - spacing.xl * 2,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
   },
   iconContainer: {
     width: 120,
@@ -266,6 +375,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
+  indicatorTouchable: {
+    padding: 8,
+  },
   indicator: {
     width: 8,
     height: 8,
@@ -280,6 +392,28 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xl,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  buttonFlex: {
+    flex: 1,
+  },
+  backButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontFamily: fonts.family.regular,
+    color: colors.text.secondary,
   },
   nextButton: {
     backgroundColor: colors.surface,

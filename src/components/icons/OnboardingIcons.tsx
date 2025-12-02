@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, Line, Rect, G } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Rect, G, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { colors } from '../../theme';
 
 interface IconProps {
@@ -150,6 +150,238 @@ export const TargetIcon: React.FC<IconProps> = ({
       strokeWidth={1.5}
       strokeLinecap="round"
     />
+  </Svg>
+);
+
+// 円形プログレス・残り時間の可視化アイコン
+export const ProgressCircleIcon: React.FC<IconProps> = ({
+  size = 80,
+  color = colors.primary
+}) => {
+  // 円周の計算 (r=24の円)
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
+  const progress = 0.65; // 65%の進捗を表示
+  const strokeDashoffset = circumference * (1 - progress);
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+      <Defs>
+        <LinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor={color} stopOpacity={1} />
+          <Stop offset="100%" stopColor={color} stopOpacity={0.6} />
+        </LinearGradient>
+      </Defs>
+
+      {/* 背景の円 */}
+      <Circle
+        cx="32"
+        cy="32"
+        r={radius}
+        stroke={color}
+        strokeWidth={5}
+        opacity={0.15}
+        fill="none"
+      />
+
+      {/* プログレスの円 */}
+      <Circle
+        cx="32"
+        cy="32"
+        r={radius}
+        stroke="url(#progressGradient)"
+        strokeWidth={5}
+        strokeLinecap="round"
+        fill="none"
+        strokeDasharray={circumference}
+        strokeDashoffset={strokeDashoffset}
+        transform="rotate(-90 32 32)"
+      />
+
+      {/* 中央のパーセント表示 */}
+      <G>
+        {/* 数字「65」を表現するパス */}
+        <Path
+          d="M24 28V36M24 28H28M24 32H27"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path
+          d="M33 28H38C38 28 39 28 39 29.5V30.5C39 32 38 32 38 32H34C34 32 33 32 33 33.5V34.5C33 36 34 36 34 36H39"
+          stroke={color}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </G>
+
+      {/* %マーク */}
+      <Circle
+        cx="26"
+        cy="42"
+        r="1.5"
+        fill={color}
+        opacity={0.7}
+      />
+      <Circle
+        cx="34"
+        cy="46"
+        r="1.5"
+        fill={color}
+        opacity={0.7}
+      />
+      <Line
+        x1="25"
+        y1="47"
+        x2="35"
+        y2="41"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        opacity={0.7}
+      />
+
+      {/* 装飾的な小さなドット */}
+      <Circle
+        cx="32"
+        cy="5"
+        r="2"
+        fill={color}
+        opacity={0.4}
+      />
+    </Svg>
+  );
+};
+
+// カウントダウンタイマーアイコン
+export const CountdownTimerIcon: React.FC<IconProps> = ({
+  size = 80,
+  color = colors.primary
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+    {/* タイマーの外枠 */}
+    <Circle
+      cx="32"
+      cy="34"
+      r="24"
+      stroke={color}
+      strokeWidth={2.5}
+      fill="none"
+    />
+
+    {/* 上部のボタン/つまみ */}
+    <Rect
+      x="28"
+      y="4"
+      width="8"
+      height="6"
+      rx="2"
+      stroke={color}
+      strokeWidth={2}
+      fill={color}
+      fillOpacity={0.1}
+    />
+
+    {/* タイマーと上部をつなぐ部分 */}
+    <Line
+      x1="32"
+      y1="10"
+      x2="32"
+      y2="10"
+      stroke={color}
+      strokeWidth={2}
+    />
+
+    {/* 時間の目盛り - 12時 */}
+    <Line
+      x1="32"
+      y1="14"
+      x2="32"
+      y2="18"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    {/* 3時 */}
+    <Line
+      x1="52"
+      y1="34"
+      x2="48"
+      y2="34"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    {/* 6時 */}
+    <Line
+      x1="32"
+      y1="54"
+      x2="32"
+      y2="50"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+    {/* 9時 */}
+    <Line
+      x1="12"
+      y1="34"
+      x2="16"
+      y2="34"
+      stroke={color}
+      strokeWidth={1.5}
+      strokeLinecap="round"
+    />
+
+    {/* 中心点 */}
+    <Circle
+      cx="32"
+      cy="34"
+      r="2.5"
+      fill={color}
+    />
+
+    {/* 時針（短い針） */}
+    <Line
+      x1="32"
+      y1="34"
+      x2="32"
+      y2="24"
+      stroke={color}
+      strokeWidth={2.5}
+      strokeLinecap="round"
+    />
+
+    {/* 分針（長い針）- 斜め方向 */}
+    <Line
+      x1="32"
+      y1="34"
+      x2="44"
+      y2="28"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+    />
+
+    {/* カウントダウンを示す矢印（反時計回り） */}
+    <G opacity={0.6}>
+      <Path
+        d="M18 16C22 12 27 10 32 10"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Path
+        d="M18 16L15 12M18 16L22 13"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </G>
   </Svg>
 );
 
