@@ -37,31 +37,25 @@ export const useProgressAnimation = (
   const previousProgressRef = useRef<number>(0);
 
   useEffect(() => {
-    // 初回アニメーション、または進捗値が変更された場合に実行
+    // 初回のみ0からアニメーション、以降は即座に値を更新（フェードで隠れるため）
     if (targetProgress > 0) {
-      const isProgressChanged = Math.abs(previousProgressRef.current - targetProgress) > 0.01;
-
-      if (!hasAnimatedRef.current || isProgressChanged) {
+      if (!hasAnimatedRef.current) {
+        // 初回は0からアニメーション
         hasAnimatedRef.current = true;
         previousProgressRef.current = targetProgress;
-
-        // 値が変わった場合は0からではなく、現在値からアニメーション
-        if (isProgressChanged && hasAnimatedRef.current) {
-          Animated.timing(progressAnim, {
-            toValue: targetProgress,
-            duration: duration / 2, // 更新時は短めのアニメーション
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
-          }).start();
-        } else {
-          // 初回は0からアニメーション
-          progressAnim.setValue(0);
-          Animated.timing(progressAnim, {
-            toValue: targetProgress,
-            duration,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
-          }).start();
+        progressAnim.setValue(0);
+        Animated.timing(progressAnim, {
+          toValue: targetProgress,
+          duration,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        }).start();
+      } else {
+        // 画面遷移時などは即座に値を設定（フェードアニメーションで隠れる）
+        const isProgressChanged = Math.abs(previousProgressRef.current - targetProgress) > 0.01;
+        if (isProgressChanged) {
+          previousProgressRef.current = targetProgress;
+          progressAnim.setValue(targetProgress);
         }
       }
     }

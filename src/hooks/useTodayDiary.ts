@@ -1,13 +1,30 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getDiaryByDate, loadDiaryEntries, DiaryEntry } from '../utils/storage';
+
+// マイルストーンの日数（連続記録）
+const STREAK_MILESTONE_DAYS = [3, 7, 14, 30, 100, 365];
+// 総記録日数のマイルストーン
+const TOTAL_MILESTONE_DAYS = [10, 50, 100, 200, 365, 500, 1000];
 
 interface TodayDiaryState {
   /** 今日の日記があるかどうか */
   hasTodayEntry: boolean;
   /** 連続記録日数 */
   streakDays: number;
+  /** 総記録日数 */
+  totalDays: number;
   /** ローディング中かどうか */
   isLoading: boolean;
+  /** 今記録が完了したばかりか（祝福表示用） */
+  justCompleted: boolean;
+  /** 達成した連続記録マイルストーン（日数）。達成時のみ値が入る */
+  achievedMilestone: number | null;
+  /** 達成した総記録マイルストーン（日数）。達成時のみ値が入る */
+  achievedTotalMilestone: number | null;
+  /** 連続記録が途切れて再開した場合true */
+  isRestarting: boolean;
+  /** 祝福表示完了を通知 */
+  clearJustCompleted: () => void;
   /** データを再読み込み */
   refresh: () => Promise<void>;
 }
@@ -18,7 +35,17 @@ interface TodayDiaryState {
 export const useTodayDiary = (): TodayDiaryState => {
   const [hasTodayEntry, setHasTodayEntry] = useState(false);
   const [streakDays, setStreakDays] = useState(0);
+  const [totalDays, setTotalDays] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const [achievedMilestone, setAchievedMilestone] = useState<number | null>(null);
+  const [achievedTotalMilestone, setAchievedTotalMilestone] = useState<number | null>(null);
+  const [isRestarting, setIsRestarting] = useState(false);
+
+  // 前回の記録状態、ストリーク日数、総日数を追跡
+  const hadEntryBeforeRef = useRef<boolean | null>(null);
+  const previousStreakRef = useRef<number>(0);
+  const previousTotalRef = useRef<number>(0);
 
   const getTodayDateString = useCallback(() => {
     const today = new Date();
@@ -77,18 +104,63 @@ export const useTodayDiary = (): TodayDiaryState => {
 
       // 今日の日記を取得
       const todayEntry = await getDiaryByDate(todayString);
-      setHasTodayEntry(todayEntry !== null);
+      const hasEntry = todayEntry !== null;
 
       // 全日記を取得してストリーク計算
       const allDiaries = await loadDiaryEntries();
       const streak = calculateStreak(allDiaries);
+      const total = allDiaries.length;
+
+      // 前回は記録がなく、今回記録がある場合 = 今記録が完了した
+      if (hadEntryBeforeRef.current === false && hasEntry) {
+        setJustCompleted(true);
+
+        // 連続記録が途切れて再開した場合（前回ストリーク > 1 で今回ストリーク = 1）
+        const previousStreak = previousStreakRef.current;
+        if (previousStreak > 1 && streak === 1) {
+          setIsRestarting(true);
+        } else {
+          setIsRestarting(false);
+
+          // 連続記録マイルストーン達成チェック
+          const streakMilestone = STREAK_MILESTONE_DAYS.find(
+            (days) => previousStreak < days && streak >= days
+          );
+          if (streakMilestone) {
+            setAchievedMilestone(streakMilestone);
+          }
+        }
+
+        // 総記録マイルストーン達成チェック（再開時も含む）
+        const previousTotal = previousTotalRef.current;
+        const totalMilestone = TOTAL_MILESTONE_DAYS.find(
+          (days) => previousTotal < days && total >= days
+        );
+        if (totalMilestone) {
+          setAchievedTotalMilestone(totalMilestone);
+        }
+      }
+
+      // 現在の状態を保存
+      hadEntryBeforeRef.current = hasEntry;
+      previousStreakRef.current = streak;
+      previousTotalRef.current = total;
+      setHasTodayEntry(hasEntry);
       setStreakDays(streak);
+      setTotalDays(total);
     } catch (error) {
       console.error('今日の日記状態の取得に失敗:', error);
     } finally {
       setIsLoading(false);
     }
   }, [getTodayDateString, calculateStreak]);
+
+  const clearJustCompleted = useCallback(() => {
+    setJustCompleted(false);
+    setAchievedMilestone(null);
+    setAchievedTotalMilestone(null);
+    setIsRestarting(false);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -97,7 +169,13 @@ export const useTodayDiary = (): TodayDiaryState => {
   return {
     hasTodayEntry,
     streakDays,
+    totalDays,
     isLoading,
+    justCompleted,
+    achievedMilestone,
+    achievedTotalMilestone,
+    isRestarting,
+    clearJustCompleted,
     refresh,
   };
 };

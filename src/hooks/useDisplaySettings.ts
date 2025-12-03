@@ -7,6 +7,7 @@ export type ProgressMode = 'bar' | 'circle';
 interface UseDisplaySettingsResult {
   countdownMode: CountdownMode;
   progressMode: ProgressMode;
+  isLoading: boolean;
   toggleCountdownMode: () => Promise<void>;
   toggleProgressMode: () => Promise<void>;
   setCountdownMode: (mode: CountdownMode) => Promise<void>;
@@ -18,6 +19,7 @@ interface UseDisplaySettingsResult {
 export const useDisplaySettings = (): UseDisplaySettingsResult => {
   const [countdownMode, setCountdownModeState] = useState<CountdownMode>('detailed');
   const [progressMode, setProgressMode] = useState<ProgressMode>('bar');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -26,6 +28,7 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
         setCountdownModeState(settings.countdownMode);
         setProgressMode(settings.progressMode);
       }
+      setIsLoading(false);
     };
     loadSettings();
   }, []);
@@ -65,6 +68,7 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
   return {
     countdownMode,
     progressMode,
+    isLoading,
     toggleCountdownMode,
     toggleProgressMode,
     setCountdownMode,
