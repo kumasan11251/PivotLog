@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
@@ -12,11 +12,103 @@ import { useTimeCalculation } from '../hooks/useTimeCalculation';
 import { useProgressAnimation } from '../hooks/useProgressAnimation';
 import { useDisplaySettings } from '../hooks/useDisplaySettings';
 import { useTodayDiary } from '../hooks/useTodayDiary';
+import { loadUserSettings } from '../utils/storage';
+
+// 曜日の日本語表記
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+// 今日の日付を取得
+const getTodayDateString = (): string => {
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const weekday = WEEKDAYS[today.getDay()];
+  return `${month}月${day}日（${weekday}）`;
+};
+
+// 誕生日かどうかをチェック
+const isBirthday = (birthday: string): boolean => {
+  const today = new Date();
+  const [, birthMonth, birthDay] = birthday.split('-').map(Number);
+  return today.getMonth() + 1 === birthMonth && today.getDate() === birthDay;
+};
+
+// 日替わりメッセージ（日付ベースで同じ日は同じメッセージ）
+const DAILY_MESSAGES = [
+  // 温かみ・ほっこり系
+  '今日もあなたらしく',
+  '今日の小さな幸せを見つけよう',
+  '自分を褒めてあげよう',
+  'あなたは十分頑張っている',
+  '深呼吸して、今日も一歩',
+  'ゆっくりでも大丈夫',
+  '無理せず、自分のペースで',
+  '今日もお疲れさま',
+  'あなたの毎日に拍手',
+  '笑顔になれる瞬間がありますように',
+  '今日の自分にありがとう',
+  'そのままのあなたで大丈夫',
+  // 前向き・応援系
+  '今日もいい一日になる',
+  '新しい一日の始まり',
+  '今日という日を楽しもう',
+  'きっとうまくいく',
+  '今日も素敵な一日を',
+  '今日はどんな発見があるかな',
+  'いいことが起きる予感',
+  '今日のあなたを応援してる',
+  'ワクワクする一日に',
+  '今日もチャンスがいっぱい',
+  // 気づき・内省系（優しめ）
+  '今この瞬間を大切に',
+  '一日一日を丁寧に',
+  '今日の自分を大切に',
+  '今日という贈り物',
+  '小さな一歩が大きな変化に',
+  '今日も成長の一日',
+  '心穏やかに過ごそう',
+  '今日できることを楽しもう',
+  '感謝の気持ちを忘れずに',
+];
+
+const getGreeting = (isBirthdayToday: boolean): string => {
+  // 誕生日なら特別メッセージ
+  if (isBirthdayToday) {
+    return '🎂 お誕生日おめでとうございます！';
+  }
+
+  // 日付から一貫したインデックスを生成
+  const today = new Date();
+  const dayOfYear = Math.floor(
+    (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const index = dayOfYear % DAILY_MESSAGES.length;
+  return DAILY_MESSAGES[index];
+};
+
+// ストリークのマイルストーン情報を取得
+const getStreakInfo = (days: number): { message: string; emoji: string } => {
+  if (days >= 365) {
+    return { message: `${days}日連続！1年達成`, emoji: '🏆' };
+  } else if (days >= 100) {
+    return { message: `${days}日連続！100日突破`, emoji: '💎' };
+  } else if (days >= 30) {
+    return { message: `${days}日連続！1ヶ月達成`, emoji: '🌟' };
+  } else if (days >= 14) {
+    return { message: `${days}日連続！2週間達成`, emoji: '✨' };
+  } else if (days >= 7) {
+    return { message: `${days}日連続！1週間達成`, emoji: '🎉' };
+  } else if (days >= 3) {
+    return { message: `${days}日連続で記録中`, emoji: '🔥' };
+  } else {
+    return { message: `${days}日連続で記録中`, emoji: '📝' };
+  }
+};
 
 // ペンアイコン
-const PenIcon: React.FC<{ size?: number; color?: string }> = ({ 
-  size = 20, 
-  color = colors.text.inverse 
+const PenIcon: React.FC<{ size?: number; color?: string }> = ({
+  size = 20,
+  color = colors.text.inverse
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
@@ -37,9 +129,9 @@ const PenIcon: React.FC<{ size?: number; color?: string }> = ({
 );
 
 // チェックアイコン
-const CheckIcon: React.FC<{ size?: number; color?: string }> = ({ 
-  size = 20, 
-  color = colors.text.inverse 
+const CheckIcon: React.FC<{ size?: number; color?: string }> = ({
+  size = 20,
+  color = colors.text.inverse
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
@@ -48,18 +140,6 @@ const CheckIcon: React.FC<{ size?: number; color?: string }> = ({
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-    />
-  </Svg>
-);
-
-// 炎アイコン（ストリーク用）
-const FireIcon: React.FC<{ size?: number; color?: string }> = ({ 
-  size = 16, 
-  color = '#FF6B35' 
-}) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <Path
-      d="M12 23C16.1421 23 19.5 19.6421 19.5 15.5C19.5 13.0785 17.5451 10.1735 15.6348 7.9375C14.6939 6.8359 13.7669 5.89961 13.0638 5.21484C12.7125 4.87305 12.4158 4.59766 12.1969 4.40234C12.0875 4.30469 12 4.22656 11.9375 4.17188C11.9062 4.14453 11.8816 4.12305 11.8638 4.10742L11.8441 4.09033C11.6318 3.90713 11.3682 3.90713 11.1559 4.09033L11.1362 4.10742C11.1184 4.12305 11.0938 4.14453 11.0625 4.17188C11 4.22656 10.9125 4.30469 10.8031 4.40234C10.5842 4.59766 10.2875 4.87305 9.93623 5.21484C9.2331 5.89961 8.30615 6.8359 7.36523 7.9375C5.45492 10.1735 3.5 13.0785 3.5 15.5C3.5 19.6421 6.85786 23 11 23H12ZM12 21C8.68629 21 6 18.3137 6 15C6 14.5 6.5 13 8 11C8.5 12 9.5 13 11 13C12 13 12.7843 12.3284 13.3922 11.7206C13.5267 11.586 13.6533 11.4533 13.7719 11.3281C14.1428 10.9375 14.4512 10.6094 14.7063 10.3547C14.8338 10.2275 14.9473 10.1191 15.0469 10.0313C15.0967 9.9873 15.1426 9.94873 15.1846 9.91553L15.2402 9.87158C15.2461 9.86719 15.252 9.86279 15.2578 9.8584C15.2637 9.854 15.2686 9.8501 15.2725 9.84668C15.2744 9.84521 15.2764 9.84375 15.2783 9.8418L15.291 9.83203C15.7139 9.56494 16.2461 9.78223 16.4141 10.2617C16.8037 11.377 17 12.4277 17 13.5C17 17.6421 14.3137 21 12 21Z"
     />
   </Svg>
 );
@@ -73,9 +153,54 @@ const HomeContent: React.FC = () => {
 
   // カスタムフックで状態管理を分離
   const { timeLeft, lifeProgress, targetLifespan } = useTimeCalculation();
-  const { countdownMode, progressMode, toggleCountdownMode, toggleProgressMode, setCountdownMode } = useDisplaySettings();
+  const { countdownMode, progressMode, toggleCountdownMode, toggleProgressMode } = useDisplaySettings();
   const { animatedValues, triggerAnimation } = useProgressAnimation(lifeProgress);
   const { hasTodayEntry, streakDays, refresh: refreshTodayDiary } = useTodayDiary();
+
+  // 誕生日チェック用
+  const [isBirthdayToday, setIsBirthdayToday] = useState(false);
+
+  // パルスアニメーション用（useMemoで安定した参照を維持）
+  const pulseAnim = useMemo(() => new Animated.Value(1), []);
+
+  // カード切り替えアニメーション用
+  const countdownFadeAnim = useMemo(() => new Animated.Value(1), []);
+  const progressFadeAnim = useMemo(() => new Animated.Value(1), []);
+
+  // 誕生日チェック
+  useEffect(() => {
+    const checkBirthday = async () => {
+      const settings = await loadUserSettings();
+      if (settings?.birthday) {
+        setIsBirthdayToday(isBirthday(settings.birthday));
+      }
+    };
+    checkBirthday();
+  }, []);
+
+  // 記録ボタンのパルスアニメーション（未記録時のみ）
+  useEffect(() => {
+    if (!hasTodayEntry) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.03,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [hasTodayEntry, pulseAnim]);
 
   // 画面フォーカス時にデータを再読み込み
   useFocusEffect(
@@ -96,9 +221,45 @@ const HomeContent: React.FC = () => {
 
   // プログレスモード切替（アニメーション再実行付き）
   const handleToggleProgressMode = useCallback(async () => {
-    triggerAnimation();
-    await toggleProgressMode();
-  }, [triggerAnimation, toggleProgressMode]);
+    // フェードアウト
+    Animated.timing(progressFadeAnim, {
+      toValue: 0.3,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      triggerAnimation();
+      toggleProgressMode();
+      // フェードイン
+      Animated.timing(progressFadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [triggerAnimation, toggleProgressMode, progressFadeAnim]);
+
+  // カウントダウンモード切替（フェードアニメーション付き）
+  const handleToggleCountdownMode = useCallback(async () => {
+    // フェードアウト
+    Animated.timing(countdownFadeAnim, {
+      toValue: 0.3,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      toggleCountdownMode();
+      // フェードイン
+      Animated.timing(countdownFadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [toggleCountdownMode, countdownFadeAnim]);
+
+  // 挨拶メッセージとストリーク情報
+  const greeting = getGreeting(isBirthdayToday);
+  const todayDate = getTodayDateString();
+  const streakInfo = streakDays > 0 ? getStreakInfo(streakDays) : null;
 
   return (
     <View style={styles.container}>
@@ -111,12 +272,21 @@ const HomeContent: React.FC = () => {
       />
 
       <View style={styles.content}>
+        {/* 日付と挨拶メッセージ */}
+        <View style={styles.greetingContainer}>
+          <Text style={styles.dateText}>{todayDate}</Text>
+          <Text style={[
+            styles.greetingText,
+            isBirthdayToday && styles.birthdayText
+          ]}>{greeting}</Text>
+        </View>
+
         {/* 上部セクション：残り時間カウントダウン */}
         <CountdownSection
           timeLeft={timeLeft}
           countdownMode={countdownMode}
-          onToggleMode={toggleCountdownMode}
-          onSetMode={setCountdownMode}
+          onToggleMode={handleToggleCountdownMode}
+          contentOpacity={countdownFadeAnim}
         />
 
         {/* 中央セクション：人生の進捗 */}
@@ -126,36 +296,37 @@ const HomeContent: React.FC = () => {
           progressMode={progressMode}
           animatedValues={animatedValues}
           onToggleMode={handleToggleProgressMode}
+          contentOpacity={progressFadeAnim}
         />
 
         {/* 下部セクション：記録ボタンとストリーク */}
         <View style={styles.bottomSection}>
           {/* 連続記録日数（ストリーク） */}
-          {streakDays > 0 && (
+          {streakInfo && (
             <View style={styles.streakContainer}>
-              <FireIcon />
-              <Text style={styles.streakText}>
-                {streakDays}日連続で記録中！
-              </Text>
+              <Text style={styles.streakEmoji}>{streakInfo.emoji}</Text>
+              <Text style={styles.streakText}>{streakInfo.message}</Text>
             </View>
           )}
-          
-          {/* 記録ボタン */}
-          <TouchableOpacity
-            style={[
-              styles.recordButton,
-              hasTodayEntry && styles.recordButtonCompleted,
-            ]}
-            onPress={handleNavigateToDiaryEntry}
-            activeOpacity={0.8}
-          >
-            <View style={styles.recordButtonContent}>
-              {hasTodayEntry ? <CheckIcon /> : <PenIcon />}
-              <Text style={styles.recordButtonText}>
-                {hasTodayEntry ? '今日の記録を見る' : '今日を記録する'}
-              </Text>
-            </View>
-          </TouchableOpacity>
+
+          {/* 記録ボタン（パルスアニメーション付き） */}
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <TouchableOpacity
+              style={[
+                styles.recordButton,
+                hasTodayEntry && styles.recordButtonCompleted,
+              ]}
+              onPress={handleNavigateToDiaryEntry}
+              activeOpacity={0.8}
+            >
+              <View style={styles.recordButtonContent}>
+                {hasTodayEntry ? <CheckIcon /> : <PenIcon />}
+                <Text style={styles.recordButtonText}>
+                  {hasTodayEntry ? '今日の記録を見る' : '今日を記録する'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </View>
     </View>
@@ -172,6 +343,31 @@ const styles = StyleSheet.create({
     padding: spacing.padding.screen,
     justifyContent: 'space-between',
   },
+  greetingContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  dateText: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    marginBottom: spacing.xs,
+    ...textBase,
+  },
+  greetingText: {
+    fontSize: fonts.size.body,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    letterSpacing: 1,
+    ...textBase,
+  },
+  birthdayText: {
+    fontSize: fonts.size.body,
+    color: colors.primary,
+    fontFamily: fonts.family.bold,
+    letterSpacing: 1,
+    ...textBase,
+  },
   bottomSection: {
     width: '100%',
     gap: spacing.md,
@@ -183,11 +379,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingVertical: spacing.sm,
   },
+  streakEmoji: {
+    fontSize: 18,
+  },
   streakText: {
     fontSize: fonts.size.label,
-    color: '#FF6B35',
+    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
-    fontWeight: fonts.weight.semibold,
     ...textBase,
   },
   recordButton: {

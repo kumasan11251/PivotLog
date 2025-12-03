@@ -12,6 +12,7 @@ export const spacing = {
   borderRadius: {
     small: 6,
     medium: 8,
+    large: 16,
   },
 
   // パディング

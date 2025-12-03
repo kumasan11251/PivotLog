@@ -1,13 +1,10 @@
-import React, { useMemo } from 'react';
-import { View, StyleSheet, Animated, PanResponder } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import React from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
 import ProgressBar from './ProgressBar';
 import CircleProgress from './CircleProgress';
 import SectionHeader from './SectionHeader';
+import { colors, spacing } from '../../theme';
 import type { ProgressMode } from '../../hooks/useDisplaySettings';
-
-const PROGRESS_MODES: ProgressMode[] = ['bar', 'circle'];
-const SWIPE_THRESHOLD = 50;
 
 interface AnimatedValues {
   width: Animated.AnimatedInterpolation<string | number>;
@@ -25,12 +22,13 @@ interface ProgressSectionProps {
   animatedValues: AnimatedValues;
   /** 表示モード切替ハンドラ */
   onToggleMode: () => void;
+  /** コンテンツ部分の透明度（アニメーション用） */
+  contentOpacity?: Animated.Value;
 }
 
 /**
  * プログレス表示セクション
  * バー/円の切替とアニメーション表示を担当
- * スワイプでモード切替に対応
  */
 const ProgressSection: React.FC<ProgressSectionProps> = ({
   lifeProgress,
@@ -38,48 +36,22 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({
   progressMode,
   animatedValues,
   onToggleMode,
+  contentOpacity,
 }) => {
-  const translateX = useMemo(() => new Animated.Value(0), []);
-  const currentModeIndex = PROGRESS_MODES.indexOf(progressMode);
-
-  const panResponder = useMemo(
-    () => PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10;
-      },
-      onPanResponderMove: (_, gestureState) => {
-        translateX.setValue(gestureState.dx * 0.3);
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          onToggleMode();
-        }
-        
-        Animated.spring(translateX, {
-          toValue: 0,
-          useNativeDriver: true,
-          friction: 8,
-        }).start();
-      },
-    }),
-    [translateX, onToggleMode]
-  );
+  const ContentWrapper = contentOpacity ? Animated.View : View;
+  const contentStyle = contentOpacity
+    ? [styles.contentContainer, { opacity: contentOpacity }]
+    : styles.contentContainer;
 
   return (
     <View style={styles.container}>
-      <SectionHeader 
-        title="人生の進捗" 
+      <SectionHeader
+        title="人生の進捗"
         onToggle={onToggleMode}
-        currentModeIndex={currentModeIndex}
-        totalModes={PROGRESS_MODES.length}
+        icon="sprout"
       />
 
-      <Animated.View 
-        style={[styles.contentContainer, { transform: [{ translateX }] }]}
-        {...panResponder.panHandlers}
-      >
+      <ContentWrapper style={contentStyle}>
         {progressMode === 'bar' ? (
           <ProgressBar
             lifeProgress={lifeProgress}
@@ -93,17 +65,25 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({
             animatedStrokeDashoffset={animatedValues.strokeDashoffset}
           />
         )}
-      </Animated.View>
+      </ContentWrapper>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: colors.card,
+    borderRadius: spacing.borderRadius.large,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    // iOS shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    // Android shadow
+    elevation: 4,
   },
   contentContainer: {
     width: '100%',

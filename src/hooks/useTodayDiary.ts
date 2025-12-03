@@ -32,13 +32,13 @@ export const useTodayDiary = (): TodayDiaryState => {
     if (diaries.length === 0) return 0;
 
     // 日付でソート（降順）
-    const sortedDiaries = [...diaries].sort((a, b) => 
+    const sortedDiaries = [...diaries].sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
@@ -74,7 +74,7 @@ export const useTodayDiary = (): TodayDiaryState => {
     setIsLoading(true);
     try {
       const todayString = getTodayDateString();
-      
+
       // 今日の日記を取得
       const todayEntry = await getDiaryByDate(todayString);
       setHasTodayEntry(todayEntry !== null);

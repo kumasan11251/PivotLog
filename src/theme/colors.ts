@@ -4,8 +4,9 @@ export const colors = {
   primary: '#8B9D83', // セージグリーン（メインアクセント）
 
   // 背景色
-  background: '#FAFAFA', // メイン背景
+  background: '#F5F5F5', // メイン背景（少し暗く）
   surface: '#FFFFFF', // カード・入力フィールド背景
+  card: '#FFFFFF', // カード背景
 
   // テキストカラー
   text: {

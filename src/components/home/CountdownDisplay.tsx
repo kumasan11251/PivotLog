@@ -86,27 +86,30 @@ const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode }) =
 
 const styles = StyleSheet.create({
   countdownContainer: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     flexWrap: 'wrap',
     gap: spacing.xs,
   },
   detailedContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   valuesRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'baseline',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   labelsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-start',
     marginTop: 4,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   timeBlock: {
     alignItems: 'center',

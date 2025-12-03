@@ -31,6 +31,7 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
   }, []);
 
   const toggleCountdownMode = useCallback(async () => {
+    // 左から右に進む順番: detailed → yearsOnly → weeksOnly → daysOnly
     const newMode =
       countdownMode === 'detailed' ? 'yearsOnly' :
       countdownMode === 'yearsOnly' ? 'weeksOnly' :
