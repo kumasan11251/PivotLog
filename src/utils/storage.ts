@@ -28,7 +28,7 @@ export interface DiaryEntry {
 }
 
 export interface HomeDisplaySettings {
-  countdownMode: 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly'; // カウントダウン表示モード
+  countdownMode: 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly' | 'seasons'; // カウントダウン表示モード
   progressMode: 'bar' | 'circle'; // 進捗表示モード
 }
 

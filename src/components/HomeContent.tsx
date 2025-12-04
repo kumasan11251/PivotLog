@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import Svg, { Path } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
 import ScreenHeader from './common/ScreenHeader';
@@ -166,22 +166,7 @@ const PenIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 20,
   color = colors.text.inverse
 }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13"
-      stroke={color}
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-    <Path
-      d="M18.5 2.50001C18.8978 2.10219 19.4374 1.87869 20 1.87869C20.5626 1.87869 21.1022 2.10219 21.5 2.50001C21.8978 2.89784 22.1213 3.4374 22.1213 4.00001C22.1213 4.56262 21.8978 5.10219 21.5 5.50001L12 15L8 16L9 12L18.5 2.50001Z"
-      stroke={color}
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
+  <Ionicons name="pencil" size={size} color={color} />
 );
 
 // チェックアイコン
@@ -189,15 +174,7 @@ const CheckIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 20,
   color = colors.text.inverse
 }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M20 6L9 17L4 12"
-      stroke={color}
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
+  <Ionicons name="checkmark" size={size} color={color} />
 );
 
 /**
@@ -208,7 +185,7 @@ const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
   // カスタムフックで状態管理を分離
-  const { timeLeft, lifeProgress, targetLifespan } = useTimeCalculation();
+  const { timeLeft, lifeProgress, targetLifespan, birthday } = useTimeCalculation();
   const { countdownMode, progressMode, isLoading: isSettingsLoading, toggleCountdownMode, toggleProgressMode } = useDisplaySettings();
   const { animatedValues, triggerAnimation } = useProgressAnimation(lifeProgress);
   const {
@@ -527,6 +504,7 @@ const HomeContent: React.FC = () => {
           countdownMode={countdownMode}
           onToggleMode={handleToggleCountdownMode}
           contentOpacity={countdownFadeAnim}
+          birthday={birthday ?? undefined}
         />
 
         {/* 中央セクション：人生の進捗 */}

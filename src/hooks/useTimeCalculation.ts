@@ -8,6 +8,7 @@ interface UseTimeCalculationResult {
   timeLeft: TimeLeft;
   lifeProgress: number;
   targetLifespan: number;
+  birthday: string | null;
 }
 
 /**
@@ -28,12 +29,14 @@ export const useTimeCalculation = (): UseTimeCalculationResult => {
   });
   const [lifeProgress, setLifeProgress] = useState(0);
   const [targetLifespan, setTargetLifespan] = useState(0);
+  const [birthday, setBirthday] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updateTime = useCallback(async () => {
     const settings = await loadUserSettings();
     if (!settings) return;
 
+    setBirthday(settings.birthday);
     setTargetLifespan(settings.targetLifespan);
     setTimeLeft(calculateTimeLeft(settings.birthday, settings.targetLifespan));
     setLifeProgress(calculateLifeProgress(settings.birthday, settings.targetLifespan));
@@ -57,5 +60,5 @@ export const useTimeCalculation = (): UseTimeCalculationResult => {
     }, [updateTime])
   );
 
-  return { timeLeft, lifeProgress, targetLifespan };
+  return { timeLeft, lifeProgress, targetLifespan, birthday };
 };

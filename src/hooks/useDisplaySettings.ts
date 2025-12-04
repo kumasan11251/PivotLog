@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { loadHomeDisplaySettings, saveHomeDisplaySettings } from '../utils/storage';
 
-export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
+export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly' | 'seasons';
 export type ProgressMode = 'bar' | 'circle';
 
 interface UseDisplaySettingsResult {
@@ -34,11 +34,12 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
   }, []);
 
   const toggleCountdownMode = useCallback(async () => {
-    // 左から右に進む順番: detailed → yearsOnly → weeksOnly → daysOnly
+    // 左から右に進む順番: detailed → yearsOnly → weeksOnly → daysOnly → seasons
     const newMode =
       countdownMode === 'detailed' ? 'yearsOnly' :
       countdownMode === 'yearsOnly' ? 'weeksOnly' :
       countdownMode === 'weeksOnly' ? 'daysOnly' :
+      countdownMode === 'daysOnly' ? 'seasons' :
       'detailed';
 
     setCountdownModeState(newMode);
