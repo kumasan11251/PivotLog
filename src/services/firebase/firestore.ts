@@ -26,7 +26,7 @@ export interface DiaryEntry {
 
 export interface HomeDisplaySettings {
   countdownMode: 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly' | 'seasons';
-  progressMode: 'bar' | 'circle';
+  progressMode: 'bar' | 'circle' | 'grid';
 }
 
 // ヘルパー関数

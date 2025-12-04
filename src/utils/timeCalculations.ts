@@ -124,3 +124,16 @@ export const calculateLifeProgress = (
 
   return Math.min(Math.max(progress, 0), 100);
 };
+
+/**
+ * 現在の年齢を計算する（小数点以下含む）
+ */
+export const calculateCurrentAge = (birthday: string): number => {
+  const now = new Date();
+  const birthdayDate = parseBirthday(birthday);
+
+  const diffMs = now.getTime() - birthdayDate.getTime();
+  const ageInYears = diffMs / (1000 * 60 * 60 * 24 * 365.25);
+
+  return Math.max(0, ageInYears);
+};

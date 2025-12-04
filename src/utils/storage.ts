@@ -29,7 +29,7 @@ export interface DiaryEntry {
 
 export interface HomeDisplaySettings {
   countdownMode: 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly' | 'seasons'; // カウントダウン表示モード
-  progressMode: 'bar' | 'circle'; // 進捗表示モード
+  progressMode: 'bar' | 'circle' | 'grid'; // 進捗表示モード
 }
 
 const STORAGE_KEY = '@pivot_log_settings';

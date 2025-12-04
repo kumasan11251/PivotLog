@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import ProgressBar from './ProgressBar';
 import CircleProgress from './CircleProgress';
+import GridProgress from './GridProgress';
 import SectionHeader from './SectionHeader';
 import { colors, spacing } from '../../theme';
 import type { ProgressMode } from '../../hooks/useDisplaySettings';
@@ -16,6 +17,8 @@ interface ProgressSectionProps {
   lifeProgress: number;
   /** 目標寿命 */
   targetLifespan: number;
+  /** 現在の年齢（小数点以下含む） */
+  currentAge: number;
   /** 表示モード */
   progressMode: ProgressMode;
   /** アニメーション値 */
@@ -28,11 +31,12 @@ interface ProgressSectionProps {
 
 /**
  * プログレス表示セクション
- * バー/円の切替とアニメーション表示を担当
+ * バー/円/グリッドの切替とアニメーション表示を担当
  */
 const ProgressSection: React.FC<ProgressSectionProps> = ({
   lifeProgress,
   targetLifespan,
+  currentAge,
   progressMode,
   animatedValues,
   onToggleMode,
@@ -43,6 +47,36 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({
     ? [styles.contentContainer, { opacity: contentOpacity }]
     : styles.contentContainer;
 
+  const renderProgress = () => {
+    switch (progressMode) {
+      case 'bar':
+        return (
+          <ProgressBar
+            lifeProgress={lifeProgress}
+            targetLifespan={targetLifespan}
+            animatedWidth={animatedValues.width}
+          />
+        );
+      case 'circle':
+        return (
+          <CircleProgress
+            lifeProgress={lifeProgress}
+            targetLifespan={targetLifespan}
+            animatedStrokeDashoffset={animatedValues.strokeDashoffset}
+          />
+        );
+      case 'grid':
+        return (
+          <GridProgress
+            targetLifespan={targetLifespan}
+            currentAge={currentAge}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <View style={styles.container}>
       <SectionHeader
@@ -52,19 +86,7 @@ const ProgressSection: React.FC<ProgressSectionProps> = ({
       />
 
       <ContentWrapper style={contentStyle}>
-        {progressMode === 'bar' ? (
-          <ProgressBar
-            lifeProgress={lifeProgress}
-            targetLifespan={targetLifespan}
-            animatedWidth={animatedValues.width}
-          />
-        ) : (
-          <CircleProgress
-            lifeProgress={lifeProgress}
-            targetLifespan={targetLifespan}
-            animatedStrokeDashoffset={animatedValues.strokeDashoffset}
-          />
-        )}
+        {renderProgress()}
       </ContentWrapper>
     </View>
   );

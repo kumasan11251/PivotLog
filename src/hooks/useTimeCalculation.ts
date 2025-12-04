@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { loadUserSettings } from '../utils/storage';
-import { calculateTimeLeft, calculateLifeProgress } from '../utils/timeCalculations';
+import { calculateTimeLeft, calculateLifeProgress, calculateCurrentAge } from '../utils/timeCalculations';
 import type { TimeLeft } from '../utils/timeCalculations';
 
 interface UseTimeCalculationResult {
@@ -9,6 +9,7 @@ interface UseTimeCalculationResult {
   lifeProgress: number;
   targetLifespan: number;
   birthday: string | null;
+  currentAge: number;
 }
 
 /**
@@ -30,6 +31,7 @@ export const useTimeCalculation = (): UseTimeCalculationResult => {
   const [lifeProgress, setLifeProgress] = useState(0);
   const [targetLifespan, setTargetLifespan] = useState(0);
   const [birthday, setBirthday] = useState<string | null>(null);
+  const [currentAge, setCurrentAge] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updateTime = useCallback(async () => {
@@ -40,6 +42,7 @@ export const useTimeCalculation = (): UseTimeCalculationResult => {
     setTargetLifespan(settings.targetLifespan);
     setTimeLeft(calculateTimeLeft(settings.birthday, settings.targetLifespan));
     setLifeProgress(calculateLifeProgress(settings.birthday, settings.targetLifespan));
+    setCurrentAge(calculateCurrentAge(settings.birthday));
   }, []);
 
   // 画面がフォーカスされるたびに設定を再読み込みし、インターバルを再設定
@@ -60,5 +63,5 @@ export const useTimeCalculation = (): UseTimeCalculationResult => {
     }, [updateTime])
   );
 
-  return { timeLeft, lifeProgress, targetLifespan, birthday };
+  return { timeLeft, lifeProgress, targetLifespan, birthday, currentAge };
 };

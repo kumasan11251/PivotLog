@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { loadHomeDisplaySettings, saveHomeDisplaySettings } from '../utils/storage';
 
 export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly' | 'seasons';
-export type ProgressMode = 'bar' | 'circle';
+export type ProgressMode = 'bar' | 'circle' | 'grid';
 
 interface UseDisplaySettingsResult {
   countdownMode: CountdownMode;
@@ -58,7 +58,7 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
   }, [progressMode]);
 
   const toggleProgressMode = useCallback(async () => {
-    const newMode = progressMode === 'bar' ? 'circle' : 'bar';
+    const newMode = progressMode === 'bar' ? 'circle' : progressMode === 'circle' ? 'grid' : 'bar';
     setProgressMode(newMode);
     await saveHomeDisplaySettings({
       countdownMode,

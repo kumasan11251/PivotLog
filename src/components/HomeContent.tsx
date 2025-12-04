@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -185,7 +185,7 @@ const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
 
   // カスタムフックで状態管理を分離
-  const { timeLeft, lifeProgress, targetLifespan, birthday } = useTimeCalculation();
+  const { timeLeft, lifeProgress, targetLifespan, birthday, currentAge } = useTimeCalculation();
   const { countdownMode, progressMode, isLoading: isSettingsLoading, toggleCountdownMode, toggleProgressMode } = useDisplaySettings();
   const { animatedValues, triggerAnimation } = useProgressAnimation(lifeProgress);
   const {
@@ -511,6 +511,7 @@ const HomeContent: React.FC = () => {
         <ProgressSection
           lifeProgress={lifeProgress}
           targetLifespan={targetLifespan}
+          currentAge={currentAge}
           progressMode={progressMode}
           animatedValues={animatedValues}
           onToggleMode={handleToggleProgressMode}
