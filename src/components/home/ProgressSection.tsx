@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     width: '100%',
-    minHeight: 180,
+    height: 200,
     alignItems: 'center',
     justifyContent: 'center',
   },
