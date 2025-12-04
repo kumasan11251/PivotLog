@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView, useWindowDimensions } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
 import ScreenHeader from './common/ScreenHeader';
@@ -161,12 +161,12 @@ const TOTAL_MILESTONE_MESSAGES: Record<number, { emoji: string; title: string; s
   1000: { emoji: '👑', title: '累計1000日記録！', subtitle: '伝説の記録者です！' },
 };
 
-// ペンアイコン
-const PenIcon: React.FC<{ size?: number; color?: string }> = ({
+// 編集アイコン（Feather - シンプルで統一感のあるデザイン）
+const EditIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 20,
   color = colors.text.inverse
 }) => (
-  <Ionicons name="pencil" size={size} color={color} />
+  <Feather name="edit-3" size={size} color={color} />
 );
 
 // チェックアイコン
@@ -181,8 +181,13 @@ const CheckIcon: React.FC<{ size?: number; color?: string }> = ({
  * ホーム画面のメインコンテンツ
  * 残り時間のカウントダウンと人生の進捗を表示
  */
+// 小さい画面の閾値（iPhone SE等）
+const SMALL_SCREEN_HEIGHT = 700;
+
 const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { height: windowHeight } = useWindowDimensions();
+  const isSmallScreen = windowHeight < SMALL_SCREEN_HEIGHT;
 
   // カスタムフックで状態管理を分離
   const { timeLeft, lifeProgress, targetLifespan, birthday, currentAge } = useTimeCalculation();
@@ -488,7 +493,17 @@ const HomeContent: React.FC = () => {
         </Animated.View>
       )}
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          // 大きい画面では中央寄せ、小さい画面ではスクロール可能
+          !isSmallScreen && styles.scrollContentCentered,
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={isSmallScreen}
+        scrollEnabled={isSmallScreen}
+      >
         {/* 日付と挨拶メッセージ */}
         <View style={styles.greetingContainer}>
           <Text style={styles.dateText}>{todayDate}</Text>
@@ -499,24 +514,28 @@ const HomeContent: React.FC = () => {
         </View>
 
         {/* 上部セクション：残り時間カウントダウン */}
-        <CountdownSection
-          timeLeft={timeLeft}
-          countdownMode={countdownMode}
-          onToggleMode={handleToggleCountdownMode}
-          contentOpacity={countdownFadeAnim}
-          birthday={birthday ?? undefined}
-        />
+        <View style={styles.sectionWrapper}>
+          <CountdownSection
+            timeLeft={timeLeft}
+            countdownMode={countdownMode}
+            onToggleMode={handleToggleCountdownMode}
+            contentOpacity={countdownFadeAnim}
+            birthday={birthday ?? undefined}
+          />
+        </View>
 
         {/* 中央セクション：人生の進捗 */}
-        <ProgressSection
-          lifeProgress={lifeProgress}
-          targetLifespan={targetLifespan}
-          currentAge={currentAge}
-          progressMode={progressMode}
-          animatedValues={animatedValues}
-          onToggleMode={handleToggleProgressMode}
-          contentOpacity={progressFadeAnim}
-        />
+        <View style={styles.sectionWrapper}>
+          <ProgressSection
+            lifeProgress={lifeProgress}
+            targetLifespan={targetLifespan}
+            currentAge={currentAge}
+            progressMode={progressMode}
+            animatedValues={animatedValues}
+            onToggleMode={handleToggleProgressMode}
+            contentOpacity={progressFadeAnim}
+          />
+        </View>
 
         {/* 下部セクション：記録ボタンとストリーク */}
         <View style={styles.bottomSection}>
@@ -541,7 +560,7 @@ const HomeContent: React.FC = () => {
               activeOpacity={0.8}
             >
               <View style={styles.recordButtonContent}>
-                {hasTodayEntry ? <CheckIcon /> : <PenIcon />}
+                {hasTodayEntry ? <CheckIcon /> : <EditIcon />}
                 <Text style={styles.recordButtonText}>
                   {hasTodayEntry ? '今日の記録を見る' : '今日を記録する'}
                 </Text>
@@ -549,7 +568,7 @@ const HomeContent: React.FC = () => {
             </TouchableOpacity>
           </Animated.View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
@@ -558,6 +577,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: spacing.padding.screen,
+    gap: spacing.md,
+  },
+  scrollContentCentered: {
+    justifyContent: 'space-between',
+  },
+  sectionWrapper: {
+    width: '100%',
   },
   celebrationContainer: {
     position: 'absolute',
@@ -639,11 +672,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     ...textBase,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.padding.screen,
-    justifyContent: 'space-between',
   },
   greetingContainer: {
     alignItems: 'center',
