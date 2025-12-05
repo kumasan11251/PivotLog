@@ -143,6 +143,8 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
       <View style={styles.titleWithIcon}>
         {icon && <View style={styles.iconContainer}>{renderIcon()}</View>}
         <Text style={styles.title}>{title}</Text>
+        {/* アイコンと同じ幅のスペーサーで左右のバランスを取る */}
+        {icon && <View style={styles.iconSpacer} />}
       </View>
       <TouchableOpacity
         style={styles.toggleButton}
@@ -168,10 +170,14 @@ const styles = StyleSheet.create({
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
   },
   iconContainer: {
-    marginRight: 2,
+    width: 20,
+    marginRight: spacing.sm,
+  },
+  iconSpacer: {
+    width: 20,
+    marginLeft: spacing.sm,
   },
   title: {
     fontSize: fonts.size.sectionTitle,

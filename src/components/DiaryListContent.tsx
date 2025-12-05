@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
@@ -24,6 +24,8 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   // アニメーションを実行すべきかどうかのフラグ
   const shouldAnimateRef = useRef(true); // 初回表示時はアニメーションあり
+  // 詳細画面に遷移したかどうかを追跡
+  const navigatedToDetailRef = useRef(false);
   // FlatListを強制的に再レンダリングするためのキー
   const [listKey, setListKey] = useState(0);
   // pull-to-refresh用のローディング状態（isLoadingとは別に管理）
@@ -42,9 +44,15 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     loadDiaries,
   } = useDiaryList({ shouldRefresh });
 
-  // 画面フォーカス時にアニメーションをトリガー
+  // 画面フォーカス時にアニメーションをトリガー（詳細画面から戻った時はスキップ）
   useFocusEffect(
     useCallback(() => {
+      // 詳細画面から戻ってきた場合はアニメーションをスキップ
+      if (navigatedToDetailRef.current) {
+        navigatedToDetailRef.current = false;
+        shouldAnimateRef.current = false;
+        return;
+      }
       shouldAnimateRef.current = true;
       setListKey(prev => prev + 1);
     }, [])
@@ -82,6 +90,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
 
   const handleNavigateToDetail = useCallback(
     (date: string) => {
+      navigatedToDetailRef.current = true;
       navigation.navigate('DiaryDetail', { date });
     },
     [navigation]
