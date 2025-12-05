@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, spacing } from '../theme';
 import { DiaryEntry } from '../utils/storage';
@@ -22,6 +22,12 @@ interface DiaryListContentProps {
 const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  // アニメーションを実行すべきかどうかのフラグ
+  const shouldAnimateRef = useRef(true); // 初回表示時はアニメーションあり
+  // FlatListを強制的に再レンダリングするためのキー
+  const [listKey, setListKey] = useState(0);
+  // pull-to-refresh用のローディング状態（isLoadingとは別に管理）
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const {
     isLoading,
@@ -35,6 +41,44 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     goToNextMonth,
     loadDiaries,
   } = useDiaryList({ shouldRefresh });
+
+  // 画面フォーカス時にアニメーションをトリガー
+  useFocusEffect(
+    useCallback(() => {
+      shouldAnimateRef.current = true;
+      setListKey(prev => prev + 1);
+    }, [])
+  );
+
+  // pull-to-refreshハンドラー
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await loadDiaries();
+    setIsRefreshing(false);
+  }, [loadDiaries]);
+
+  // 月が変わった時のハンドラー（ラップして使用）
+  const handlePreviousMonth = useCallback(() => {
+    goToPreviousMonth();
+    shouldAnimateRef.current = true;
+    setListKey(prev => prev + 1);
+  }, [goToPreviousMonth]);
+
+  const handleNextMonth = useCallback(() => {
+    goToNextMonth();
+    shouldAnimateRef.current = true;
+    setListKey(prev => prev + 1);
+  }, [goToNextMonth]);
+
+  // ビューモード切り替え時にアニメーションをトリガー
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    if (mode === 'list' && viewMode === 'calendar') {
+      // カレンダーからリストに切り替える時のみアニメーション
+      shouldAnimateRef.current = true;
+      setListKey(prev => prev + 1);
+    }
+    setViewMode(mode);
+  }, [viewMode]);
 
   const handleNavigateToDetail = useCallback(
     (date: string) => {
@@ -51,15 +95,29 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   );
 
   const renderDiaryItem = useCallback(
-    ({ item }: { item: DiaryEntry }) => (
-      <DiaryCard
-        entry={item}
-        onPress={() => handleNavigateToDetail(item.date)}
-      />
-    ),
+    ({ item, index }: { item: DiaryEntry; index: number }) => {
+      // refの値を取得してアニメーションを実行するか決定
+      const shouldAnimate = shouldAnimateRef.current;
+      // アニメーション実行後はフラグをリセット（最初のアイテムでリセット）
+      if (index === 0 && shouldAnimateRef.current) {
+        // 次のレンダリングサイクルでリセット
+        setTimeout(() => {
+          shouldAnimateRef.current = false;
+        }, 0);
+      }
+      return (
+        <DiaryCard
+          entry={item}
+          onPress={() => handleNavigateToDetail(item.date)}
+          index={index}
+          shouldAnimate={shouldAnimate}
+        />
+      );
+    },
     [handleNavigateToDetail]
   );
 
+  // キーは常にアイテムIDのみを使用（アニメーション制御用のキーを含めない）
   const keyExtractor = useCallback((item: DiaryEntry) => item.id, []);
 
   const renderEmptyList = useCallback(
@@ -82,20 +140,21 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         selectedMonth={selectedMonth}
         viewMode={viewMode}
         isNextDisabled={isNextDisabled}
-        onPreviousMonth={goToPreviousMonth}
-        onNextMonth={goToNextMonth}
-        onViewModeChange={setViewMode}
+        onPreviousMonth={handlePreviousMonth}
+        onNextMonth={handleNextMonth}
+        onViewModeChange={handleViewModeChange}
       />
 
       {viewMode === 'list' ? (
         <FlatList
+          key={listKey}
           data={filteredDiaries}
           renderItem={renderDiaryItem}
           keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmptyList}
-          refreshing={isLoading}
-          onRefresh={loadDiaries}
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
         />
       ) : (
         <CalendarView

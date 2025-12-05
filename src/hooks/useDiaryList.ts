@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { loadDiaryEntries, DiaryEntry } from '../utils/storage';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { loadDiaryEntriesByMonth, DiaryEntry } from '../utils/storage';
 
 interface UseDiaryListOptions {
   shouldRefresh?: boolean;
@@ -19,6 +19,11 @@ interface UseDiaryListReturn {
   loadDiaries: () => Promise<void>;
 }
 
+// 月別キャッシュの型
+interface MonthCache {
+  [key: string]: DiaryEntry[]; // key: "2025-12" format
+}
+
 export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDiaryListReturn => {
   const [diaries, setDiaries] = useState<DiaryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,16 +31,54 @@ export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDi
   const [selectedMonth, setSelectedMonth] = useState(() => new Date().getMonth() + 1);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // 月別キャッシュ（コンポーネントのライフサイクル中保持）
+  const cacheRef = useRef<MonthCache>({});
+
+  // キャッシュキーを生成
+  const getCacheKey = useCallback((year: number, month: number) => {
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }, []);
+
+  // 現在の月のキャッシュキー
+  const currentCacheKey = useMemo(() => getCacheKey(selectedYear, selectedMonth), [getCacheKey, selectedYear, selectedMonth]);
+
+  // 現在表示中の日記（キャッシュから取得）
   const filteredDiaries = useMemo(() => {
-    const monthStr = String(selectedMonth).padStart(2, '0');
-    const prefix = `${selectedYear}-${monthStr}`;
-    return diaries.filter((diary) => diary.date.startsWith(prefix));
-  }, [diaries, selectedYear, selectedMonth]);
+    return cacheRef.current[currentCacheKey] || diaries;
+  }, [currentCacheKey, diaries]);
 
   const isNextDisabled = useMemo(() => {
     const now = new Date();
     return selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
   }, [selectedYear, selectedMonth]);
+
+  // 月別データを読み込む（キャッシュ優先）
+  const loadMonthData = useCallback(async (year: number, month: number, forceRefresh = false) => {
+    const cacheKey = getCacheKey(year, month);
+
+    // キャッシュがあり、強制リフレッシュでなければキャッシュを使用
+    if (!forceRefresh && cacheRef.current[cacheKey]) {
+      setDiaries(cacheRef.current[cacheKey]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const entries = await loadDiaryEntriesByMonth(year, month);
+      // キャッシュに保存
+      cacheRef.current[cacheKey] = entries;
+      setDiaries(entries);
+    } catch (error) {
+      console.error('日記の読み込みに失敗しました:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getCacheKey]);
+
+  // 現在の月を再読み込み（pull-to-refresh用）
+  const loadDiaries = useCallback(async () => {
+    await loadMonthData(selectedYear, selectedMonth, true);
+  }, [loadMonthData, selectedYear, selectedMonth]);
 
   const goToPreviousMonth = useCallback(() => {
     setSelectedDate(null);
@@ -59,27 +102,20 @@ export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDi
     }
   }, [selectedMonth, isNextDisabled]);
 
-  const loadDiaries = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const entries = await loadDiaryEntries();
-      setDiaries(entries);
-    } catch (error) {
-      console.error('日記の読み込みに失敗しました:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // 月が変わったらその月のデータを読み込む
   useEffect(() => {
-    loadDiaries();
-  }, [loadDiaries]);
+    loadMonthData(selectedYear, selectedMonth);
+  }, [loadMonthData, selectedYear, selectedMonth]);
 
+  // shouldRefresh が true になったら現在の月のキャッシュを無効化して再読み込み
   useEffect(() => {
     if (shouldRefresh) {
-      loadDiaries();
+      // 現在の月のキャッシュを無効化
+      const cacheKey = getCacheKey(selectedYear, selectedMonth);
+      delete cacheRef.current[cacheKey];
+      loadMonthData(selectedYear, selectedMonth, true);
     }
-  }, [shouldRefresh, loadDiaries]);
+  }, [shouldRefresh, getCacheKey, loadMonthData, selectedYear, selectedMonth]);
 
   return {
     diaries,

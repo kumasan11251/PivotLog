@@ -132,6 +132,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   <View
                     style={[
                       styles.dayContent,
+                      hasDiary && !isToday && !isSelected && styles.hasDiaryContent,
                       isToday && styles.todayContent,
                       isSelected && !isToday && styles.selectedContent,
                     ]}
@@ -139,20 +140,15 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     <Text
                       style={[
                         styles.dayNumber,
-                        dayOfWeek === 0 && styles.sundayText,
-                        dayOfWeek === 6 && styles.saturdayText,
+                        dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && styles.sundayText,
+                        dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && styles.saturdayText,
+                        hasDiary && !isToday && !isSelected && styles.hasDiaryText,
                         isToday && styles.todayText,
                         isSelected && !isToday && styles.selectedText,
                       ]}
                     >
                       {day}
                     </Text>
-                    {hasDiary && !isToday && !isSelected && (
-                      <View style={styles.diaryMarker} />
-                    )}
-                    {hasDiary && (isToday || isSelected) && (
-                      <View style={styles.diaryMarkerLight} />
-                    )}
                   </View>
                 )}
               </TouchableOpacity>
@@ -212,6 +208,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: spacing.borderRadius.small,
   },
+  hasDiaryContent: {
+    backgroundColor: 'rgba(139, 157, 131, 0.25)',
+  },
   todayContent: {
     backgroundColor: colors.primary,
   },
@@ -223,6 +222,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     color: colors.text.primary,
     ...textBase,
+  },
+  hasDiaryText: {
+    color: colors.primary,
+    fontFamily: fonts.family.bold,
   },
   todayText: {
     color: colors.text.inverse,
@@ -237,20 +240,6 @@ const styles = StyleSheet.create({
   },
   saturdayText: {
     color: '#64B5F6',
-  },
-  diaryMarker: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
-    marginTop: 2,
-  },
-  diaryMarkerLight: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
   },
   selectedCardContainer: {
     marginTop: spacing.lg,

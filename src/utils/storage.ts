@@ -10,6 +10,7 @@ import {
   getDiaryByDateFromFirestore,
   deleteDiaryEntryFromFirestore,
   deleteAllUserDataFromFirestore,
+  getDiariesByMonthFromFirestore,
 } from '../services/firebase/firestore';
 
 export interface UserSettings {
@@ -304,6 +305,30 @@ export const loadDiaryEntries = async (): Promise<DiaryEntry[]> => {
     }
   } catch (error) {
     console.error('日記の読み込みに失敗しました:', error);
+    return [];
+  }
+};
+
+/**
+ * 月別で日記を読み込む（Firestore最適化版）
+ */
+export const loadDiaryEntriesByMonth = async (year: number, month: number): Promise<DiaryEntry[]> => {
+  try {
+    if (isLoggedIn()) {
+      // Firestoreから月別で取得（読み取り回数を削減）
+      return await getDiariesByMonthFromFirestore(year, month);
+    } else {
+      // ローカルストレージの場合は全件取得してフィルタ
+      const jsonValue = await AsyncStorage.getItem(DIARY_KEY);
+      const allDiaries: DiaryEntry[] = jsonValue != null ? JSON.parse(jsonValue) : [];
+      const monthStr = String(month).padStart(2, '0');
+      const prefix = `${year}-${monthStr}`;
+      return allDiaries
+        .filter((diary) => diary.date.startsWith(prefix))
+        .sort((a, b) => b.date.localeCompare(a.date));
+    }
+  } catch (error) {
+    console.error('月別日記の読み込みに失敗しました:', error);
     return [];
   }
 };
