@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, spacing } from '../theme';
 import { DiaryEntry } from '../utils/storage';
 import { useDiaryList } from '../hooks/useDiaryList';
+import { useDiaryListAnimation } from '../hooks/useDiaryListAnimation';
 import ScreenHeader from './common/ScreenHeader';
 import {
   DiaryCard,
@@ -16,21 +17,20 @@ import {
 type ViewMode = 'list' | 'calendar';
 
 interface DiaryListContentProps {
+  /** 外部からのリフレッシュトリガー */
   shouldRefresh?: boolean;
 }
 
+/**
+ * 記録一覧画面のメインコンテンツ
+ * リスト表示とカレンダー表示を切り替えて日記一覧を表示
+ */
 const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  // アニメーションを実行すべきかどうかのフラグ
-  const shouldAnimateRef = useRef(true); // 初回表示時はアニメーションあり
-  // 詳細画面に遷移したかどうかを追跡
-  const navigatedToDetailRef = useRef(false);
-  // FlatListを強制的に再レンダリングするためのキー
-  const [listKey, setListKey] = useState(0);
-  // pull-to-refresh用のローディング状態（isLoadingとは別に管理）
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // 日記データの取得・管理
   const {
     isLoading,
     selectedYear,
@@ -44,56 +44,30 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     loadDiaries,
   } = useDiaryList({ shouldRefresh });
 
-  // 画面フォーカス時にアニメーションをトリガー（詳細画面から戻った時はスキップ）
-  useFocusEffect(
-    useCallback(() => {
-      // 詳細画面から戻ってきた場合はアニメーションをスキップ
-      if (navigatedToDetailRef.current) {
-        navigatedToDetailRef.current = false;
-        shouldAnimateRef.current = false;
-        return;
-      }
-      shouldAnimateRef.current = true;
-      setListKey(prev => prev + 1);
-    }, [])
-  );
+  // カードアニメーションの制御
+  const {
+    listKey,
+    getShouldAnimate,
+    markNavigatedToDetail,
+    triggerMonthChangeAnimation,
+    triggerViewModeChangeAnimation,
+    resetAnimationFlag,
+  } = useDiaryListAnimation();
 
-  // pull-to-refreshハンドラー
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    await loadDiaries();
-    setIsRefreshing(false);
-  }, [loadDiaries]);
+  // ========================================
+  // ナビゲーションハンドラー
+  // ========================================
 
-  // 月が変わった時のハンドラー（ラップして使用）
-  const handlePreviousMonth = useCallback(() => {
-    goToPreviousMonth();
-    shouldAnimateRef.current = true;
-    setListKey(prev => prev + 1);
-  }, [goToPreviousMonth]);
-
-  const handleNextMonth = useCallback(() => {
-    goToNextMonth();
-    shouldAnimateRef.current = true;
-    setListKey(prev => prev + 1);
-  }, [goToNextMonth]);
-
-  // ビューモード切り替え時にアニメーションをトリガー
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
-    if (mode === 'list' && viewMode === 'calendar') {
-      // カレンダーからリストに切り替える時のみアニメーション
-      shouldAnimateRef.current = true;
-      setListKey(prev => prev + 1);
-    }
-    setViewMode(mode);
-  }, [viewMode]);
+  const handleNavigateToSettings = useCallback(() => {
+    navigation.navigate('Settings');
+  }, [navigation]);
 
   const handleNavigateToDetail = useCallback(
     (date: string) => {
-      navigatedToDetailRef.current = true;
+      markNavigatedToDetail();
       navigation.navigate('DiaryDetail', { date });
     },
-    [navigation]
+    [navigation, markNavigatedToDetail]
   );
 
   const handleNavigateToEntry = useCallback(
@@ -103,17 +77,55 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     [navigation]
   );
 
+  // ========================================
+  // 月選択ハンドラー
+  // ========================================
+
+  const handlePreviousMonth = useCallback(() => {
+    goToPreviousMonth();
+    triggerMonthChangeAnimation();
+  }, [goToPreviousMonth, triggerMonthChangeAnimation]);
+
+  const handleNextMonth = useCallback(() => {
+    goToNextMonth();
+    triggerMonthChangeAnimation();
+  }, [goToNextMonth, triggerMonthChangeAnimation]);
+
+  // ========================================
+  // ビューモード切り替え
+  // ========================================
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    // カレンダーからリストに切り替える時のみアニメーション
+    if (mode === 'list' && viewMode === 'calendar') {
+      triggerViewModeChangeAnimation();
+    }
+    setViewMode(mode);
+  }, [viewMode, triggerViewModeChangeAnimation]);
+
+  // ========================================
+  // Pull-to-refresh
+  // ========================================
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await loadDiaries();
+    setIsRefreshing(false);
+  }, [loadDiaries]);
+
+  // ========================================
+  // リストレンダリング
+  // ========================================
+
   const renderDiaryItem = useCallback(
     ({ item, index }: { item: DiaryEntry; index: number }) => {
-      // refの値を取得してアニメーションを実行するか決定
-      const shouldAnimate = shouldAnimateRef.current;
-      // アニメーション実行後はフラグをリセット（最初のアイテムでリセット）
-      if (index === 0 && shouldAnimateRef.current) {
-        // 次のレンダリングサイクルでリセット
-        setTimeout(() => {
-          shouldAnimateRef.current = false;
-        }, 0);
+      const shouldAnimate = getShouldAnimate();
+
+      // 最初のアイテムレンダリング時にフラグをリセット
+      if (index === 0 && shouldAnimate) {
+        resetAnimationFlag();
       }
+
       return (
         <DiaryCard
           entry={item}
@@ -123,10 +135,9 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         />
       );
     },
-    [handleNavigateToDetail]
+    [getShouldAnimate, resetAnimationFlag, handleNavigateToDetail]
   );
 
-  // キーは常にアイテムIDのみを使用（アニメーション制御用のキーを含めない）
   const keyExtractor = useCallback((item: DiaryEntry) => item.id, []);
 
   const renderEmptyList = useCallback(
@@ -134,13 +145,17 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     [isLoading]
   );
 
+  // ========================================
+  // レンダリング
+  // ========================================
+
   return (
     <View style={styles.container}>
       <ScreenHeader
         title="記録一覧"
         rightAction={{
           type: 'settings',
-          onPress: () => navigation.navigate('Settings'),
+          onPress: handleNavigateToSettings,
         }}
       />
 
