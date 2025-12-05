@@ -8,6 +8,7 @@ import {
   ENCOURAGEMENT_MESSAGES,
   getRandomElement,
 } from '../constants/diaryEntry';
+import { formatDateToString } from '../utils/dateUtils';
 import * as Haptics from 'expo-haptics';
 
 type DiaryEntryScreenRouteProp = RouteProp<RootStackParamList, 'DiaryEntry'>;
@@ -82,8 +83,8 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
   const [focusedField, setFocusedField] = useState<DiaryFieldKey | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // 選択された日付をYYYY-MM-DD形式に変換
-  const dateString = selectedDate.toISOString().split('T')[0];
+  // 選択された日付をYYYY-MM-DD形式に変換（ローカル時間基準）
+  const dateString = formatDateToString(selectedDate);
 
   // 今日かどうか
   const isToday = new Date(selectedDate).toDateString() === new Date().toDateString();

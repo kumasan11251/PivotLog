@@ -15,6 +15,7 @@ import { useTodayDiary } from '../hooks/useTodayDiary';
 import { useHomeAnimations } from '../hooks/useHomeAnimations';
 import { loadUserSettings } from '../utils/storage';
 import { getTodayDateString, isBirthday, getGreeting, getStreakInfo } from '../utils/homeHelpers';
+import { getEffectiveToday } from '../utils/dateUtils';
 import { SMALL_SCREEN_HEIGHT } from '../constants/home';
 
 // アイコンコンポーネント
@@ -41,6 +42,9 @@ const HomeContent: React.FC = () => {
   const { height: windowHeight } = useWindowDimensions();
   const isSmallScreen = windowHeight < SMALL_SCREEN_HEIGHT;
 
+  // 1日の開始時刻（設定から読み込み）
+  const [dayStartHour, setDayStartHour] = useState(0);
+
   // カスタムフックで状態管理を分離
   const { timeLeft, lifeProgress, targetLifespan, birthday, currentAge } = useTimeCalculation();
   const { countdownMode, progressMode, isLoading: isSettingsLoading, toggleCountdownMode, toggleProgressMode } = useDisplaySettings();
@@ -56,7 +60,7 @@ const HomeContent: React.FC = () => {
     isRestarting,
     clearJustCompleted,
     refresh: refreshTodayDiary
-  } = useTodayDiary();
+  } = useTodayDiary({ dayStartHour });
 
   // 誕生日チェック用
   const [isBirthdayToday, setIsBirthdayToday] = useState(false);
@@ -88,20 +92,31 @@ const HomeContent: React.FC = () => {
     toggleProgressMode,
   });
 
-  // 誕生日チェック
+  // 設定読み込み（誕生日チェック & dayStartHour）
   useEffect(() => {
-    const checkBirthday = async () => {
+    const loadSettings = async () => {
       const settings = await loadUserSettings();
-      if (settings?.birthday) {
-        setIsBirthdayToday(isBirthday(settings.birthday));
+      if (settings) {
+        if (settings.birthday) {
+          setIsBirthdayToday(isBirthday(settings.birthday));
+        }
+        setDayStartHour(settings.dayStartHour ?? 0);
       }
     };
-    checkBirthday();
+    loadSettings();
   }, []);
 
-  // 画面フォーカス時にデータを再読み込み＆フェードインアニメーション
+  // 画面フォーカス時にデータを再読み込み＆フェードインアニメーション＆設定再読み込み
   useFocusEffect(
     useCallback(() => {
+      // 設定を再読み込み（dayStartHourの変更を反映）
+      const reloadSettings = async () => {
+        const settings = await loadUserSettings();
+        if (settings) {
+          setDayStartHour(settings.dayStartHour ?? 0);
+        }
+      };
+      reloadSettings();
       refreshTodayDiary();
       triggerFocusAnimation();
     }, [refreshTodayDiary, triggerFocusAnimation])
@@ -114,8 +129,10 @@ const HomeContent: React.FC = () => {
 
   const handleNavigateToDiaryEntry = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('DiaryEntry', {});
-  }, [navigation]);
+    // dayStartHour を考慮した「今日」の日付を渡す
+    const effectiveToday = getEffectiveToday(dayStartHour);
+    navigation.navigate('DiaryEntry', { initialDate: effectiveToday });
+  }, [navigation, dayStartHour]);
 
   // 挨拶メッセージとストリーク情報
   const greeting = getGreeting(isBirthdayToday);

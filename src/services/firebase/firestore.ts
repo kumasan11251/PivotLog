@@ -10,6 +10,7 @@ import { getCurrentUser } from './auth';
 export interface UserSettings {
   birthday: string; // ISO 8601 format (YYYY-MM-DD)
   targetLifespan: number; // 目標寿命（年）
+  dayStartHour?: number; // 1日の開始時刻（0-12、デフォルト0）
   createdAt?: string;
   updatedAt?: string;
 }

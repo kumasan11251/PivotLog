@@ -6,16 +6,21 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
-import { loadUserSettings, resetOnboarding } from '../utils/storage';
+import { loadUserSettings, saveUserSettings, resetOnboarding } from '../utils/storage';
 import { signOut, getCurrentUser, deleteAccount } from '../services/firebase';
 import { deleteAllUserData } from '../utils/storage';
 import ScreenHeader from '../components/common/ScreenHeader';
+
+// 1日の開始時刻の選択肢（0時〜12時）
+const DAY_START_HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => i);
 
 interface SettingItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -58,6 +63,8 @@ const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const [birthday, setBirthday] = useState<string>('');
   const [targetLifespan, setTargetLifespan] = useState<number>(0);
+  const [dayStartHour, setDayStartHour] = useState<number>(0);
+  const [showDayStartPicker, setShowDayStartPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const user = getCurrentUser();
 
@@ -68,6 +75,7 @@ const SettingsScreen: React.FC = () => {
       if (settings) {
         setBirthday(settings.birthday);
         setTargetLifespan(settings.targetLifespan);
+        setDayStartHour(settings.dayStartHour ?? 0);
       }
     } catch (error) {
       console.error('設定の読み込みに失敗しました:', error);
@@ -145,6 +153,27 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
+  const handleDayStartHourChange = async (hour: number) => {
+    setShowDayStartPicker(false);
+    try {
+      const settings = await loadUserSettings();
+      if (settings) {
+        await saveUserSettings({
+          ...settings,
+          dayStartHour: hour,
+        });
+        setDayStartHour(hour);
+      }
+    } catch (error) {
+      console.error('開始時刻の保存に失敗:', error);
+      Alert.alert('エラー', '設定の保存に失敗しました');
+    }
+  };
+
+  const formatDayStartHour = (hour: number): string => {
+    return hour === 0 ? '0時（深夜0時）' : `${hour}時`;
+  };
+
   const formatBirthday = (dateString: string): string => {
     const [year, month, day] = dateString.split('-');
     return `${year}年${parseInt(month)}月${parseInt(day)}日`;
@@ -199,6 +228,23 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* 記録設定セクション */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>記録設定</Text>
+          <View style={styles.sectionCard}>
+            <SettingItem
+              icon="time-outline"
+              label="1日の開始時刻"
+              value={formatDayStartHour(dayStartHour)}
+              onPress={() => setShowDayStartPicker(true)}
+              isLoading={isLoading}
+              isLast
+            />
+          </View>
+          <Text style={styles.sectionHint}>
+            深夜に前日の記録をする場合は、開始時刻を遅めに設定してください
+          </Text>
+        </View>
         {/* 現在のステータス */}
         {!isLoading && birthday && targetLifespan > 0 && (
           <View style={styles.section}>
@@ -388,6 +434,55 @@ const SettingsScreen: React.FC = () => {
           <Text style={styles.footerSubtext}>人生の時間を可視化する</Text>
         </View>
       </ScrollView>
+
+      {/* 1日の開始時刻ピッカーモーダル */}
+      <Modal
+        visible={showDayStartPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDayStartPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDayStartPicker(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>1日の開始時刻</Text>
+              <TouchableOpacity onPress={() => setShowDayStartPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={DAY_START_HOUR_OPTIONS}
+              keyExtractor={(item) => item.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.modalOption,
+                    item === dayStartHour && styles.modalOptionSelected,
+                  ]}
+                  onPress={() => handleDayStartHourChange(item)}
+                >
+                  <Text
+                    style={[
+                      styles.modalOptionText,
+                      item === dayStartHour && styles.modalOptionTextSelected,
+                    ]}
+                  >
+                    {item}時{item === 0 ? '（深夜0時 / デフォルト）' : ''}
+                  </Text>
+                  {item === dayStartHour && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+              style={styles.modalList}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -567,6 +662,72 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     marginTop: 2,
     ...textBase,
+  },
+  sectionHint: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    marginTop: spacing.sm,
+    marginHorizontal: spacing.padding.screen,
+    ...textBase,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: spacing.borderRadius.large,
+    width: '80%',
+    maxHeight: '60%',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: fonts.size.body,
+    fontWeight: fonts.weight.semibold,
+    color: colors.text.primary,
+    fontFamily: fonts.family.bold,
+    ...textBase,
+  },
+  modalList: {
+    maxHeight: 300,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalOptionSelected: {
+    backgroundColor: `${colors.primary}10`,
+  },
+  modalOptionText: {
+    fontSize: fonts.size.body,
+    color: colors.text.primary,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  modalOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: fonts.weight.medium,
   },
 });
 

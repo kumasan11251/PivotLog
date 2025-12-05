@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getDiaryByDate, loadDiaryEntries, DiaryEntry } from '../utils/storage';
+import { getEffectiveToday, getEffectiveTodayDate } from '../utils/dateUtils';
 
 // マイルストーンの日数（連続記録）
 const STREAK_MILESTONE_DAYS = [3, 7, 14, 30, 100, 365];
@@ -29,10 +30,17 @@ interface TodayDiaryState {
   refresh: () => Promise<void>;
 }
 
+interface UseTodayDiaryOptions {
+  /** 1日の開始時刻（0-12） */
+  dayStartHour?: number;
+}
+
 /**
  * 今日の日記の状態と連続記録日数を管理するフック
+ * @param options.dayStartHour 1日の開始時刻（デフォルト: 0）
  */
-export const useTodayDiary = (): TodayDiaryState => {
+export const useTodayDiary = (options: UseTodayDiaryOptions = {}): TodayDiaryState => {
+  const { dayStartHour = 0 } = options;
   const [hasTodayEntry, setHasTodayEntry] = useState(false);
   const [streakDays, setStreakDays] = useState(0);
   const [totalDays, setTotalDays] = useState(0);
@@ -48,12 +56,8 @@ export const useTodayDiary = (): TodayDiaryState => {
   const previousTotalRef = useRef<number>(0);
 
   const getTodayDateString = useCallback(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }, []);
+    return getEffectiveToday(dayStartHour);
+  }, [dayStartHour]);
 
   const calculateStreak = useCallback((diaries: DiaryEntry[]): number => {
     if (diaries.length === 0) return 0;
@@ -63,8 +67,8 @@ export const useTodayDiary = (): TodayDiaryState => {
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // dayStartHour を考慮した「今日」を取得
+    const today = getEffectiveTodayDate(dayStartHour);
 
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -95,7 +99,7 @@ export const useTodayDiary = (): TodayDiaryState => {
     }
 
     return streak;
-  }, []);
+  }, [dayStartHour]);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
