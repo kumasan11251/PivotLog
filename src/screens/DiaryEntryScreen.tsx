@@ -1,162 +1,161 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
-  StyleSheet,
   ScrollView,
-  TouchableWithoutFeedback,
-  Alert,
-  TouchableOpacity,
+  StyleSheet,
   Platform,
-  Modal,
   KeyboardAvoidingView,
+  Keyboard,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import type { DiaryEntryScreenNavigationProp, RootStackParamList } from '../types/navigation';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { colors, fonts, spacing, textBase } from '../theme';
+import { colors, spacing } from '../theme';
 import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
-import { Ionicons } from '@expo/vector-icons';
-import { saveDiaryEntry, getDiaryByDate, DiaryEntry } from '../utils/storage';
+import {
+  EncouragementHeader,
+  ProgressIndicator,
+  DateNavigator,
+  DiaryInputField,
+  DatePickerModal,
+  DiaryInputFieldRef,
+} from '../components/diary';
+import { useDiaryEntry, DiaryFieldKey } from '../hooks/useDiaryEntry';
 import { DIARY_QUESTIONS } from '../constants/diary';
 
-const MAX_CHARS = 100;
-
-type DiaryEntryScreenRouteProp = RouteProp<RootStackParamList, 'DiaryEntry'>;
-
 const DiaryEntryScreen: React.FC = () => {
-  const navigation = useNavigation<DiaryEntryScreenNavigationProp>();
-  const route = useRoute<DiaryEntryScreenRouteProp>();
-  const { initialDate } = route.params || {};
+  const {
+    formState,
+    setFieldValue,
+    dateString,
+    changeDate,
+    selectedDate,
+    isToday,
+    focusedField,
+    setFocusedField,
+    isSaving,
+    showDatePicker,
+    setShowDatePicker,
+    progress,
+    encouragement,
+    placeholders,
+    handleSave,
+    handleBack,
+    handleDateChange,
+  } = useDiaryEntry();
 
-  const [goodTime, setGoodTime] = useState('');
-  const [wastedTime, setWastedTime] = useState('');
-  const [tomorrow, setTomorrow] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    if (initialDate) {
-      return new Date(initialDate);
-    }
-    return new Date();
-  });
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  // Refs
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollContentRef = useRef<View>(null);
+  const goodTimeRef = useRef<DiaryInputFieldRef>(null);
+  const wastedTimeRef = useRef<DiaryInputFieldRef>(null);
+  const tomorrowRef = useRef<DiaryInputFieldRef>(null);
+  const goodTimeContainerRef = useRef<View>(null);
+  const wastedTimeContainerRef = useRef<View>(null);
+  const tomorrowContainerRef = useRef<View>(null);
 
-  // 初期値を保持（変更検出用）
-  const [initialGoodTime, setInitialGoodTime] = useState('');
-  const [initialWastedTime, setInitialWastedTime] = useState('');
-  const [initialTomorrow, setInitialTomorrow] = useState('');
-
-  // ScrollViewのref
-  const scrollViewRef = React.useRef<ScrollView>(null);
-
-  // 選択された日付をYYYY-MM-DD形式に変換
-  const dateString = selectedDate.toISOString().split('T')[0];
+  // キーボードの高さを追跡
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    // 選択された日付の日記を読み込む
-    const loadDiary = async () => {
-      const existingDiary = await getDiaryByDate(dateString);
-      if (existingDiary) {
-        setGoodTime(existingDiary.goodTime || '');
-        setWastedTime(existingDiary.wastedTime || '');
-        setTomorrow(existingDiary.tomorrow || '');
-        setInitialGoodTime(existingDiary.goodTime || '');
-        setInitialWastedTime(existingDiary.wastedTime || '');
-        setInitialTomorrow(existingDiary.tomorrow || '');
-      } else {
-        setGoodTime('');
-        setWastedTime('');
-        setTomorrow('');
-        setInitialGoodTime('');
-        setInitialWastedTime('');
-        setInitialTomorrow('');
-      }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const keyboardWillShow = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const keyboardWillHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
     };
-    loadDiary();
-  }, [dateString]);
+  }, []);
 
-  const handleSave = async () => {
-    if (!goodTime.trim() && !wastedTime.trim() && !tomorrow.trim()) {
-      Alert.alert('エラー', '少なくとも1つの質問に回答してください');
-      return;
-    }
+  // フィールドにフォーカスした時のスクロール処理
+  const scrollToField = useCallback(
+    (
+      fieldRef: React.RefObject<View | null>,
+      inputRef: React.RefObject<DiaryInputFieldRef | null>
+    ) => {
+      setTimeout(
+        () => {
+          if (inputRef.current) {
+            inputRef.current.measureInWindow((_x, y, _width, height) => {
+              const screenHeight = Dimensions.get('window').height;
+              const visibleHeight = screenHeight - keyboardHeight - 100;
+              const inputBottom = y + height;
 
-    setIsSaving(true);
-    try {
-      const now = new Date().toISOString();
-      const entry: DiaryEntry = {
-        id: dateString,
-        date: dateString,
-        goodTime: goodTime.trim(),
-        wastedTime: wastedTime.trim(),
-        tomorrow: tomorrow.trim(),
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      await saveDiaryEntry(entry);
-      Alert.alert('保存完了', '記録を保存しました', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch {
-      Alert.alert('エラー', '保存に失敗しました。もう一度お試しください。');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDateChange = (_event: unknown, date?: Date) => {
-    if (date) {
-      setSelectedDate(date);
-      // Android以外では自動的に閉じない
-      if (Platform.OS === 'android') {
-        setShowDatePicker(false);
-      }
-    }
-  };
-
-  const handleBack = () => {
-    // 初期値と現在の値を比較して変更があるかチェック
-    const hasChanges =
-      goodTime.trim() !== initialGoodTime.trim() ||
-      wastedTime.trim() !== initialWastedTime.trim() ||
-      tomorrow.trim() !== initialTomorrow.trim();
-
-    if (hasChanges) {
-      Alert.alert(
-        '確認',
-        '保存せずに戻りますか？',
-        [
-          { text: 'キャンセル', style: 'cancel' },
-          { text: '戻る', onPress: () => navigation.goBack(), style: 'destructive' },
-        ]
+              if (inputBottom > visibleHeight || fieldRef.current) {
+                if (fieldRef.current && scrollContentRef.current) {
+                  fieldRef.current.measureLayout(
+                    scrollContentRef.current as unknown as React.ElementRef<typeof View>,
+                    (_fx, fy) => {
+                      const scrollOffset = Math.max(0, fy - spacing.lg);
+                      scrollViewRef.current?.scrollTo({ y: scrollOffset, animated: true });
+                    },
+                    () => {
+                      console.log('measureLayout failed');
+                    }
+                  );
+                }
+              }
+            });
+          }
+        },
+        Platform.OS === 'ios' ? 50 : 150
       );
-    } else {
-      navigation.goBack();
-    }
-  };
+    },
+    [keyboardHeight]
+  );
 
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
-    const weekday = weekdays[date.getDay()];
-    return `${year}年${month}月${day}日（${weekday}）`;
-  };
+  // フィールドのフォーカスハンドラーを生成
+  const createFocusHandler = useCallback(
+    (
+      field: DiaryFieldKey,
+      containerRef: React.RefObject<View | null>,
+      inputRef: React.RefObject<DiaryInputFieldRef | null>
+    ) => {
+      return () => {
+        setFocusedField(field);
+        scrollToField(containerRef, inputRef);
+      };
+    },
+    [setFocusedField, scrollToField]
+  );
+
+  // 入力フィールドの設定
+  const fieldConfigs = [
+    {
+      key: 'goodTime' as DiaryFieldKey,
+      label: DIARY_QUESTIONS.goodTime.label,
+      containerRef: goodTimeContainerRef,
+      inputRef: goodTimeRef,
+    },
+    {
+      key: 'wastedTime' as DiaryFieldKey,
+      label: DIARY_QUESTIONS.wastedTime.label,
+      containerRef: wastedTimeContainerRef,
+      inputRef: wastedTimeRef,
+    },
+    {
+      key: 'tomorrow' as DiaryFieldKey,
+      label: DIARY_QUESTIONS.tomorrow.label,
+      containerRef: tomorrowContainerRef,
+      inputRef: tomorrowRef,
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        style={styles.innerContainer}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        <View style={styles.innerContainer}>
+        <View style={styles.flex}>
           <ScreenHeader
             leftAction={{
               type: 'backIcon',
@@ -170,135 +169,58 @@ const DiaryEntryScreen: React.FC = () => {
             contentContainerStyle={styles.scrollViewContent}
             keyboardShouldPersistTaps="handled"
           >
-          {/* 記録日 */}
-          <View style={styles.dateFieldContainer}>
-            <TouchableOpacity
-              style={styles.dateInputContainer}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Ionicons name="calendar-outline" size={20} color={colors.primary} style={styles.calendarIcon} />
-              <Text style={styles.dateInputText}>{formatDate(dateString)}</Text>
-            </TouchableOpacity>
-          </View>
+            <View ref={scrollContentRef}>
+              <EncouragementHeader
+                emoji={encouragement.emoji}
+                title={encouragement.title}
+                subtitle={encouragement.subtitle}
+              />
 
-          {/* 日記入力エリア */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.label}>{DIARY_QUESTIONS.goodTime.label}</Text>
-              <Text style={styles.charCount}>{goodTime.length}/{MAX_CHARS}</Text>
-            </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                value={goodTime}
-                onChangeText={setGoodTime}
-                onFocus={() => scrollViewRef.current?.scrollTo({ y: 76, animated: true })}
-                placeholder="例：朝の運動、家族との食事"
-                placeholderTextColor={colors.text.secondary}
-                multiline
-                textAlignVertical="top"
-                maxLength={MAX_CHARS}
+              <ProgressIndicator progress={progress} />
+
+              <DateNavigator
+                dateString={dateString}
+                isToday={isToday}
+                onPrevious={() => changeDate(-1)}
+                onNext={() => changeDate(1)}
+                onOpenPicker={() => setShowDatePicker(true)}
+              />
+
+              {fieldConfigs.map((config) => (
+                <View key={config.key} ref={config.containerRef}>
+                  <DiaryInputField
+                    ref={config.inputRef}
+                    label={config.label}
+                    value={formState[config.key]}
+                    placeholder={placeholders[config.key]}
+                    onChangeText={(text) => setFieldValue(config.key, text)}
+                    onFocus={createFocusHandler(
+                      config.key,
+                      config.containerRef,
+                      config.inputRef
+                    )}
+                    onBlur={() => setFocusedField(null)}
+                    isFocused={focusedField === config.key}
+                    showCheckmark={focusedField !== config.key && !!formState[config.key].trim()}
+                  />
+                </View>
+              ))}
+
+              <Button
+                title={isSaving ? '保存中...' : '記録する'}
+                onPress={handleSave}
+                disabled={isSaving}
+                style={styles.saveButton}
               />
             </View>
-          </View>
-
-          {/* 無駄にした時間 */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.label}>{DIARY_QUESTIONS.wastedTime.label}</Text>
-              <Text style={styles.charCount}>{wastedTime.length}/{MAX_CHARS}</Text>
-            </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                value={wastedTime}
-                onChangeText={setWastedTime}
-                onFocus={() => scrollViewRef.current?.scrollTo({ y: 208, animated: true })}
-                placeholder="例：SNSの見すぎ、無駄な会議"
-                placeholderTextColor={colors.text.secondary}
-                multiline
-                textAlignVertical="top"
-                maxLength={MAX_CHARS}
-              />
-            </View>
-          </View>
-
-          {/* 明日の予定 */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.labelContainer}>
-              <Text style={styles.label}>{DIARY_QUESTIONS.tomorrow.label}</Text>
-              <Text style={styles.charCount}>{tomorrow.length}/{MAX_CHARS}</Text>
-            </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                value={tomorrow}
-                onChangeText={setTomorrow}
-                onFocus={() => scrollViewRef.current?.scrollTo({ y: 340, animated: true })}
-                placeholder="例：早起きして読書、笑顔で挨拶"
-                placeholderTextColor={colors.text.secondary}
-                multiline
-                textAlignVertical="top"
-                maxLength={MAX_CHARS}
-              />
-            </View>
-          </View>
-
-          {/* 保存ボタン */}
-          <Button
-            title={isSaving ? '保存中...' : '記録する'}
-            onPress={handleSave}
-            disabled={isSaving}
-            style={styles.saveButton}
-          />
           </ScrollView>
 
-          {/* カレンダーモーダル */}
-          {showDatePicker && (
-            Platform.OS === 'ios' ? (
-            <Modal
-              visible={showDatePicker}
-              transparent={true}
-              animationType="fade"
-              onRequestClose={() => setShowDatePicker(false)}
-            >
-              <TouchableWithoutFeedback onPress={() => setShowDatePicker(false)}>
-                <View style={styles.modalOverlay}>
-                  <TouchableWithoutFeedback>
-                    <View style={styles.modalContent}>
-                      <View style={styles.pickerContainer}>
-                        <DateTimePicker
-                          value={selectedDate}
-                          mode="date"
-                          display="inline"
-                          onChange={handleDateChange}
-                          maximumDate={new Date()}
-                          locale="ja-JP"
-                          themeVariant="light"
-                        />
-                      </View>
-                      <TouchableOpacity
-                        style={styles.doneButton}
-                        onPress={() => setShowDatePicker(false)}
-                      >
-                        <Text style={styles.doneButtonText}>完了</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableWithoutFeedback>
-                </View>
-              </TouchableWithoutFeedback>
-            </Modal>
-          ) : (
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display="default"
-              onChange={handleDateChange}
-              maximumDate={new Date()}
-              locale="ja"
-            />
-          )
-        )}
+          <DatePickerModal
+            visible={showDatePicker}
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            onClose={() => setShowDatePicker(false)}
+          />
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -310,7 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  innerContainer: {
+  flex: {
     flex: 1,
   },
   scrollView: {
@@ -318,107 +240,6 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     flexGrow: 1,
-  },
-  fieldContainer: {
-    paddingHorizontal: spacing.padding.screen,
-    marginBottom: 32,
-  },
-  dateFieldContainer: {
-    paddingHorizontal: spacing.padding.screen,
-    marginTop: spacing.xl,
-    marginBottom: spacing.xxl,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  label: {
-    fontSize: fonts.size.body,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
-    ...textBase,
-  },
-  charCount: {
-    fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    ...textBase,
-  },
-  dateInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.medium,
-    borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  calendarIcon: {
-    fontSize: 20,
-    marginRight: spacing.sm,
-  },
-  dateInputText: {
-    fontSize: fonts.size.body,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
-    ...textBase,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.medium,
-    padding: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  pickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: spacing.borderRadius.small,
-    overflow: 'hidden',
-  },
-  doneButton: {
-    backgroundColor: colors.primary,
-    borderRadius: spacing.borderRadius.medium,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  doneButtonText: {
-    fontSize: fonts.size.body,
-    color: '#FFFFFF',
-    fontFamily: fonts.family.bold,
-    ...textBase,
-  },
-  inputContainer: {
-    backgroundColor: colors.surface,
-    borderRadius: spacing.borderRadius.medium,
-    borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  textInput: {
-    fontSize: fonts.size.body,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
-    lineHeight: 22,
-    minHeight: 22,
-    paddingTop: 0,
-    paddingBottom: 0,
-    ...textBase,
   },
   saveButton: {
     marginHorizontal: spacing.padding.screen,
