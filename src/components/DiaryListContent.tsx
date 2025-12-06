@@ -65,7 +65,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const handleNavigateToDetail = useCallback(
     (date: string) => {
       markNavigatedToDetail();
-      navigation.navigate('DiaryDetail', { date });
+      navigation.navigate('DiaryDetail', { date, fromList: true });
     },
     [navigation, markNavigatedToDetail]
   );

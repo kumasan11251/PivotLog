@@ -7,7 +7,7 @@ export type RootStackParamList = {
   InitialSetup: undefined;
   Home: { initialTab?: 'home' | 'diaryList' } | undefined;
   DiaryEntry: { initialDate?: string };
-  DiaryDetail: { date: string; direction?: 'prev' | 'next' };
+  DiaryDetail: { date: string; direction?: 'prev' | 'next'; fromList?: boolean };
   Settings: undefined;
   EditBirthday: undefined;
   EditLifespan: undefined;

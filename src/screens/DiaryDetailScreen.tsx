@@ -8,7 +8,12 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
+  Easing,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,12 +26,17 @@ import ScreenHeader from '../components/common/ScreenHeader';
 type DiaryDetailScreenRouteProp = RouteProp<RootStackParamList, 'DiaryDetail'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const ANIMATION_DURATION = 250;
+const ANIMATION_DURATION = 300; // 少し長めにして滑らかに
+const CARD_ANIMATION_DURATION = 300; // 記録一覧と同じ速度
+const CARD_STAGGER_DELAY = 50;
+const SWIPE_THRESHOLD = 50; // スワイプと認識する最小距離
+const SWIPE_VELOCITY_THRESHOLD = 0.3; // スワイプと認識する最小速度
+const SWIPE_PREVIEW_FACTOR = 0.4; // スワイプ中のプレビュー移動係数
 
 const DiaryDetailScreen: React.FC = () => {
   const navigation = useNavigation<DiaryDetailScreenNavigationProp>();
   const route = useRoute<DiaryDetailScreenRouteProp>();
-  const { date: initialDate } = route.params;
+  const { date: initialDate, fromList } = route.params;
 
   // 現在表示中の日付をstateで管理
   const [currentDate, setCurrentDate] = useState(initialDate);
@@ -45,6 +55,136 @@ const DiaryDetailScreen: React.FC = () => {
   // アニメーション用（次のコンテンツ）
   const nextSlideAnim = useRef(new Animated.Value(0)).current;
   const nextFadeAnim = useRef(new Animated.Value(0)).current;
+
+  // PanResponderが最新の状態にアクセスするためのref
+  const adjacentDatesRef = useRef(adjacentDates);
+  const isTransitioningRef = useRef(isTransitioning);
+  const hasPlayedEntryAnimationRef = useRef(false);
+
+  // refを最新の状態に同期
+  useEffect(() => {
+    adjacentDatesRef.current = adjacentDates;
+  }, [adjacentDates]);
+
+  useEffect(() => {
+    isTransitioningRef.current = isTransitioning;
+  }, [isTransitioning]);
+
+  // navigateToDate関数の参照を保持
+  const navigateToDateRef = useRef<((targetDate: string, direction: 'prev' | 'next') => void) | undefined>(undefined);
+
+  // カードのスタガードアニメーション用
+  const cardAnimations = useRef([
+    new Animated.Value(1),
+    new Animated.Value(1),
+    new Animated.Value(1),
+  ]).current;
+
+  useEffect(() => {
+    // 記録一覧から遷移した初回のみスタガードアニメーション
+    if (isLoading || !fromList || hasPlayedEntryAnimationRef.current || !diary) {
+      return;
+    }
+
+    // 対象となるカード（空でない回答）だけを抽出
+    const filledAnimations = cardAnimations.slice(0, 3);
+    filledAnimations.forEach((anim) => anim.setValue(0));
+
+    const sequences = [] as Animated.CompositeAnimation[];
+    const contents = [diary.goodTime, diary.wastedTime, diary.tomorrow];
+    contents.forEach((content, idx) => {
+      if (content && content.trim()) {
+        sequences.push(
+          Animated.timing(cardAnimations[idx], {
+            toValue: 1,
+            duration: CARD_ANIMATION_DURATION,
+            delay: CARD_STAGGER_DELAY * sequences.length,
+            useNativeDriver: true,
+          })
+        );
+      }
+    });
+
+    Animated.parallel(sequences).start(() => {
+      hasPlayedEntryAnimationRef.current = true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, fromList, diary]);
+
+  // スワイプジェスチャー用のPanResponder
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (
+        _evt: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+      ) => {
+        // 水平方向のスワイプのみ検知（垂直スクロールを妨げない）
+        const { dx, dy } = gestureState;
+        return Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10;
+      },
+      onPanResponderGrant: () => {
+        // スワイプ開始時の軽いフィードバック
+        Haptics.selectionAsync();
+      },
+      onPanResponderMove: (
+        _evt: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+      ) => {
+        // スワイプ中のプレビュー（追従効果）
+        if (!isTransitioningRef.current) {
+          const { dx } = gestureState;
+          // 移動可能な方向のみプレビューを表示
+          const canGoNext = adjacentDatesRef.current.next && dx < 0;
+          const canGoPrev = adjacentDatesRef.current.prev && dx > 0;
+          if (canGoNext || canGoPrev) {
+            // より自然な追従（指の動きの40%を追従）
+            currentSlideAnim.setValue(dx * SWIPE_PREVIEW_FACTOR);
+          } else if (dx !== 0) {
+            // 移動できない方向は抵抗感を出す（10%のみ追従）
+            currentSlideAnim.setValue(dx * 0.1);
+          }
+        }
+      },
+      onPanResponderRelease: (
+        _evt: GestureResponderEvent,
+        gestureState: PanResponderGestureState
+      ) => {
+        const { dx, vx } = gestureState;
+        const isSwipeLeft = dx < -SWIPE_THRESHOLD || vx < -SWIPE_VELOCITY_THRESHOLD;
+        const isSwipeRight = dx > SWIPE_THRESHOLD || vx > SWIPE_VELOCITY_THRESHOLD;
+
+        if (isSwipeLeft && adjacentDatesRef.current.next) {
+          // 左スワイプ → 新しい日記へ
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigateToDateRef.current?.(adjacentDatesRef.current.next, 'next');
+        } else if (isSwipeRight && adjacentDatesRef.current.prev) {
+          // 右スワイプ → 古い日記へ
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigateToDateRef.current?.(adjacentDatesRef.current.prev, 'prev');
+        } else {
+          // スワイプが閾値に達しなかった場合、滑らかに元に戻す
+          Animated.spring(currentSlideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            damping: 15,
+            stiffness: 150,
+            mass: 0.8,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        // ジェスチャーがキャンセルされた場合、滑らかに元に戻す
+        Animated.spring(currentSlideAnim, {
+          toValue: 0,
+          useNativeDriver: true,
+          damping: 15,
+          stiffness: 150,
+          mass: 0.8,
+        }).start();
+      },
+    })
+  ).current;
 
   const loadDiary = async (targetDate: string) => {
     try {
@@ -74,13 +214,26 @@ const DiaryDetailScreen: React.FC = () => {
   }, [initialDate]);
 
   // 画面フォーカス時に日記を再読み込み（編集後の反映用）
+  // ただし、日記切り替え中やトランジション直後は再読み込みをスキップ
+  const isInternalNavigationRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
-      if (!isLoading) {
-        loadDiary(currentDate);
+      // トランジション中は再読み込みしない
+      if (isLoading || isTransitioning) {
+        return;
       }
+
+      // 内部遷移フラグがセットされていれば再読み込みをスキップ
+      if (isInternalNavigationRef.current) {
+        isInternalNavigationRef.current = false; // リセット
+        return;
+      }
+
+      // 外部から戻ってきた場合のみ再読み込み（編集画面から戻った場合など）
+      loadDiary(currentDate);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentDate])
+    }, [currentDate, isTransitioning])
   );
 
   const formatDate = (dateString: string): string => {
@@ -94,11 +247,23 @@ const DiaryDetailScreen: React.FC = () => {
   const navigateToDate = async (targetDate: string, direction: 'prev' | 'next') => {
     if (isTransitioning) return;
 
+    // 内部遷移をマーク（useFocusEffectでの再読み込みをスキップするため）
+    // アニメーション開始前にセット
+    isInternalNavigationRef.current = true;
+
     setIsTransitioning(true);
 
     // 次のコンテンツを先にロード
     const nextEntry = await getDiaryByDate(targetDate);
     setNextDiary(nextEntry);
+
+    // 前後の日記情報を先に取得
+    const allDiaries = await loadDiaryEntries();
+    const nextIndex = allDiaries.findIndex((d) => d.date === targetDate);
+    const newAdjacentDates = {
+      prev: nextIndex < allDiaries.length - 1 ? allDiaries[nextIndex + 1]?.date : null,
+      next: nextIndex > 0 ? allDiaries[nextIndex - 1]?.date : null,
+    };
 
     // スライド方向を決定（次→左へ、前→右へ）
     const slideOutValue = direction === 'next' ? -SCREEN_WIDTH : SCREEN_WIDTH;
@@ -106,54 +271,100 @@ const DiaryDetailScreen: React.FC = () => {
 
     // 次のコンテンツの初期位置を設定
     nextSlideAnim.setValue(slideInStartValue);
-    nextFadeAnim.setValue(0);
+    nextFadeAnim.setValue(0.3); // 最初から少し見える状態でスタート
+
+    // カスタムイージング：滑らかな加速・減速
+    const easing = Easing.bezier(0.25, 0.1, 0.25, 1); // cubic-bezier(ease)
 
     // 同時アニメーション：現在のコンテンツがスライドアウト + 次のコンテンツがスライドイン
     Animated.parallel([
-      // 現在のコンテンツ: スライドアウト + フェードアウト
+      // 現在のコンテンツ: スライドアウト
       Animated.timing(currentSlideAnim, {
         toValue: slideOutValue,
         duration: ANIMATION_DURATION,
+        easing,
         useNativeDriver: true,
       }),
+      // 現在のコンテンツ: フェードアウト（少し速く）
       Animated.timing(currentFadeAnim, {
         toValue: 0,
-        duration: ANIMATION_DURATION,
+        duration: ANIMATION_DURATION * 0.7,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-      // 次のコンテンツ: スライドイン + フェードイン
+      // 次のコンテンツ: スライドイン
       Animated.timing(nextSlideAnim, {
         toValue: 0,
         duration: ANIMATION_DURATION,
+        easing,
         useNativeDriver: true,
       }),
-      Animated.timing(nextFadeAnim, {
-        toValue: 1,
-        duration: ANIMATION_DURATION,
-        useNativeDriver: true,
-      }),
-    ]).start(async () => {
-      // アニメーション完了後、状態を更新
-      setCurrentDate(targetDate);
-      setDiary(nextEntry);
-      setNextDiary(null);
-
-      // 前後の日記情報を更新
-      const allDiaries = await loadDiaryEntries();
-      const currentIndex = allDiaries.findIndex((d) => d.date === targetDate);
-      setAdjacentDates({
-        prev: currentIndex < allDiaries.length - 1 ? allDiaries[currentIndex + 1]?.date : null,
-        next: currentIndex > 0 ? allDiaries[currentIndex - 1]?.date : null,
-      });
-
-      // アニメーション値をリセット
+      // 次のコンテンツ: フェードイン（少し遅らせて開始）
+      Animated.sequence([
+        Animated.delay(ANIMATION_DURATION * 0.15),
+        Animated.timing(nextFadeAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATION * 0.85,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      // アニメーション値を先にリセット
       currentSlideAnim.setValue(0);
       currentFadeAnim.setValue(1);
       nextSlideAnim.setValue(0);
       nextFadeAnim.setValue(0);
 
+      // 状態を一括更新（バッチ処理される）
+      setDiary(nextEntry);
+      setAdjacentDates(newAdjacentDates);
+      setCurrentDate(targetDate);
+      setNextDiary(null);
       setIsTransitioning(false);
     });
+  };
+
+  // navigateToDateの参照をrefに保存
+  useEffect(() => {
+    navigateToDateRef.current = navigateToDate;
+  });
+
+  const renderAnswerCard = (
+    label: string,
+    content: string,
+    anim?: Animated.Value,
+  ) => {
+    if (!content || !content.trim()) return null;
+
+    const animatedStyle = anim
+      ? {
+          opacity: anim,
+          transform: [
+            {
+              translateY: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [15, 0],
+              }),
+            },
+          ],
+        }
+      : undefined;
+
+    return (
+      <View style={styles.section}>
+        <Animated.View style={[styles.card, animatedStyle]}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardLabelTag}>
+              <Text style={styles.cardLabel}>{label}</Text>
+            </View>
+          </View>
+          <View style={styles.cardBody}>
+            <Text style={styles.cardText}>{content.trim()}</Text>
+          </View>
+        </Animated.View>
+      </View>
+    );
   };
 
   if (isLoading) {
@@ -196,7 +407,7 @@ const DiaryDetailScreen: React.FC = () => {
         }}
       />
 
-      <View style={styles.contentContainer}>
+      <View style={styles.contentContainer} {...panResponder.panHandlers}>
         <Animated.View
           style={[
             styles.contentWrapper,
@@ -209,6 +420,7 @@ const DiaryDetailScreen: React.FC = () => {
           <ScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.content}
+            scrollEventThrottle={16}
           >
             {/* 日付表示とナビゲーション */}
             <View style={styles.dateNavigation}>
@@ -247,44 +459,17 @@ const DiaryDetailScreen: React.FC = () => {
               )}
             </View>
 
-            {diary.goodTime && (
-              <View style={styles.section}>
-                <Text style={styles.questionLabel}>
-                  {DIARY_QUESTIONS.goodTime.label}
-                </Text>
-                <View style={styles.answerContainer}>
-                  <Text style={styles.answerText}>
-                    {diary.goodTime}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {diary.wastedTime && (
-              <View style={styles.section}>
-                <Text style={styles.questionLabel}>
-                  {DIARY_QUESTIONS.wastedTime.label}
-                </Text>
-                <View style={styles.answerContainer}>
-                  <Text style={styles.answerText}>
-                    {diary.wastedTime}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {diary.tomorrow && (
-              <View style={styles.section}>
-                <Text style={styles.questionLabel}>
-                  {DIARY_QUESTIONS.tomorrow.label}
-                </Text>
-                <View style={styles.answerContainer}>
-                  <Text style={styles.answerText}>
-                    {diary.tomorrow}
-                  </Text>
-                </View>
-              </View>
-            )}
+            {[diary.goodTime, diary.wastedTime, diary.tomorrow]
+              .map((content, idx) => {
+                const labels = [
+                  DIARY_QUESTIONS.goodTime.label,
+                  DIARY_QUESTIONS.wastedTime.label,
+                  DIARY_QUESTIONS.tomorrow.label,
+                ];
+                return content && content.trim()
+                  ? renderAnswerCard(labels[idx], content, cardAnimations[idx])
+                  : null;
+              })}
           </ScrollView>
         </Animated.View>
 
@@ -341,44 +526,17 @@ const DiaryDetailScreen: React.FC = () => {
                 )}
               </View>
 
-              {nextDiary.goodTime && (
-                <View style={styles.section}>
-                  <Text style={styles.questionLabel}>
-                    {DIARY_QUESTIONS.goodTime.label}
-                  </Text>
-                  <View style={styles.answerContainer}>
-                    <Text style={styles.answerText}>
-                      {nextDiary.goodTime}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {nextDiary.wastedTime && (
-                <View style={styles.section}>
-                  <Text style={styles.questionLabel}>
-                    {DIARY_QUESTIONS.wastedTime.label}
-                  </Text>
-                  <View style={styles.answerContainer}>
-                    <Text style={styles.answerText}>
-                      {nextDiary.wastedTime}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {nextDiary.tomorrow && (
-                <View style={styles.section}>
-                  <Text style={styles.questionLabel}>
-                    {DIARY_QUESTIONS.tomorrow.label}
-                  </Text>
-                  <View style={styles.answerContainer}>
-                    <Text style={styles.answerText}>
-                      {nextDiary.tomorrow}
-                    </Text>
-                  </View>
-                </View>
-              )}
+              {[nextDiary.goodTime, nextDiary.wastedTime, nextDiary.tomorrow]
+                .map((content, idx) => {
+                  const labels = [
+                    DIARY_QUESTIONS.goodTime.label,
+                    DIARY_QUESTIONS.wastedTime.label,
+                    DIARY_QUESTIONS.tomorrow.label,
+                  ];
+                  return content && content.trim()
+                    ? renderAnswerCard(labels[idx], content)
+                    : null;
+                })}
             </ScrollView>
           </Animated.View>
         )}
@@ -467,26 +625,41 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
   },
-  questionLabel: {
-    fontSize: fonts.size.label,
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: spacing.lg,
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 157, 131, 0.12)',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  cardLabelTag: {
+    backgroundColor: 'rgba(139, 157, 131, 0.15)',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  cardLabel: {
+    fontSize: 12,
     color: colors.primary,
     fontFamily: fonts.family.bold,
-    backgroundColor: 'rgba(139, 157, 131, 0.15)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginBottom: spacing.sm,
-    alignSelf: 'flex-start',
-    overflow: 'hidden',
     ...textBase,
   },
-  answerContainer: {
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
-    paddingLeft: spacing.md,
-    paddingVertical: spacing.xs,
+  cardBody: {
+    flexDirection: 'column',
   },
-  answerText: {
+  cardText: {
+    flex: 1,
     fontSize: fonts.size.body,
     color: colors.text.primary,
     fontFamily: fonts.family.regular,
