@@ -48,6 +48,9 @@ const DiaryDetailScreen: React.FC = () => {
     prev: null,
     next: null,
   });
+  const [transitionAdjacentDates, setTransitionAdjacentDates] = useState<
+    { prev: string | null; next: string | null } | null
+  >(null);
 
   // アニメーション用（現在のコンテンツ）
   const currentSlideAnim = useRef(new Animated.Value(0)).current;
@@ -265,6 +268,9 @@ const DiaryDetailScreen: React.FC = () => {
       next: nextIndex > 0 ? allDiaries[nextIndex - 1]?.date : null,
     };
 
+    // 次のコンテンツ用のナビゲーションを先にセットしておく
+    setTransitionAdjacentDates(newAdjacentDates);
+
     // スライド方向を決定（次→左へ、前→右へ）
     const slideOutValue = direction === 'next' ? -SCREEN_WIDTH : SCREEN_WIDTH;
     const slideInStartValue = direction === 'next' ? SCREEN_WIDTH : -SCREEN_WIDTH;
@@ -322,6 +328,7 @@ const DiaryDetailScreen: React.FC = () => {
       setCurrentDate(targetDate);
       setNextDiary(null);
       setIsTransitioning(false);
+      setTransitionAdjacentDates(null);
     });
   };
 
@@ -376,6 +383,8 @@ const DiaryDetailScreen: React.FC = () => {
       </SafeAreaView>
     );
   }
+
+  const nextNavigationDates = transitionAdjacentDates ?? adjacentDates;
 
   if (!diary) {
     return (
@@ -433,7 +442,7 @@ const DiaryDetailScreen: React.FC = () => {
                   <Ionicons
                     name="caret-back"
                     size={18}
-                    color={!isTransitioning ? colors.primary : colors.border}
+                    color={colors.primary}
                   />
                 </TouchableOpacity>
               ) : (
@@ -451,7 +460,7 @@ const DiaryDetailScreen: React.FC = () => {
                   <Ionicons
                     name="caret-forward"
                     size={18}
-                    color={!isTransitioning ? colors.primary : colors.border}
+                    color={colors.primary}
                   />
                 </TouchableOpacity>
               ) : (
@@ -491,16 +500,16 @@ const DiaryDetailScreen: React.FC = () => {
             >
               {/* 日付表示とナビゲーション */}
               <View style={styles.dateNavigation}>
-                {adjacentDates.prev ? (
+                {nextNavigationDates.prev ? (
                   <TouchableOpacity
                     style={styles.dateNavButton}
-                    onPress={() => navigateToDate(adjacentDates.prev!, 'prev')}
+                    onPress={() => navigateToDate(nextNavigationDates.prev!, 'prev')}
                     disabled={isTransitioning}
                   >
                     <Ionicons
                       name="caret-back"
                       size={18}
-                      color={!isTransitioning ? colors.primary : colors.border}
+                      color={colors.primary}
                     />
                   </TouchableOpacity>
                 ) : (
@@ -509,16 +518,16 @@ const DiaryDetailScreen: React.FC = () => {
                 <View style={styles.dateTextContainer}>
                   <Text style={styles.dateText}>{formatDate(nextDiary.date)}</Text>
                 </View>
-                {adjacentDates.next ? (
+                {nextNavigationDates.next ? (
                   <TouchableOpacity
                     style={styles.dateNavButton}
-                    onPress={() => navigateToDate(adjacentDates.next!, 'next')}
+                    onPress={() => navigateToDate(nextNavigationDates.next!, 'next')}
                     disabled={isTransitioning}
                   >
                     <Ionicons
                       name="caret-forward"
                       size={18}
-                      color={!isTransitioning ? colors.primary : colors.border}
+                      color={colors.primary}
                     />
                   </TouchableOpacity>
                 ) : (

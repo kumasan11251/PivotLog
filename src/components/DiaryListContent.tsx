@@ -12,6 +12,7 @@ import {
   CalendarView,
   MonthSelector,
   EmptyList,
+  YearMonthPickerModal,
 } from './diary';
 
 type ViewMode = 'list' | 'calendar';
@@ -29,6 +30,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isYearMonthPickerVisible, setYearMonthPickerVisible] = useState(false);
 
   // 日記データの取得・管理
   const {
@@ -39,6 +41,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     isNextDisabled,
     selectedDate,
     setSelectedDate,
+    setYearMonth,
     goToPreviousMonth,
     goToNextMonth,
     loadDiaries,
@@ -90,6 +93,23 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     goToNextMonth();
     triggerMonthChangeAnimation();
   }, [goToNextMonth, triggerMonthChangeAnimation]);
+
+  const handleOpenYearMonthPicker = useCallback(() => {
+    setYearMonthPickerVisible(true);
+  }, []);
+
+  const handleCloseYearMonthPicker = useCallback(() => {
+    setYearMonthPickerVisible(false);
+  }, []);
+
+  const handleConfirmYearMonth = useCallback(
+    (year: number, month: number) => {
+      setYearMonth(year, month);
+      triggerMonthChangeAnimation();
+      setYearMonthPickerVisible(false);
+    },
+    [setYearMonth, triggerMonthChangeAnimation]
+  );
 
   // ========================================
   // ビューモード切り替え
@@ -167,6 +187,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         onPreviousMonth={handlePreviousMonth}
         onNextMonth={handleNextMonth}
         onViewModeChange={handleViewModeChange}
+        onMonthPress={handleOpenYearMonthPicker}
       />
 
       {viewMode === 'list' ? (
@@ -191,6 +212,14 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
           onNavigateToEntry={handleNavigateToEntry}
         />
       )}
+
+      <YearMonthPickerModal
+        visible={isYearMonthPickerVisible}
+        initialYear={selectedYear}
+        initialMonth={selectedMonth}
+        onClose={handleCloseYearMonthPicker}
+        onConfirm={handleConfirmYearMonth}
+      />
     </View>
   );
 };

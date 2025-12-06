@@ -14,6 +14,7 @@ interface UseDiaryListReturn {
   isNextDisabled: boolean;
   selectedDate: string | null;
   setSelectedDate: (date: string | null) => void;
+  setYearMonth: (year: number, month: number) => void;
   goToPreviousMonth: () => void;
   goToNextMonth: () => void;
   loadDiaries: () => Promise<void>;
@@ -80,6 +81,28 @@ export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDi
     await loadMonthData(selectedYear, selectedMonth, true);
   }, [loadMonthData, selectedYear, selectedMonth]);
 
+  const setYearMonth = useCallback(
+    (year: number, month: number) => {
+      if (Number.isNaN(year) || Number.isNaN(month)) return;
+      if (month < 1 || month > 12) return;
+
+      const today = new Date();
+      const target = new Date(year, month - 1, 1, 0, 0, 0, 0);
+      const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1, 0, 0, 0, 0);
+      if (target > thisMonth) {
+        setSelectedYear(today.getFullYear());
+        setSelectedMonth(today.getMonth() + 1);
+        setSelectedDate(null);
+        return;
+      }
+
+      setSelectedDate(null);
+      setSelectedYear(year);
+      setSelectedMonth(month);
+    },
+    []
+  );
+
   const goToPreviousMonth = useCallback(() => {
     setSelectedDate(null);
     if (selectedMonth === 1) {
@@ -129,5 +152,6 @@ export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDi
     goToPreviousMonth,
     goToNextMonth,
     loadDiaries,
+    setYearMonth,
   };
 };

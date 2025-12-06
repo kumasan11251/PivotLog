@@ -13,6 +13,7 @@ interface MonthSelectorProps {
   onPreviousMonth: () => void;
   onNextMonth: () => void;
   onViewModeChange: (mode: ViewMode) => void;
+  onMonthPress?: () => void;
 }
 
 const MonthSelector: React.FC<MonthSelectorProps> = ({
@@ -23,6 +24,7 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({
   onPreviousMonth,
   onNextMonth,
   onViewModeChange,
+  onMonthPress,
 }) => {
   return (
     <View style={styles.container}>
@@ -30,9 +32,16 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({
         <TouchableOpacity onPress={onPreviousMonth} style={styles.arrowButton}>
           <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.monthText}>
-          {selectedYear}年{selectedMonth}月
-        </Text>
+        <TouchableOpacity
+          onPress={onMonthPress}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          disabled={!onMonthPress}
+          style={styles.monthButton}
+        >
+          <Text style={styles.monthText}>
+            {selectedYear}年{selectedMonth}月
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={onNextMonth}
           style={styles.arrowButton}
@@ -97,12 +106,20 @@ const styles = StyleSheet.create({
   arrowButton: {
     padding: spacing.xs,
   },
+  monthButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: spacing.borderRadius.small,
+    borderWidth: spacing.borderWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    marginHorizontal: spacing.sm,
+  },
   monthText: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
     color: colors.text.primary,
-    marginHorizontal: spacing.md,
-    minWidth: 100,
+    minWidth: 90,
     textAlign: 'center',
     ...textBase,
   },
