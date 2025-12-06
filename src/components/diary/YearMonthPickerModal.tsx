@@ -27,9 +27,13 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
   }, []);
 
   useEffect(() => {
-    if (visible) {
+    if (!visible) return undefined;
+
+    const timer = setTimeout(() => {
       setSelection({ year: initialYear, month: initialMonth });
-    }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [visible, initialYear, initialMonth]);
 
   const isFutureMonth = useCallback(
@@ -211,7 +215,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   yearText: {
-    fontSize: fonts.size.headline,
+    fontSize: fonts.size.heading,
     fontFamily: fonts.family.bold,
     color: colors.text.primary,
     marginHorizontal: spacing.lg,
