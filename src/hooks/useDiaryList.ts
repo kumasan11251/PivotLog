@@ -18,6 +18,7 @@ interface UseDiaryListReturn {
   goToPreviousMonth: () => void;
   goToNextMonth: () => void;
   loadDiaries: () => Promise<void>;
+  removeDiaryFromCache: (id: string) => void;
 }
 
 // 月別キャッシュの型
@@ -80,6 +81,17 @@ export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDi
   const loadDiaries = useCallback(async () => {
     await loadMonthData(selectedYear, selectedMonth, true);
   }, [loadMonthData, selectedYear, selectedMonth]);
+
+  // キャッシュから特定の日記を削除（UI即時反映用）
+  const removeDiaryFromCache = useCallback((id: string) => {
+    // 全てのキャッシュから該当IDを削除
+    Object.keys(cacheRef.current).forEach((key) => {
+      cacheRef.current[key] = cacheRef.current[key].filter((diary) => diary.id !== id);
+    });
+
+    // 現在表示中のdiariesも更新
+    setDiaries((prev) => prev.filter((diary) => diary.id !== id));
+  }, []);
 
   const setYearMonth = useCallback(
     (year: number, month: number) => {
@@ -153,5 +165,6 @@ export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDi
     goToNextMonth,
     loadDiaries,
     setYearMonth,
+    removeDiaryFromCache,
   };
 };

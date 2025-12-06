@@ -45,6 +45,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     goToPreviousMonth,
     goToNextMonth,
     loadDiaries,
+    removeDiaryFromCache,
   } = useDiaryList({ shouldRefresh });
 
   // カードアニメーションの制御
@@ -78,6 +79,14 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
       navigation.navigate('DiaryEntry', { initialDate: date });
     },
     [navigation]
+  );
+
+  // 日記削除ハンドラー
+  const handleDeleteDiary = useCallback(
+    (id: string) => {
+      removeDiaryFromCache(id);
+    },
+    [removeDiaryFromCache]
   );
 
   // ========================================
@@ -150,12 +159,13 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         <DiaryCard
           entry={item}
           onPress={() => handleNavigateToDetail(item.date)}
+          onDelete={handleDeleteDiary}
           index={index}
           shouldAnimate={shouldAnimate}
         />
       );
     },
-    [getShouldAnimate, resetAnimationFlag, handleNavigateToDetail]
+    [getShouldAnimate, resetAnimationFlag, handleNavigateToDetail, handleDeleteDiary]
   );
 
   const keyExtractor = useCallback((item: DiaryEntry) => item.id, []);

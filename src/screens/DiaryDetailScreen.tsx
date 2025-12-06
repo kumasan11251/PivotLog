@@ -12,6 +12,7 @@ import {
   GestureResponderEvent,
   PanResponderGestureState,
   Easing,
+  Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,7 +20,7 @@ import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navig
 import { Ionicons } from '@expo/vector-icons';
 import type { DiaryDetailScreenNavigationProp, RootStackParamList } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
-import { getDiaryByDate, loadDiaryEntries, DiaryEntry } from '../utils/storage';
+import { getDiaryByDate, loadDiaryEntries, DiaryEntry, deleteDiaryEntry } from '../utils/storage';
 import { DIARY_QUESTIONS } from '../constants/diary';
 import ScreenHeader from '../components/common/ScreenHeader';
 
@@ -247,6 +248,34 @@ const DiaryDetailScreen: React.FC = () => {
     return `${year}年${month}月${day}日（${weekday}）`;
   };
 
+  // 削除確認ダイアログを表示
+  const handleDelete = useCallback(() => {
+    Alert.alert(
+      '記録を削除',
+      'この記録を削除しますか？\nこの操作は取り消せません。',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDiaryEntry(currentDate);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              navigation.goBack();
+            } catch (error) {
+              console.error('日記の削除に失敗しました:', error);
+              Alert.alert('エラー', '削除に失敗しました。もう一度お試しください。');
+            }
+          },
+        },
+      ]
+    );
+  }, [currentDate, navigation]);
+
   const navigateToDate = async (targetDate: string, direction: 'prev' | 'next') => {
     if (isTransitioning) return;
 
@@ -409,11 +438,19 @@ const DiaryDetailScreen: React.FC = () => {
           type: 'backIcon',
           onPress: () => navigation.goBack(),
         }}
-        rightAction={{
-          type: 'text',
-          label: '編集',
-          onPress: () => navigation.navigate('DiaryEntry', { initialDate: currentDate }),
-        }}
+        rightActions={[
+          {
+            type: 'icon',
+            iconName: 'trash-outline',
+            onPress: handleDelete,
+            color: colors.error,
+          },
+          {
+            type: 'text',
+            label: '編集',
+            onPress: () => navigation.navigate('DiaryEntry', { initialDate: currentDate }),
+          },
+        ]}
       />
 
       <View style={styles.contentContainer} {...panResponder.panHandlers}>

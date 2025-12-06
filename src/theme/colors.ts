@@ -24,6 +24,9 @@ export const colors = {
     background: '#E0E0E0', // 進捗バー背景
   },
 
+  // エラー・警告
+  error: '#E57373', // エラー・削除アクション用
+
   // シャドウ
   shadow: '#000',
 } as const;
