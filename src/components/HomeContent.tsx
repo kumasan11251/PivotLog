@@ -119,7 +119,12 @@ const HomeContent: React.FC = () => {
       reloadSettings();
       refreshTodayDiary();
       triggerFocusAnimation();
-    }, [refreshTodayDiary, triggerFocusAnimation])
+
+      // 画面を離れる時に祝福メッセージをクリア（再表示防止）
+      return () => {
+        clearJustCompleted();
+      };
+    }, [refreshTodayDiary, triggerFocusAnimation, clearJustCompleted])
   );
 
   // ナビゲーションハンドラ
