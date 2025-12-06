@@ -7,6 +7,7 @@ import {
   PLACEHOLDERS,
   ENCOURAGEMENT_MESSAGES,
   getRandomElement,
+  getDailyElement,
 } from '../constants/diaryEntry';
 import { formatDateToString } from '../utils/dateUtils';
 import * as Haptics from 'expo-haptics';
@@ -89,15 +90,21 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
   // 今日かどうか
   const isToday = new Date(selectedDate).toDateString() === new Date().toDateString();
 
-  // 励ましメッセージ（初回レンダリング時に固定）
-  const encouragement = useMemo(() => getRandomElement(ENCOURAGEMENT_MESSAGES), []);
+  // 励ましメッセージ（今日の日付ベースで固定 - 同じ日なら常に同じメッセージ）
+  const encouragement = useMemo(() => {
+    const today = new Date();
+    return getDailyElement(ENCOURAGEMENT_MESSAGES, today);
+  }, []);
 
-  // ランダムプレースホルダー（初回レンダリング時に固定）
-  const placeholders = useMemo(() => ({
-    goodTime: getRandomElement(PLACEHOLDERS.goodTime),
-    wastedTime: getRandomElement(PLACEHOLDERS.wastedTime),
-    tomorrow: getRandomElement(PLACEHOLDERS.tomorrow),
-  }), []);
+  // ランダムプレースホルダー（今日の日付ベースで固定 - 同じ日なら常に同じプレースホルダー）
+  const placeholders = useMemo(() => {
+    const today = new Date();
+    return {
+      goodTime: getDailyElement(PLACEHOLDERS.goodTime, today, 0),
+      wastedTime: getDailyElement(PLACEHOLDERS.wastedTime, today, 1),
+      tomorrow: getDailyElement(PLACEHOLDERS.tomorrow, today, 2),
+    };
+  }, []);
 
   // 進捗計算
   const progress = useMemo(() => {
