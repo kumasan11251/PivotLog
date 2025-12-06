@@ -71,22 +71,15 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
   const handleSelectMonth = useCallback(
     (selectedMonth: number) => {
       if (isFutureMonth(year, selectedMonth)) {
-        if (year === currentYear) {
-          setSelection({ year, month: currentMonth });
-        }
         return;
       }
 
-      setSelection({ year, month: selectedMonth });
+      // 月選択で即確定してモーダルを閉じる
+      onConfirm(year, selectedMonth);
+      onClose();
     },
-    [currentMonth, currentYear, isFutureMonth, year]
+    [isFutureMonth, year, onConfirm, onClose]
   );
-
-  const handleConfirm = useCallback(() => {
-    const { safeYear, safeMonth } = clampToPast(year, month);
-    onConfirm(safeYear, safeMonth);
-    onClose();
-  }, [clampToPast, month, onClose, onConfirm, year]);
 
   const nextYearDisabled = isFutureMonth(year + 1, month);
 
@@ -106,13 +99,13 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
               <View style={styles.header}>
                 <Text style={styles.title}>年月を選択</Text>
                 <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close" size={22} color={colors.text.primary} />
+                  <Ionicons name="close" size={18} color={colors.text.primary} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.yearRow}>
                 <TouchableOpacity onPress={() => handleYearChange(-1)} style={styles.yearButton}>
-                  <Ionicons name="chevron-back" size={22} color={colors.text.primary} />
+                  <Ionicons name="chevron-back" size={18} color={colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.yearText}>{year}年</Text>
                 <TouchableOpacity
@@ -122,7 +115,7 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
                 >
                   <Ionicons
                     name="chevron-forward"
-                    size={22}
+                    size={18}
                     color={nextYearDisabled ? colors.text.secondary : colors.text.primary}
                   />
                 </TouchableOpacity>
@@ -156,11 +149,8 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
               </View>
 
               <View style={styles.footer}>
-                <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                  <Text style={styles.cancelText}>キャンセル</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.confirmButton} onPress={handleConfirm}>
-                  <Text style={styles.confirmText}>決定</Text>
+                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                  <Text style={styles.closeButtonText}>閉じる</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -177,28 +167,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   content: {
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 300,
     backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
-    padding: spacing.lg,
+    padding: spacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   title: {
-    fontSize: fonts.size.title,
+    fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
     color: colors.text.primary,
     ...textBase,
@@ -207,30 +197,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   yearButton: {
-    padding: spacing.sm,
+    padding: spacing.xs,
     borderRadius: spacing.borderRadius.small,
     backgroundColor: colors.background,
   },
   yearText: {
-    fontSize: fonts.size.heading,
+    fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
     color: colors.text.primary,
-    marginHorizontal: spacing.lg,
+    marginHorizontal: spacing.md,
     ...textBase,
   },
   monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   monthCell: {
-    width: '22%',
-    marginBottom: spacing.sm,
-    paddingVertical: spacing.md,
+    width: '23%',
+    marginBottom: spacing.xs,
+    paddingVertical: spacing.sm,
     borderRadius: spacing.borderRadius.small,
     alignItems: 'center',
     backgroundColor: colors.background,
@@ -244,7 +234,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   monthText: {
-    fontSize: fonts.size.body,
+    fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
     color: colors.text.primary,
     ...textBase,
@@ -257,31 +247,16 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
   },
-  cancelButton: {
-    paddingVertical: spacing.sm,
+  closeButton: {
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.lg,
-    borderRadius: spacing.borderRadius.medium,
-    backgroundColor: colors.background,
-    borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
-  },
-  cancelText: {
-    fontSize: fonts.size.body,
-    fontFamily: fonts.family.bold,
-    color: colors.text.primary,
-    ...textBase,
-  },
-  confirmButton: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: spacing.borderRadius.medium,
+    borderRadius: spacing.borderRadius.small,
     backgroundColor: colors.primary,
-    marginLeft: spacing.md,
   },
-  confirmText: {
-    fontSize: fonts.size.body,
+  closeButtonText: {
+    fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
     color: colors.text.inverse,
     ...textBase,

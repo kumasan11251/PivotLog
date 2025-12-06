@@ -129,11 +129,11 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
             <View style={styles.content}>
               <View style={styles.header}>
                 <TouchableOpacity onPress={() => handleMonthChange(-1)}>
-                  <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+                  <Ionicons name="chevron-back" size={20} color={colors.text.primary} />
                 </TouchableOpacity>
                 <Text style={styles.monthLabel}>{monthLabel}</Text>
                 <TouchableOpacity onPress={() => handleMonthChange(1)}>
-                  <Ionicons name="chevron-forward" size={24} color={colors.text.primary} />
+                  <Ionicons name="chevron-forward" size={20} color={colors.text.primary} />
                 </TouchableOpacity>
               </View>
 
@@ -154,51 +154,66 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
               </View>
 
               {isLoading ? (
-                <View style={styles.loaderContainer}>
-                  <ActivityIndicator color={colors.primary} />
+                <View style={styles.calendarContainer}>
+                  <View style={styles.loaderContainer}>
+                    <ActivityIndicator color={colors.primary} />
+                  </View>
                 </View>
               ) : (
-                weeks.map((week, weekIndex) => (
-                  <View key={`week-${weekIndex}`} style={styles.weekRow}>
-                    {week.days.map((calendarDay, dayIndex) => {
-                      const { day, hasDiary, dateString, isToday, dayOfWeek } = calendarDay;
-                      const isSelected = dateString === internalSelectedDate;
+                <View style={styles.calendarContainer}>
+                  {/* 常に6週分のスペースを確保 */}
+                  {Array.from({ length: 6 }).map((_, weekIndex) => {
+                    const week = weeks[weekIndex];
+                    return (
+                      <View key={`week-${weekIndex}`} style={styles.weekRow}>
+                        {week ? (
+                          week.days.map((calendarDay, dayIndex) => {
+                            const { day, hasDiary, dateString, isToday, dayOfWeek } = calendarDay;
+                            const isSelected = dateString === internalSelectedDate;
 
-                      return (
-                        <TouchableOpacity
-                          key={`day-${dayIndex}`}
-                          style={styles.dayCell}
-                          onPress={() => handleDayPress(day)}
-                          disabled={day === null}
-                        >
-                          {day !== null && (
-                            <View
-                              style={[
-                                styles.dayContent,
-                                hasDiary && !isToday && !isSelected && styles.hasDiaryContent,
-                                isToday && styles.todayContent,
-                                isSelected && !isToday && styles.selectedContent,
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.dayNumber,
-                                  dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && styles.sundayText,
-                                  dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && styles.saturdayText,
-                                  hasDiary && !isToday && !isSelected && styles.hasDiaryText,
-                                  isToday && styles.todayText,
-                                  isSelected && !isToday && styles.selectedText,
-                                ]}
+                            return (
+                              <TouchableOpacity
+                                key={`day-${dayIndex}`}
+                                style={styles.dayCell}
+                                onPress={() => handleDayPress(day)}
+                                disabled={day === null}
                               >
-                                {day}
-                              </Text>
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ))
+                                {day !== null && (
+                                  <View
+                                    style={[
+                                      styles.dayContent,
+                                      hasDiary && !isToday && !isSelected && styles.hasDiaryContent,
+                                      isToday && styles.todayContent,
+                                      isSelected && !isToday && styles.selectedContent,
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.dayNumber,
+                                        dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && styles.sundayText,
+                                        dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && styles.saturdayText,
+                                        hasDiary && !isToday && !isSelected && styles.hasDiaryText,
+                                        isToday && styles.todayText,
+                                        isSelected && !isToday && styles.selectedText,
+                                      ]}
+                                    >
+                                      {day}
+                                    </Text>
+                                  </View>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })
+                        ) : (
+                          // 空の週行（高さを維持するため）
+                          Array.from({ length: 7 }).map((_, dayIndex) => (
+                            <View key={`empty-day-${dayIndex}`} style={styles.dayCell} />
+                          ))
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
               )}
 
               <TouchableOpacity style={styles.closeButton} onPress={onClose}>
@@ -218,68 +233,71 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   content: {
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 320,
     backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   monthLabel: {
-    fontSize: fonts.size.title,
+    fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
     color: colors.text.primary,
     ...textBase,
   },
   weekdayHeader: {
     flexDirection: 'row',
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.xs,
+    marginBottom: 2,
+    paddingHorizontal: 2,
   },
   weekdayCell: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: spacing.xs,
+    paddingVertical: 2,
   },
   weekdayText: {
-    fontSize: fonts.size.labelSmall,
+    fontSize: 11,
     fontFamily: fonts.family.bold,
     color: colors.text.secondary,
     ...textBase,
   },
   weekRow: {
     flexDirection: 'row',
-    marginBottom: spacing.xs,
+    marginBottom: 2,
+  },
+  calendarContainer: {
+    minHeight: 222, // 6週分の高さを固定（37px × 6）
   },
   dayCell: {
     flex: 1,
-    aspectRatio: 1,
+    height: 37, // aspectRatioの代わりに固定高さ
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 2,
+    padding: 1,
   },
   dayContent: {
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: spacing.borderRadius.small,
+    borderRadius: 4,
   },
   hasDiaryContent: {
-    backgroundColor: 'rgba(139, 157, 131, 0.25)',
+    backgroundColor: 'rgba(139, 157, 131, 0.2)',
   },
   todayContent: {
     backgroundColor: colors.primary,
@@ -288,7 +306,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text.secondary,
   },
   dayNumber: {
-    fontSize: fonts.size.label,
+    fontSize: 13,
     fontFamily: fonts.family.regular,
     color: colors.text.primary,
     ...textBase,
@@ -312,19 +330,19 @@ const styles = StyleSheet.create({
     color: '#64B5F6',
   },
   loaderContainer: {
-    paddingVertical: spacing.lg,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeButton: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: spacing.borderRadius.medium,
-    paddingVertical: spacing.md,
+    borderRadius: spacing.borderRadius.small,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: fonts.size.body,
+    fontSize: fonts.size.label,
     color: colors.text.inverse,
     fontFamily: fonts.family.bold,
     ...textBase,
