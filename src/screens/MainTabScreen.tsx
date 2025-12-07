@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
@@ -16,22 +16,22 @@ const MainTabScreen: React.FC = () => {
   const initialTab = route.params?.initialTab ?? 'home';
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
-  // パラメータが変わったときにタブを更新
-  useEffect(() => {
-    if (route.params?.initialTab) {
-      setActiveTab(route.params.initialTab);
-    }
-  }, [route.params?.initialTab]);
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       // 画面がフォーカスされたら再読み込み（設定画面から戻った時など）
       setShouldRefresh(true);
       // すぐにリセットして次回のトリガーに備える
       const timer = setTimeout(() => setShouldRefresh(false), 100);
+
+      // パラメータで指定されたタブに切り替え
+      if (route.params?.initialTab) {
+        setActiveTab(route.params.initialTab);
+      }
+
       return () => clearTimeout(timer);
-    }, [])
+    }, [route.params])
   );
 
   return (

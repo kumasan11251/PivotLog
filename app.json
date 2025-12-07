@@ -19,7 +19,13 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ja",
-        "CFBundleLocalizations": ["ja", "en"]
+        "CFBundleLocalizations": [
+          "ja",
+          "en",
+          "ja",
+          "en"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -47,6 +53,11 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "41c32323-fec2-4cb3-bed7-afd879da5ea4"
+      }
+    }
   }
 }
