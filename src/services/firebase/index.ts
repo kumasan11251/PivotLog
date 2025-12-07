@@ -11,14 +11,23 @@ export {
   signUpWithEmail,
   signInWithEmail,
   signInAnonymously,
+  signInWithGoogle,
+  signInWithApple,
   signOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
   linkAnonymousAccountWithEmail,
+  linkAnonymousAccountWithGoogle,
+  linkAnonymousAccountWithApple,
+  linkAccountWithEmail,
+  linkAccountWithGoogle,
+  getLinkedProviders,
+  isLinkedWithProvider,
+  isAnonymousUser,
   deleteAccount,
   getErrorMessage,
 } from './auth';
-export type { User } from './auth';
+export type { User, AuthProvider } from './auth';
 
 // Firestoreサービス
 export {

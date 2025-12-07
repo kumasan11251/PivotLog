@@ -3,8 +3,55 @@
  * ユーザー認証関連の機能を提供
  */
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import { Platform } from 'react-native';
+
+// Apple認証はiOSのみでインポート
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const appleAuth = Platform.OS === 'ios' ? require('@invertase/react-native-apple-authentication').appleAuth : null;
 
 export type User = FirebaseAuthTypes.User;
+
+// 認証プロバイダーの種類
+export type AuthProvider = 'password' | 'google.com' | 'apple.com' | 'anonymous';
+
+/**
+ * 現在のユーザーの連携済みプロバイダーを取得
+ */
+export const getLinkedProviders = (): AuthProvider[] => {
+  const currentUser = auth().currentUser;
+  if (!currentUser) {
+    return [];
+  }
+  return currentUser.providerData.map(provider => provider.providerId as AuthProvider);
+};
+
+/**
+ * 指定したプロバイダーで連携済みかどうかを確認
+ */
+export const isLinkedWithProvider = (providerId: AuthProvider): boolean => {
+  const providers = getLinkedProviders();
+  return providers.includes(providerId);
+};
+
+/**
+ * 匿名ユーザーかどうかを確認
+ */
+export const isAnonymousUser = (): boolean => {
+  const currentUser = auth().currentUser;
+  return currentUser?.isAnonymous ?? false;
+};
+
+// Google Sign-In の設定
+GoogleSignin.configure({
+  webClientId: '882479887406-fu7bih5n3ddlppr1du8qqecrcf0dstnf.apps.googleusercontent.com',
+  // iOSの場合はGoogleService-Info.plistからCLIENT_IDが自動的に読み込まれる
+  // offlineAccessを有効にしてrefresh tokenを取得
+  offlineAccess: true,
+});
 
 /**
  * 現在のユーザーを取得
@@ -100,9 +147,9 @@ export const onAuthStateChanged = (
 };
 
 /**
- * 匿名アカウントをメールアカウントにアップグレード
+ * 現在のアカウントにメール認証を追加（匿名・既存アカウント両対応）
  */
-export const linkAnonymousAccountWithEmail = async (
+export const linkAccountWithEmail = async (
   email: string,
   password: string
 ): Promise<User> => {
@@ -114,10 +161,200 @@ export const linkAnonymousAccountWithEmail = async (
       throw new Error('ログインしていません');
     }
 
+    // 既にメール認証で連携済みの場合はエラー
+    if (isLinkedWithProvider('password')) {
+      throw new Error('既にメールアドレスで連携済みです');
+    }
+
     const userCredential = await currentUser.linkWithCredential(credential);
     return userCredential.user;
   } catch (error) {
-    console.error('アカウントリンクエラー:', error);
+    console.error('メールアカウントリンクエラー:', error);
+    throw error;
+  }
+};
+
+/**
+ * 匿名アカウントをメールアカウントにアップグレード（後方互換性のため残す）
+ */
+export const linkAnonymousAccountWithEmail = linkAccountWithEmail;
+
+/**
+ * Googleでサインイン
+ */
+export const signInWithGoogle = async (): Promise<User> => {
+  try {
+    // Google Play Servicesが利用可能か確認
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+    // 既存のサインインセッションをクリア
+    try {
+      await GoogleSignin.signOut();
+    } catch {
+      // サインアウトエラーは無視（サインインしていない場合など）
+    }
+
+    // Googleサインインフローを開始
+    const signInResult = await GoogleSignin.signIn();
+
+    // IDトークンを取得
+    const idToken = signInResult.data?.idToken;
+    if (!idToken) {
+      throw new Error('Google認証に失敗しました（IDトークンが取得できません）');
+    }
+
+    // Firebase認証情報を作成
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+
+    // Firebaseでサインイン
+    const userCredential = await auth().signInWithCredential(googleCredential);
+    return userCredential.user;
+  } catch (error) {
+    console.error('Googleサインインエラー:', error);
+    throw error;
+  }
+};
+
+/**
+ * 現在のアカウントにGoogle認証を追加（匿名・既存アカウント両対応）
+ */
+export const linkAccountWithGoogle = async (): Promise<User> => {
+  try {
+    // 既にGoogle認証で連携済みの場合はエラー
+    if (isLinkedWithProvider('google.com')) {
+      throw new Error('既にGoogleアカウントで連携済みです');
+    }
+
+    // Google Play Servicesが利用可能か確認
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+    // 既存のサインインセッションをクリア
+    try {
+      await GoogleSignin.signOut();
+    } catch {
+      // サインアウトエラーは無視（サインインしていない場合など）
+    }
+
+    // Googleサインインフローを開始
+    const signInResult = await GoogleSignin.signIn();
+
+    // IDトークンを取得
+    const idToken = signInResult.data?.idToken;
+    if (!idToken) {
+      throw new Error('Google認証に失敗しました（IDトークンが取得できません）');
+    }
+
+    // Firebase認証情報を作成
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      throw new Error('ログインしていません');
+    }
+
+    // 現在のアカウントにGoogleアカウントをリンク
+    const userCredential = await currentUser.linkWithCredential(googleCredential);
+    return userCredential.user;
+  } catch (error) {
+    console.error('Googleアカウントリンクエラー:', error);
+    throw error;
+  }
+};
+
+/**
+ * 匿名アカウントをGoogleアカウントにアップグレード（後方互換性のため残す）
+ */
+export const linkAnonymousAccountWithGoogle = linkAccountWithGoogle;
+
+/**
+ * Apple でサインイン（iOS のみ）
+ */
+export const signInWithApple = async (): Promise<User> => {
+  if (Platform.OS !== 'ios' || !appleAuth) {
+    throw new Error('AppleサインインはiOSのみ対応しています');
+  }
+
+  try {
+    // Appleサインインリクエストを実行
+    const appleAuthRequestResponse = await appleAuth.performRequest({
+      requestedOperation: appleAuth.Operation.LOGIN,
+      requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+    });
+
+    // 認証状態を確認
+    const credentialState = await appleAuth.getCredentialStateForUser(
+      appleAuthRequestResponse.user
+    );
+
+    if (credentialState !== appleAuth.State.AUTHORIZED) {
+      throw new Error('Apple認証が承認されませんでした');
+    }
+
+    const { identityToken, nonce } = appleAuthRequestResponse;
+    if (!identityToken) {
+      throw new Error('Apple認証に失敗しました（IDトークンが取得できません）');
+    }
+
+    // Firebase認証情報を作成
+    const appleCredential = auth.AppleAuthProvider.credential(
+      identityToken,
+      nonce
+    );
+
+    // Firebaseでサインイン
+    const userCredential = await auth().signInWithCredential(appleCredential);
+    return userCredential.user;
+  } catch (error) {
+    console.error('Appleサインインエラー:', error);
+    throw error;
+  }
+};
+
+/**
+ * 匿名アカウントをAppleアカウントにアップグレード（iOS のみ）
+ */
+export const linkAnonymousAccountWithApple = async (): Promise<User> => {
+  if (Platform.OS !== 'ios' || !appleAuth) {
+    throw new Error('AppleサインインはiOSのみ対応しています');
+  }
+
+  try {
+    // Appleサインインリクエストを実行
+    const appleAuthRequestResponse = await appleAuth.performRequest({
+      requestedOperation: appleAuth.Operation.LOGIN,
+      requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+    });
+
+    // 認証状態を確認
+    const credentialState = await appleAuth.getCredentialStateForUser(
+      appleAuthRequestResponse.user
+    );
+
+    if (credentialState !== appleAuth.State.AUTHORIZED) {
+      throw new Error('Apple認証が承認されませんでした');
+    }
+
+    const { identityToken, nonce } = appleAuthRequestResponse;
+    if (!identityToken) {
+      throw new Error('Apple認証に失敗しました（IDトークンが取得できません）');
+    }
+
+    // Firebase認証情報を作成
+    const appleCredential = auth.AppleAuthProvider.credential(
+      identityToken,
+      nonce
+    );
+
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      throw new Error('ログインしていません');
+    }
+
+    // 匿名アカウントとAppleアカウントをリンク
+    const userCredential = await currentUser.linkWithCredential(appleCredential);
+    return userCredential.user;
+  } catch (error) {
+    console.error('Appleアカウントリンクエラー:', error);
     throw error;
   }
 };
@@ -146,6 +383,23 @@ export const deleteAccount = async (): Promise<void> => {
 export const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     const errorCode = (error as FirebaseAuthTypes.NativeFirebaseAuthError).code;
+    const errorMessage = error.message;
+
+    // Google Sign-In エラー
+    if (errorMessage?.includes('SIGN_IN_CANCELLED') || errorCode === String(statusCodes.SIGN_IN_CANCELLED)) {
+      return 'サインインがキャンセルされました';
+    }
+    if (errorMessage?.includes('IN_PROGRESS') || errorCode === String(statusCodes.IN_PROGRESS)) {
+      return 'サインイン処理中です';
+    }
+    if (errorMessage?.includes('PLAY_SERVICES_NOT_AVAILABLE') || errorCode === String(statusCodes.PLAY_SERVICES_NOT_AVAILABLE)) {
+      return 'Google Play Servicesが利用できません';
+    }
+
+    // Apple Sign-In エラー
+    if (errorMessage?.includes('1001') || errorMessage?.includes('canceled')) {
+      return 'サインインがキャンセルされました';
+    }
 
     switch (errorCode) {
       // ユーザー登録関連

@@ -16,6 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kumasan11251.pivotlog",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "CFBundleDevelopmentRegion": "ja",
         "CFBundleLocalizations": ["ja", "en"]
@@ -37,6 +38,7 @@
     "plugins": [
       "expo-font",
       "@react-native-firebase/app",
+      "@react-native-google-signin/google-signin",
       [
         "expo-build-properties",
         {
