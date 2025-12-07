@@ -17,6 +17,7 @@ import {
   signInWithEmail,
   signUpWithEmail,
   signInAnonymously,
+  signInWithGoogle,
   sendPasswordResetEmail,
   getErrorMessage,
 } from '../services/firebase';
@@ -29,6 +30,7 @@ const AuthScreen: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -78,6 +80,20 @@ const AuthScreen: React.FC = () => {
       setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setError(null);
+    setIsGoogleLoading(true);
+
+    try {
+      await signInWithGoogle();
+      // 認証成功後はAuthProviderが自動的に状態を更新
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -213,7 +229,7 @@ const AuthScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* 匿名ログイン */}
+          {/* その他のログイン方法 */}
           <View style={styles.anonymousContainer}>
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
@@ -221,10 +237,24 @@ const AuthScreen: React.FC = () => {
               <View style={styles.dividerLine} />
             </View>
 
+            {/* Googleログイン */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleLogin}
+              disabled={isLoading || isGoogleLoading}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator color={colors.text.primary} size="small" />
+              ) : (
+                <Text style={styles.googleButtonText}>Googleでログイン</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* 匿名ログイン */}
             <TouchableOpacity
               style={styles.anonymousButton}
               onPress={handleAnonymousLogin}
-              disabled={isLoading}
+              disabled={isLoading || isGoogleLoading}
             >
               <Text style={styles.anonymousButtonText}>
                 ログインせずに始める
@@ -361,6 +391,26 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.label,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: spacing.borderRadius.medium,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    width: '100%',
+    marginBottom: spacing.sm,
+  },
+  googleButtonText: {
+    fontSize: fonts.size.body,
+    color: colors.text.primary,
+    fontFamily: fonts.family.regular,
+    fontWeight: fonts.weight.medium,
     ...textBase,
   },
   anonymousButton: {

@@ -13,6 +13,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
 import EditLifespanScreen from './src/screens/EditLifespanScreen';
 import LinkAccountScreen from './src/screens/LinkAccountScreen';
+import AuthScreen from './src/screens/AuthScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
@@ -108,15 +109,20 @@ function MainNavigator() {
 
 // ルートナビゲーション（認証状態に応じて切り替え）
 function RootNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, showAuthScreen } = useAuth();
 
-  if (isLoading || !isAuthenticated) {
-    // 認証処理中（自動匿名ログイン含む）
+  if (isLoading) {
+    // 認証処理中
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
+  }
+
+  // ログアウト後は認証画面を表示
+  if (showAuthScreen || !isAuthenticated) {
+    return <AuthScreen />;
   }
 
   return <MainNavigator />;

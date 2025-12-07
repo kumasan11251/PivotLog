@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   ScrollView,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
@@ -23,6 +24,8 @@ import {
   getLinkedProviders,
   isAnonymousUser,
   getErrorMessage,
+  signInWithEmail,
+  signInWithGoogle,
 } from '../services/firebase';
 import type { AuthProvider } from '../services/firebase';
 import type { LinkAccountScreenNavigationProp } from '../types/navigation';
@@ -73,7 +76,15 @@ const LinkAccountScreen: React.FC = () => {
   const [linkedProviders, setLinkedProviders] = useState<AuthProvider[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(true);
 
-  const isAnyLoading = isLoading || isGoogleLoading;
+  // 既存アカウントログイン用のstate
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [isGoogleLoginLoading, setIsGoogleLoginLoading] = useState(false);
+
+  const isAnyLoading = isLoading || isGoogleLoading || isLoginLoading || isGoogleLoginLoading;
 
   // 連携状態を更新
   const updateLinkedProviders = useCallback(() => {
@@ -163,6 +174,54 @@ const LinkAccountScreen: React.FC = () => {
   // Apple連携は Apple Developer Program 登録後に有効化
   // const handleLinkWithApple = async () => { ... };
 
+  // 既存アカウントでログイン（メール）
+  const handleLoginWithEmail = async () => {
+    setLoginError(null);
+
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      setLoginError('メールアドレスとパスワードを入力してください');
+      return;
+    }
+
+    setIsLoginLoading(true);
+
+    try {
+      await signInWithEmail(loginEmail, loginPassword);
+      setShowLoginModal(false);
+      setLoginEmail('');
+      setLoginPassword('');
+      Alert.alert(
+        'ログイン成功',
+        'アカウントにログインしました。データが復元されました。',
+        [{ text: 'OK' }]
+      );
+    } catch (err) {
+      setLoginError(getErrorMessage(err));
+    } finally {
+      setIsLoginLoading(false);
+    }
+  };
+
+  // 既存アカウントでログイン（Google）
+  const handleLoginWithGoogle = async () => {
+    setLoginError(null);
+    setIsGoogleLoginLoading(true);
+
+    try {
+      await signInWithGoogle();
+      setShowLoginModal(false);
+      Alert.alert(
+        'ログイン成功',
+        'Googleアカウントでログインしました。データが復元されました。',
+        [{ text: 'OK' }]
+      );
+    } catch (err) {
+      setLoginError(getErrorMessage(err));
+    } finally {
+      setIsGoogleLoginLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScreenHeader
@@ -215,21 +274,28 @@ const LinkAccountScreen: React.FC = () => {
           {/* ソーシャルログイン */}
           <View style={styles.socialContainer}>
             {!isLinkedWith('google.com') ? (
-              <TouchableOpacity
-                style={styles.socialButton}
-                onPress={handleLinkWithGoogle}
-                disabled={isAnyLoading}
-                activeOpacity={0.7}
-              >
-                {isGoogleLoading ? (
-                  <ActivityIndicator color={colors.text.primary} size="small" />
-                ) : (
-                  <>
-                    <GoogleIcon size={20} />
-                    <Text style={styles.socialButtonText}>Googleで連携</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={styles.socialButton}
+                  onPress={handleLinkWithGoogle}
+                  disabled={isAnyLoading}
+                  activeOpacity={0.7}
+                >
+                  {isGoogleLoading ? (
+                    <ActivityIndicator color={colors.text.primary} size="small" />
+                  ) : (
+                    <>
+                      <GoogleIcon size={20} />
+                      <Text style={styles.socialButtonText}>Googleで連携</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <View style={styles.googleNoteContainer}>
+                  <Text style={styles.googleNoteText}>
+                    ⚠️ 現在テスト版のため、Googleで連携するには事前に開発者へGoogleアカウントのメールアドレスをお知らせください。
+                  </Text>
+                </View>
+              </>
             ) : (
               <View style={[styles.socialButton, styles.linkedButton]}>
                 <GoogleIcon size={20} />
@@ -252,6 +318,11 @@ const LinkAccountScreen: React.FC = () => {
           {/* メールフォーム - メール未連携の場合のみ表示 */}
           {!isLinkedWith('password') ? (
             <View style={styles.form}>
+              <View style={styles.emailFormHeader}>
+                <Text style={styles.emailFormNote}>
+                  💡 メールアドレスで連携後も、同じGoogleアカウントであれば後からGoogle連携を追加できます。
+                </Text>
+              </View>
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>メールアドレス</Text>
                 <TextInput
@@ -333,8 +404,143 @@ const LinkAccountScreen: React.FC = () => {
               ※ 連携後も現在のデータはそのまま引き継がれます
             </Text>
           </View>
+
+          {/* 既存アカウントでログインセクション - 匿名ユーザーのみ表示 */}
+          {isAnonymous && (
+            <View style={styles.existingAccountContainer}>
+              <View style={styles.existingAccountDivider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>既にアカウントをお持ちの方</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              <Text style={styles.existingAccountDescription}>
+                以前登録したアカウントがある場合は、そのアカウントでログインできます。
+                現在のデータは破棄され、既存アカウントのデータに切り替わります。
+              </Text>
+              <TouchableOpacity
+                style={styles.existingAccountButton}
+                onPress={() => setShowLoginModal(true)}
+                disabled={isAnyLoading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.existingAccountButtonText}>
+                  既存アカウントでログイン
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* 既存アカウントログインモーダル */}
+      <Modal
+        visible={showLoginModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowLoginModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowLoginModal(false);
+                setLoginEmail('');
+                setLoginPassword('');
+                setLoginError(null);
+              }}
+              disabled={isLoginLoading || isGoogleLoginLoading}
+            >
+              <Text style={styles.modalCloseButton}>キャンセル</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>既存アカウントでログイン</Text>
+            <View style={styles.modalHeaderSpacer} />
+          </View>
+
+          <ScrollView
+            style={styles.modalContent}
+            contentContainerStyle={styles.modalScrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.modalWarning}>
+              <Text style={styles.modalWarningText}>
+                ⚠️ ログインすると現在のデータは破棄され、選択したアカウントのデータに切り替わります。
+              </Text>
+            </View>
+
+            {/* Googleログイン */}
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={handleLoginWithGoogle}
+              disabled={isLoginLoading || isGoogleLoginLoading}
+              activeOpacity={0.7}
+            >
+              {isGoogleLoginLoading ? (
+                <ActivityIndicator color={colors.text.primary} size="small" />
+              ) : (
+                <>
+                  <GoogleIcon size={20} />
+                  <Text style={styles.socialButtonText}>Googleでログイン</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.dividerContainer}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>または</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* メールログインフォーム */}
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>メールアドレス</Text>
+                <TextInput
+                  style={styles.input}
+                  value={loginEmail}
+                  onChangeText={setLoginEmail}
+                  placeholder="example@email.com"
+                  placeholderTextColor={colors.text.secondary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  editable={!isLoginLoading && !isGoogleLoginLoading}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>パスワード</Text>
+                <TextInput
+                  style={styles.input}
+                  value={loginPassword}
+                  onChangeText={setLoginPassword}
+                  placeholder="パスワード"
+                  placeholderTextColor={colors.text.secondary}
+                  secureTextEntry
+                  autoComplete="password"
+                  editable={!isLoginLoading && !isGoogleLoginLoading}
+                />
+              </View>
+
+              {loginError && <Text style={styles.errorText}>{loginError}</Text>}
+
+              <View style={styles.buttonContainer}>
+                <Button
+                  title={isLoginLoading ? '' : 'ログイン'}
+                  onPress={handleLoginWithEmail}
+                  disabled={isLoginLoading || isGoogleLoginLoading}
+                  style={styles.submitButton}
+                />
+                {isLoginLoading && (
+                  <ActivityIndicator
+                    color={colors.text.inverse}
+                    style={styles.loadingIndicator}
+                  />
+                )}
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -547,6 +753,118 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.labelSmall,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  // Google連携の注意書き
+  googleNoteContainer: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: spacing.borderRadius.medium,
+    padding: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  googleNoteText: {
+    fontSize: fonts.size.labelSmall,
+    color: '#F57C00',
+    fontFamily: fonts.family.regular,
+    lineHeight: 18,
+    ...textBase,
+  },
+  // メールフォームのヘッダー
+  emailFormHeader: {
+    marginBottom: spacing.md,
+  },
+  emailFormNote: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.primary,
+    fontFamily: fonts.family.regular,
+    lineHeight: 18,
+    backgroundColor: `${colors.primary}10`,
+    padding: spacing.sm,
+    borderRadius: spacing.borderRadius.medium,
+    ...textBase,
+  },
+  // 既存アカウントログインセクション
+  existingAccountContainer: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+  },
+  existingAccountDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  existingAccountDescription: {
+    fontSize: fonts.size.label,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 20,
+    ...textBase,
+  },
+  existingAccountButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.text.secondary,
+    borderRadius: spacing.borderRadius.medium,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+  },
+  existingAccountButtonText: {
+    fontSize: fonts.size.body,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.bold,
+    ...textBase,
+  },
+  // モーダル
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCloseButton: {
+    fontSize: fonts.size.body,
+    color: colors.primary,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  modalTitle: {
+    fontSize: fonts.size.body,
+    color: colors.text.primary,
+    fontFamily: fonts.family.bold,
+    ...textBase,
+  },
+  modalHeaderSpacer: {
+    width: 80,
+  },
+  modalContent: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    paddingHorizontal: spacing.padding.screen,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  modalWarning: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: spacing.borderRadius.medium,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  modalWarningText: {
+    fontSize: fonts.size.label,
+    color: '#E65100',
+    fontFamily: fonts.family.regular,
+    lineHeight: 20,
     ...textBase,
   },
 });

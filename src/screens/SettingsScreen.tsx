@@ -17,8 +17,9 @@ import { Ionicons } from '@expo/vector-icons';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
 import { colors, fonts, spacing, textBase } from '../theme';
 import { loadUserSettings, saveUserSettings, resetOnboarding } from '../utils/storage';
-import { signOut, getCurrentUser, deleteAccount } from '../services/firebase';
+import { getCurrentUser, deleteAccount } from '../services/firebase';
 import { deleteAllUserData } from '../utils/storage';
+import { useAuth } from '../contexts/AuthContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 
 // 1日の開始時刻の選択肢（0時〜12時）
@@ -116,6 +117,8 @@ const SettingsScreen: React.FC = () => {
     setShowDebugSection(!showDebugSection);
   };
 
+  const { logout } = useAuth();
+
   const handleSignOut = () => {
     Alert.alert(
       'ログアウト',
@@ -127,7 +130,7 @@ const SettingsScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await signOut();
+              await logout();
               // AuthProviderが自動的に状態を更新し、ログイン画面に遷移
             } catch {
               Alert.alert('エラー', 'ログアウトに失敗しました');

@@ -1,21 +1,30 @@
 /**
  * 認証コンテキスト
  * アプリ全体で認証状態を共有するためのContext
- * 初回起動時は自動的に匿名ログインを実行
+ * 初回起動時・ログアウト後は認証画面を表示
  */
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInAnonymously, User } from '../services/firebase';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { onAuthStateChanged, signInAnonymously, User, signOut as firebaseSignOut } from '../services/firebase';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /** ログイン画面を表示すべきかどうか（初回起動時・ログアウト後） */
+  showAuthScreen: boolean;
+  /** ログアウト処理（AuthContextが状態を管理） */
+  logout: () => Promise<void>;
+  /** 匿名ログインで始める */
+  startAnonymously: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  showAuthScreen: false,
+  logout: async () => {},
+  startAnonymously: async () => {},
 });
 
 interface AuthProviderProps {
@@ -25,6 +34,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAuthScreen, setShowAuthScreen] = useState(false);
 
   useEffect(() => {
     // 認証状態の変更を監視
@@ -32,16 +42,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (firebaseUser) {
         // 既にログイン済み
         setUser(firebaseUser);
+        setShowAuthScreen(false);
         setIsLoading(false);
       } else {
-        // 未ログインの場合は自動的に匿名ログイン
-        try {
-          await signInAnonymously();
-          // onAuthStateChangedが再度呼ばれるので、ここでは何もしない
-        } catch (error) {
-          console.error('自動匿名ログインエラー:', error);
-          setIsLoading(false);
-        }
+        // 未ログインの場合は認証画面を表示
+        setUser(null);
+        setShowAuthScreen(true);
+        setIsLoading(false);
       }
     });
 
@@ -49,10 +56,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  // ログアウト処理
+  const logout = useCallback(async () => {
+    try {
+      // Firebaseからログアウト
+      await firebaseSignOut();
+      // 状態を更新（onAuthStateChangedでも更新されるが、即座に反映するため）
+      setUser(null);
+      setShowAuthScreen(true);
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
+      throw error;
+    }
+  }, []);
+
+  // 匿名ログインで始める
+  const startAnonymously = useCallback(async () => {
+    try {
+      await signInAnonymously();
+      // onAuthStateChangedが呼ばれて状態が更新される
+    } catch (error) {
+      console.error('匿名ログインエラー:', error);
+      throw error;
+    }
+  }, []);
+
   const value: AuthContextType = {
     user,
     isLoading,
     isAuthenticated: user !== null,
+    showAuthScreen,
+    logout,
+    startAnonymously,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
