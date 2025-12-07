@@ -364,6 +364,20 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* フィードバック */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>フィードバック</Text>
+          <View style={styles.sectionCard}>
+            <SettingItem
+              icon="chatbubble-ellipses-outline"
+              label="ご意見・ご要望を送る"
+              value="不具合報告や機能改善など"
+              onPress={() => navigation.navigate('Feedback')}
+              isLast
+            />
+          </View>
+        </View>
+
         {/* アカウント */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アカウント</Text>

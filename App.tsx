@@ -13,6 +13,7 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
 import EditLifespanScreen from './src/screens/EditLifespanScreen';
 import LinkAccountScreen from './src/screens/LinkAccountScreen';
+import FeedbackScreen from './src/screens/FeedbackScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
@@ -103,6 +104,7 @@ function MainNavigator() {
       <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
       <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
       <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
     </Stack.Navigator>
   );
 }

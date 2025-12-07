@@ -12,6 +12,7 @@ export type RootStackParamList = {
   EditBirthday: undefined;
   EditLifespan: undefined;
   LinkAccount: undefined;
+  Feedback: undefined;
 };
 
 // 各画面のナビゲーションプロップの型定義
@@ -25,3 +26,4 @@ export type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackPa
 export type EditBirthdayScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditBirthday'>;
 export type EditLifespanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditLifespan'>;
 export type LinkAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LinkAccount'>;
+export type FeedbackScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Feedback'>;
