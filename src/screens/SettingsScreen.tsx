@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   Alert,
   Modal,
   FlatList,
+  Animated,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,7 +43,10 @@ const SettingItem: React.FC<SettingItemProps> = ({
 }) => (
   <TouchableOpacity
     style={[styles.settingItem, isLast && styles.settingItemLast]}
-    onPress={onPress}
+    onPress={() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onPress();
+    }}
     activeOpacity={0.6}
   >
     <View style={styles.settingIconContainer}>
@@ -49,11 +54,13 @@ const SettingItem: React.FC<SettingItemProps> = ({
     </View>
     <View style={styles.settingContent}>
       <Text style={styles.settingLabel}>{label}</Text>
-      {isLoading ? (
-        <View style={styles.loadingPlaceholder} />
-      ) : value ? (
-        <Text style={styles.settingValue}>{value}</Text>
-      ) : null}
+      <View style={styles.settingValueContainer}>
+        {isLoading ? (
+          <View style={styles.loadingPlaceholder} />
+        ) : (
+          <Text style={styles.settingValue}>{value || ' '}</Text>
+        )}
+      </View>
     </View>
     <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
   </TouchableOpacity>
@@ -66,7 +73,11 @@ const SettingsScreen: React.FC = () => {
   const [dayStartHour, setDayStartHour] = useState<number>(0);
   const [showDayStartPicker, setShowDayStartPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDebugSection, setShowDebugSection] = useState(false);
   const user = getCurrentUser();
+
+  // デバッグセクションのアニメーション
+  const debugHeightAnim = useRef(new Animated.Value(0)).current;
 
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
@@ -90,6 +101,20 @@ const SettingsScreen: React.FC = () => {
       loadSettings();
     }, [loadSettings])
   );
+
+  // デバッグセクションのトグルアニメーション
+  useEffect(() => {
+    Animated.timing(debugHeightAnim, {
+      toValue: showDebugSection ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [showDebugSection, debugHeightAnim]);
+
+  const toggleDebugSection = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowDebugSection(!showDebugSection);
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -179,18 +204,6 @@ const SettingsScreen: React.FC = () => {
     return `${year}年${parseInt(month)}月${parseInt(day)}日`;
   };
 
-  const calculateAge = (birthdayString: string): number => {
-    const [year, month, day] = birthdayString.split('-').map(Number);
-    const birthday = new Date(year, month - 1, day);
-    const today = new Date();
-    let age = today.getFullYear() - birthday.getFullYear();
-    const monthDiff = today.getMonth() - birthday.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthday.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScreenHeader
@@ -245,31 +258,17 @@ const SettingsScreen: React.FC = () => {
             深夜に前日の記録をする場合は、開始時刻を遅めに設定してください
           </Text>
         </View>
-        {/* 現在のステータス */}
-        {!isLoading && birthday && targetLifespan > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>現在のステータス</Text>
-            <View style={styles.statusCard}>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>現在の年齢</Text>
-                <Text style={styles.statusValue}>{calculateAge(birthday)}歳</Text>
-              </View>
-              <View style={styles.statusDivider} />
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>残りの目標年数</Text>
-                <Text style={styles.statusValue}>
-                  {targetLifespan - calculateAge(birthday)}年
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
 
         {/* アプリ情報 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アプリ情報</Text>
           <View style={styles.sectionCard}>
-            <View style={[styles.infoItem]}>
+            {/* バージョン（タップで開発者メニューをトグル） */}
+            <TouchableOpacity
+              style={[styles.settingItem, !showDebugSection && styles.settingItemLast]}
+              onPress={toggleDebugSection}
+              activeOpacity={0.6}
+            >
               <View style={styles.settingIconContainer}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               </View>
@@ -277,72 +276,88 @@ const SettingsScreen: React.FC = () => {
                 <Text style={styles.settingLabel}>バージョン</Text>
                 <Text style={styles.settingValue}>1.0.0</Text>
               </View>
-            </View>
-            <TouchableOpacity
-              style={[styles.settingItem]}
-              onPress={() => {
-                Alert.alert(
-                  'オンボーディング再表示',
-                  'オンボーディング画面を表示しますか？',
-                  [
-                    { text: 'キャンセル', style: 'cancel' },
-                    {
-                      text: '表示する',
-                      onPress: async () => {
-                        try {
-                          await resetOnboarding();
-                          // 直接オンボーディング画面に遷移
-                          navigation.reset({
-                            index: 0,
-                            routes: [{ name: 'Onboarding' }],
-                          });
-                        } catch {
-                          Alert.alert('エラー', 'リセットに失敗しました。');
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
-              activeOpacity={0.6}
-            >
-              <View style={styles.settingIconContainer}>
-                <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>オンボーディングを再表示</Text>
-                <Text style={styles.debugSubtext}>デバッグ用</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+              <Ionicons
+                name={showDebugSection ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colors.text.secondary}
+              />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.settingItem, styles.settingItemLast]}
-              onPress={() => {
-                Alert.alert(
-                  '初期設定を再表示',
-                  '初期設定画面を表示しますか？',
-                  [
-                    { text: 'キャンセル', style: 'cancel' },
-                    {
-                      text: '表示する',
-                      onPress: () => {
-                        navigation.navigate('InitialSetup');
-                      },
-                    },
-                  ]
-                );
-              }}
-              activeOpacity={0.6}
-            >
-              <View style={styles.settingIconContainer}>
-                <Ionicons name="settings-outline" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>初期設定を再表示</Text>
-                <Text style={styles.debugSubtext}>デバッグ用</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-            </TouchableOpacity>
+
+            {/* 開発者メニュー（アニメーション付きトグル） */}
+            {showDebugSection && (
+              <Animated.View
+                style={[
+                  styles.debugSection,
+                  {
+                    opacity: debugHeightAnim,
+                  },
+                ]}
+              >
+                {/* 開発者メニューヘッダー */}
+                <View style={styles.debugHeader}>
+                  <Ionicons name="construct-outline" size={14} color="#FF9800" />
+                  <Text style={styles.debugHeaderText}>開発者メニュー</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.debugItem]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    Alert.alert(
+                      'オンボーディング再表示',
+                      'オンボーディング画面を表示しますか？',
+                      [
+                        { text: 'キャンセル', style: 'cancel' },
+                        {
+                          text: '表示する',
+                          onPress: async () => {
+                            try {
+                              await resetOnboarding();
+                              navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Onboarding' }],
+                              });
+                            } catch {
+                              Alert.alert('エラー', 'リセットに失敗しました。');
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons name="refresh-outline" size={18} color="#FF9800" />
+                  <Text style={styles.debugItemText}>オンボーディングを再表示</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.debugItem, styles.debugItemLast]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    Alert.alert(
+                      '初期設定を再表示',
+                      '初期設定画面を表示しますか？',
+                      [
+                        { text: 'キャンセル', style: 'cancel' },
+                        {
+                          text: '表示する',
+                          onPress: () => {
+                            navigation.navigate('InitialSetup');
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons name="settings-outline" size={18} color="#FF9800" />
+                  <Text style={styles.debugItemText}>初期設定を再表示</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
           </View>
         </View>
 
@@ -356,16 +371,34 @@ const SettingsScreen: React.FC = () => {
               </View>
               <View style={styles.settingContent}>
                 <Text style={styles.settingLabel}>ログイン状態</Text>
-                <Text style={styles.settingValue}>
-                  {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
-                </Text>
+                <View style={styles.accountStatusRow}>
+                  <Text style={styles.settingValue}>
+                    {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
+                  </Text>
+                  <View style={[
+                    styles.accountBadge,
+                    user?.isAnonymous ? styles.guestBadge : styles.linkedBadge
+                  ]}>
+                    <Ionicons
+                      name={user?.isAnonymous ? 'warning-outline' : 'checkmark-circle'}
+                      size={12}
+                      color={user?.isAnonymous ? '#FF9800' : '#4CAF50'}
+                    />
+                    <Text style={[
+                      styles.badgeText,
+                      user?.isAnonymous ? styles.guestBadgeText : styles.linkedBadgeText
+                    ]}>
+                      {user?.isAnonymous ? '未連携' : '連携済み'}
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
             {user?.isAnonymous ? (
               // 匿名ユーザーの場合：アカウント連携を表示
               <>
                 <TouchableOpacity
-                  style={[styles.settingItem]}
+                  style={[styles.settingItem, styles.settingItemLast]}
                   onPress={() => navigation.navigate('LinkAccount')}
                   activeOpacity={0.6}
                 >
@@ -378,26 +411,12 @@ const SettingsScreen: React.FC = () => {
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.settingItem, styles.settingItemLast]}
-                  onPress={handleDeleteAccount}
-                  activeOpacity={0.6}
-                >
-                  <View style={[styles.settingIconContainer, styles.deleteIconContainer]}>
-                    <Ionicons name="trash-outline" size={20} color="#D32F2F" />
-                  </View>
-                  <View style={styles.settingContent}>
-                    <Text style={[styles.settingLabel, styles.deleteText]}>データを削除</Text>
-                    <Text style={styles.deleteSubtext}>すべてのデータが削除されます</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-                </TouchableOpacity>
               </>
             ) : (
-              // 非匿名ユーザーの場合：ログアウトとアカウント削除を表示
+              // 非匿名ユーザーの場合：ログアウトを表示
               <>
                 <TouchableOpacity
-                  style={[styles.settingItem]}
+                  style={[styles.settingItem, styles.settingItemLast]}
                   onPress={handleSignOut}
                   activeOpacity={0.6}
                 >
@@ -409,22 +428,35 @@ const SettingsScreen: React.FC = () => {
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.settingItem, styles.settingItemLast]}
-                  onPress={handleDeleteAccount}
-                  activeOpacity={0.6}
-                >
-                  <View style={[styles.settingIconContainer, styles.deleteIconContainer]}>
-                    <Ionicons name="trash-outline" size={20} color="#D32F2F" />
-                  </View>
-                  <View style={styles.settingContent}>
-                    <Text style={[styles.settingLabel, styles.deleteText]}>アカウントを削除</Text>
-                    <Text style={styles.deleteSubtext}>すべてのデータが削除されます</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
-                </TouchableOpacity>
               </>
             )}
+          </View>
+        </View>
+
+        {/* データ削除セクション */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>データ管理</Text>
+          <View style={styles.sectionCard}>
+            <TouchableOpacity
+              style={[styles.settingItem, styles.settingItemLast]}
+              onPress={handleDeleteAccount}
+              activeOpacity={0.6}
+            >
+              <View style={[styles.settingIconContainer, styles.deleteIconContainer]}>
+                <Ionicons name="trash-outline" size={20} color="#D32F2F" />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, styles.deleteText]}>
+                  {user?.isAnonymous ? 'すべてのデータを削除' : 'アカウントを削除'}
+                </Text>
+                <Text style={styles.deleteSubtext}>
+                  {user?.isAnonymous
+                    ? 'ローカルデータがすべて削除されます'
+                    : 'アカウントとすべてのデータが削除されます'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -457,28 +489,38 @@ const SettingsScreen: React.FC = () => {
             <FlatList
               data={DAY_START_HOUR_OPTIONS}
               keyExtractor={(item) => item.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.modalOption,
-                    item === dayStartHour && styles.modalOptionSelected,
-                  ]}
-                  onPress={() => handleDayStartHourChange(item)}
-                >
-                  <Text
+              renderItem={({ item }) => {
+                return (
+                  <TouchableOpacity
                     style={[
-                      styles.modalOptionText,
-                      item === dayStartHour && styles.modalOptionTextSelected,
+                      styles.modalOption,
+                      item === dayStartHour && styles.modalOptionSelected,
                     ]}
+                    onPress={() => handleDayStartHourChange(item)}
                   >
-                    {item}時{item === 0 ? '（深夜0時 / デフォルト）' : ''}
-                  </Text>
-                  {item === dayStartHour && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
+                    <Text
+                      style={[
+                        styles.modalOptionText,
+                        item === dayStartHour && styles.modalOptionTextSelected,
+                      ]}
+                    >
+                      {item}時
+                    </Text>
+                    {item === dayStartHour && (
+                      <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
               style={styles.modalList}
+              ListHeaderComponent={
+                <View style={styles.modalDescription}>
+                  <Text style={styles.modalDescriptionText}>
+                    設定した時刻以降を「今日」として扱います。{"\n"}
+                    例：4時に設定すると、3時に記録しても「昨日」の記録になります。
+                  </Text>
+                </View>
+              }
             />
           </View>
         </TouchableOpacity>
@@ -557,14 +599,18 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.label,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+    lineHeight: 18,
     ...textBase,
+  },
+  settingValueContainer: {
+    height: 18,
+    justifyContent: 'center',
   },
   loadingPlaceholder: {
     width: 80,
     height: 14,
     backgroundColor: colors.border,
     borderRadius: 4,
-    marginTop: 2,
   },
   infoItem: {
     flexDirection: 'row',
@@ -573,40 +619,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-  },
-  statusCard: {
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.md,
-    borderRadius: spacing.borderRadius.medium,
-    flexDirection: 'row',
-    paddingVertical: spacing.lg,
-    shadowColor: colors.shadow,
-    shadowOffset: spacing.shadow.offset,
-    shadowOpacity: spacing.shadow.opacity,
-    shadowRadius: spacing.shadow.radius,
-    elevation: spacing.shadow.elevation,
-  },
-  statusItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statusDivider: {
-    width: 1,
-    backgroundColor: colors.border,
-  },
-  statusLabel: {
-    fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    marginBottom: spacing.xs,
-    ...textBase,
-  },
-  statusValue: {
-    fontSize: fonts.size.title,
-    fontWeight: fonts.weight.semibold,
-    color: colors.primary,
-    fontFamily: fonts.family.bold,
-    ...textBase,
   },
   footer: {
     alignItems: 'center',
@@ -627,12 +639,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     ...textBase,
   },
-  logoutIconContainer: {
-    backgroundColor: '#D32F2F15',
-  },
-  logoutText: {
-    color: '#D32F2F',
-  },
   deleteIconContainer: {
     backgroundColor: '#D32F2F15',
   },
@@ -646,6 +652,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     ...textBase,
   },
+  logoutIconContainer: {
+    backgroundColor: '#D32F2F15',
+  },
+  logoutText: {
+    color: '#D32F2F',
+  },
   linkAccountIconContainer: {
     backgroundColor: `${colors.primary}15`,
   },
@@ -656,12 +668,76 @@ const styles = StyleSheet.create({
     marginTop: 2,
     ...textBase,
   },
-  debugSubtext: {
+  debugSection: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: '#FFF8E1',
+    borderBottomLeftRadius: spacing.borderRadius.medium,
+    borderBottomRightRadius: spacing.borderRadius.medium,
+    overflow: 'hidden',
+  },
+  debugHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: '#FFE0B2',
+  },
+  debugHeaderText: {
     fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    marginTop: 2,
+    color: '#E65100',
+    fontFamily: fonts.family.bold,
     ...textBase,
+  },
+  debugItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFE0B2',
+  },
+  debugItemLast: {
+    borderBottomWidth: 0,
+  },
+  debugItemText: {
+    flex: 1,
+    fontSize: fonts.size.label,
+    color: colors.text.primary,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  accountStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  accountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: 12,
+    gap: 4,
+  },
+  guestBadge: {
+    backgroundColor: '#FF980015',
+  },
+  linkedBadge: {
+    backgroundColor: '#4CAF5015',
+  },
+  badgeText: {
+    fontSize: 10,
+    fontFamily: fonts.family.bold,
+    ...textBase,
+  },
+  guestBadgeText: {
+    color: '#FF9800',
+  },
+  linkedBadgeText: {
+    color: '#4CAF50',
   },
   sectionHint: {
     fontSize: fonts.size.labelSmall,
@@ -728,6 +804,20 @@ const styles = StyleSheet.create({
   modalOptionTextSelected: {
     color: colors.primary,
     fontWeight: fonts.weight.medium,
+  },
+  modalDescription: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: `${colors.primary}08`,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalDescriptionText: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    lineHeight: 18,
+    ...textBase,
   },
 });
 

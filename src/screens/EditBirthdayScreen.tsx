@@ -1,42 +1,113 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Alert,
-  TextInput,
-  TouchableWithoutFeedback,
-  Keyboard,
+  TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import type { EditBirthdayScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
 import { colors, fonts, spacing, textBase } from '../theme';
-import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
+
+// 年月日の選択肢を生成
+const generateYears = () => {
+  const currentYear = new Date().getFullYear();
+  const years: number[] = [];
+  for (let y = currentYear; y >= 1920; y--) {
+    years.push(y);
+  }
+  return years;
+};
+
+const generateMonths = () => Array.from({ length: 12 }, (_, i) => i + 1);
+
+const getDaysInMonth = (year: number, month: number): number => {
+  return new Date(year, month, 0).getDate();
+};
+
+const generateDays = (daysCount: number) => Array.from({ length: daysCount }, (_, i) => i + 1);
+
+const YEARS = generateYears();
+const MONTHS = generateMonths();
+
+// ピッカーアイテムコンポーネント
+interface PickerItemProps {
+  value: number;
+  isSelected: boolean;
+  onPress: () => void;
+  suffix: string;
+}
+
+const PickerItem: React.FC<PickerItemProps> = ({ value, isSelected, onPress, suffix }) => (
+  <TouchableOpacity
+    style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
+    <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
+      {value}
+    </Text>
+    <Text style={[styles.pickerItemSuffix, isSelected && styles.pickerItemSuffixSelected]}>
+      {suffix}
+    </Text>
+  </TouchableOpacity>
+);
+
+// ピッカーアイテムの幅（paddingHorizontal: 16 * 2 + 最小幅56の概算）
+const YEAR_ITEM_WIDTH = 72;
+const YEAR_ITEM_GAP = 4; // spacing.xs
 
 const EditBirthdayScreen: React.FC = () => {
   const navigation = useNavigation<EditBirthdayScreenNavigationProp>();
-  const [year, setYear] = useState<string>('');
-  const [month, setMonth] = useState<string>('');
-  const [day, setDay] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [targetLifespan, setTargetLifespan] = useState<number>(0);
+
+  // 誕生日の状態
+  const [selectedYear, setSelectedYear] = useState<number>(1990);
+  const [selectedMonth, setSelectedMonth] = useState<number>(1);
+  const [selectedDay, setSelectedDay] = useState<number>(1);
+
+  // 年選択ScrollViewのref
+  const yearScrollRef = useRef<ScrollView>(null);
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
+
+  const today = useMemo(() => new Date(), []);
 
   useEffect(() => {
     loadCurrentSettings();
   }, []);
+
+  // 設定読み込み完了後に選択中の年までスクロール
+  useEffect(() => {
+    if (!isLoading && !initialScrollDone && yearScrollRef.current) {
+      const yearIndex = YEARS.findIndex((y) => y === selectedYear);
+      if (yearIndex > 0) {
+        // アイテムの位置を計算（中央寄せ）
+        const scrollX = yearIndex * (YEAR_ITEM_WIDTH + YEAR_ITEM_GAP) - 100;
+        setTimeout(() => {
+          yearScrollRef.current?.scrollTo({ x: Math.max(0, scrollX), animated: false });
+        }, 50);
+      }
+      setInitialScrollDone(true);
+    }
+  }, [isLoading, initialScrollDone, selectedYear]);
 
   const loadCurrentSettings = async () => {
     setIsLoading(true);
     try {
       const settings = await loadUserSettings();
       if (settings) {
-        const [y, m, d] = settings.birthday.split('-');
-        setYear(y);
-        setMonth(String(parseInt(m)));
-        setDay(String(parseInt(d)));
+        const [y, m, d] = settings.birthday.split('-').map(Number);
+        setSelectedYear(y);
+        setSelectedMonth(m);
+        setSelectedDay(d);
         setTargetLifespan(settings.targetLifespan);
       }
     } catch (error) {
@@ -46,57 +117,80 @@ const EditBirthdayScreen: React.FC = () => {
     }
   };
 
+  // 選択された年・月に応じた日数を計算
+  const daysInMonth = useMemo(
+    () => getDaysInMonth(selectedYear, selectedMonth),
+    [selectedYear, selectedMonth]
+  );
+
+  const DAYS = useMemo(() => generateDays(daysInMonth), [daysInMonth]);
+
+  const adjustedDay = useMemo(() => {
+    return selectedDay > daysInMonth ? daysInMonth : selectedDay;
+  }, [selectedDay, daysInMonth]);
+
+  // 選択された日付が未来かどうかをチェック
+  const isFutureDate = useMemo(() => {
+    const selectedDate = new Date(selectedYear, selectedMonth - 1, adjustedDay);
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return selectedDate > todayDate;
+  }, [selectedYear, selectedMonth, adjustedDay, today]);
+
+  // 現在の年齢を計算
+  const currentAge = useMemo(() => {
+    if (isFutureDate) return 0;
+    const birthDate = new Date(selectedYear, selectedMonth - 1, adjustedDay);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return Math.max(0, age);
+  }, [selectedYear, selectedMonth, adjustedDay, today, isFutureDate]);
+
+  // ハプティックフィードバック付きのセッター
+  const handleYearSelect = useCallback((year: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedYear(year);
+    const newDaysInMonth = getDaysInMonth(year, selectedMonth);
+    if (selectedDay > newDaysInMonth) {
+      setSelectedDay(newDaysInMonth);
+    }
+  }, [selectedMonth, selectedDay]);
+
+  const handleMonthSelect = useCallback((month: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedMonth(month);
+    const newDaysInMonth = getDaysInMonth(selectedYear, month);
+    if (selectedDay > newDaysInMonth) {
+      setSelectedDay(newDaysInMonth);
+    }
+  }, [selectedYear, selectedDay]);
+
+  const handleDaySelect = useCallback((day: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedDay(day);
+  }, []);
+
   const handleSave = async () => {
-    // 入力値のバリデーション
-    if (!year || !month || !day) {
-      Alert.alert('エラー', '誕生日を入力してください');
+    if (isFutureDate) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('エラー', '誕生日は今日より前の日付を選択してください');
       return;
     }
 
-    const yearNum = parseInt(year, 10);
-    const monthNum = parseInt(month, 10);
-    const dayNum = parseInt(day, 10);
-
-    if (isNaN(yearNum) || yearNum < 1900 || yearNum > new Date().getFullYear()) {
-      Alert.alert('エラー', '正しい年を入力してください（1900年〜現在）');
+    // 現在の年齢が目標寿命を超えていないかチェック
+    if (targetLifespan <= currentAge) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('エラー', `目標寿命（${targetLifespan}歳）は現在の年齢（${currentAge}歳）より大きい必要があります`);
       return;
     }
 
-    if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
-      Alert.alert('エラー', '正しい月を入力してください（1〜12）');
-      return;
-    }
-
-    if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) {
-      Alert.alert('エラー', '正しい日を入力してください（1〜31）');
-      return;
-    }
-
-    // 日付の妥当性チェック
-    const birthdayDate = new Date(yearNum, monthNum - 1, dayNum);
-    if (
-      birthdayDate.getFullYear() !== yearNum ||
-      birthdayDate.getMonth() !== monthNum - 1 ||
-      birthdayDate.getDate() !== dayNum
-    ) {
-      Alert.alert('エラー', '有効な日付を入力してください');
-      return;
-    }
-
-    if (birthdayDate > new Date()) {
-      Alert.alert('エラー', '誕生日は現在より前の日付である必要があります');
-      return;
-    }
-
-    // 現在の年齢を計算
-    const currentAge = new Date().getFullYear() - yearNum;
-    if (targetLifespan < currentAge + 1) {
-      Alert.alert('エラー', `目標寿命は現在の年齢（${currentAge}歳）より大きい必要があります`);
-      return;
-    }
+    setIsSaving(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const birthdayString = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+      const birthdayString = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(adjustedDay).padStart(2, '0')}`;
 
       await saveUserSettings({
         birthday: birthdayString,
@@ -106,12 +200,21 @@ const EditBirthdayScreen: React.FC = () => {
       navigation.goBack();
     } catch {
       Alert.alert('エラー', '設定の保存に失敗しました。もう一度お試しください。');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
+        <ScreenHeader
+          title="誕生日"
+          leftAction={{
+            type: 'backIcon',
+            onPress: () => navigation.goBack(),
+          }}
+        />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>読み込み中...</Text>
         </View>
@@ -120,63 +223,93 @@ const EditBirthdayScreen: React.FC = () => {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container}>
-        <ScreenHeader
-          title="誕生日の変更"
-          leftAction={{
-            type: 'backIcon',
-            onPress: () => navigation.goBack(),
-          }}
-        />
+    <SafeAreaView style={styles.container}>
+      <ScreenHeader
+        title="誕生日"
+        leftAction={{
+          type: 'backIcon',
+          onPress: () => navigation.goBack(),
+        }}
+        rightAction={{
+          type: 'text',
+          label: isSaving ? '保存中...' : '保存',
+          onPress: handleSave,
+          color: isFutureDate ? colors.text.secondary : colors.primary,
+        }}
+      />
 
-        <View style={styles.content}>
-          <View style={styles.section}>
-            <Text style={styles.label}>誕生日</Text>
-            <View style={styles.birthdayInputContainer}>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={year}
-                  onChangeText={setYear}
-                  keyboardType="number-pad"
-                  placeholder="1990"
-                  maxLength={4}
-                />
-                <Text style={styles.inputLabel}>年</Text>
-              </View>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={month}
-                  onChangeText={setMonth}
-                  keyboardType="number-pad"
-                  placeholder="1"
-                  maxLength={2}
-                />
-                <Text style={styles.inputLabel}>月</Text>
-              </View>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={day}
-                  onChangeText={setDay}
-                  keyboardType="number-pad"
-                  placeholder="1"
-                  maxLength={2}
-                />
-                <Text style={styles.inputLabel}>日</Text>
-              </View>
-            </View>
-          </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 年選択 */}
+        <View style={styles.pickerSection}>
+          <Text style={styles.pickerLabel}>年</Text>
+          <ScrollView
+            ref={yearScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pickerScrollContainer}
+          >
+            {YEARS.map((year) => (
+              <PickerItem
+                key={year}
+                value={year}
+                isSelected={selectedYear === year}
+                onPress={() => handleYearSelect(year)}
+                suffix="年"
+              />
+            ))}
+          </ScrollView>
+        </View>
 
-          <View style={styles.buttonContainer}>
-            <Button title="保存" onPress={handleSave} />
-            <Button title="キャンセル" onPress={() => navigation.goBack()} variant="secondary" />
+        {/* 月選択 */}
+        <View style={styles.pickerSection}>
+          <Text style={styles.pickerLabel}>月</Text>
+          <View style={styles.pickerGrid}>
+            {MONTHS.map((month) => (
+              <PickerItem
+                key={month}
+                value={month}
+                isSelected={selectedMonth === month}
+                onPress={() => handleMonthSelect(month)}
+                suffix="月"
+              />
+            ))}
           </View>
         </View>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+
+        {/* 日選択 */}
+        <View style={styles.pickerSection}>
+          <Text style={styles.pickerLabel}>日</Text>
+          <View style={styles.pickerGrid}>
+            {DAYS.map((day) => (
+              <PickerItem
+                key={day}
+                value={day}
+                isSelected={adjustedDay === day}
+                onPress={() => handleDaySelect(day)}
+                suffix="日"
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* 選択結果表示 */}
+        <View style={[styles.selectedDateContainer, isFutureDate && styles.selectedDateContainerError]}>
+          <Text style={styles.selectedDateLabel}>選択中：</Text>
+          <Text style={[styles.selectedDateValue, isFutureDate && styles.errorText]}>
+            {selectedYear}年{selectedMonth}月{adjustedDay}日
+          </Text>
+          {isFutureDate ? (
+            <Text style={styles.errorText}>（未来の日付です）</Text>
+          ) : (
+            <Text style={styles.ageText}>（{currentAge}歳）</Text>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -185,54 +318,106 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     padding: spacing.padding.screen,
-    justifyContent: 'space-between',
+    paddingBottom: spacing.xxl,
   },
-  section: {
-    marginBottom: spacing.xl,
+  pickerSection: {
+    marginBottom: spacing.lg,
   },
-  label: {
-    fontSize: fonts.size.body,
-    fontWeight: fonts.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
+  pickerLabel: {
+    fontSize: 14,
     fontFamily: fonts.family.regular,
+    color: colors.text.secondary,
+    marginBottom: spacing.sm,
     ...textBase,
   },
-  birthdayInputContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+  pickerScrollContainer: {
+    gap: spacing.xs,
+    paddingRight: spacing.lg,
   },
-  inputWrapper: {
-    flex: 1,
+  pickerGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: spacing.xs,
   },
-  input: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
-    borderRadius: spacing.borderRadius.medium,
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: fonts.size.body,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minWidth: 56,
+    justifyContent: 'center',
+  },
+  pickerItemSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  pickerItemText: {
+    fontSize: 15,
+    fontFamily: fonts.family.regular,
     color: colors.text.primary,
-    fontFamily: fonts.family.regular,
     ...textBase,
   },
-  inputLabel: {
-    fontSize: fonts.size.body,
+  pickerItemTextSelected: {
+    color: colors.text.inverse,
+    fontFamily: fonts.family.bold,
+  },
+  pickerItemSuffix: {
+    fontSize: 11,
+    fontFamily: fonts.family.regular,
     color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
+    marginLeft: 2,
     ...textBase,
   },
-  buttonContainer: {
-    gap: spacing.md,
+  pickerItemSuffixSelected: {
+    color: colors.text.inverse,
+  },
+  selectedDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: `${colors.primary}10`,
+    borderRadius: 12,
+  },
+  selectedDateContainerError: {
+    backgroundColor: '#FEE2E2',
+  },
+  selectedDateLabel: {
+    fontSize: 14,
+    fontFamily: fonts.family.regular,
+    color: colors.text.secondary,
+    ...textBase,
+  },
+  selectedDateValue: {
+    fontSize: 16,
+    fontFamily: fonts.family.bold,
+    color: colors.text.primary,
+    marginLeft: spacing.xs,
+    ...textBase,
+  },
+  ageText: {
+    fontSize: 14,
+    fontFamily: fonts.family.regular,
+    color: colors.primary,
+    marginLeft: spacing.xs,
+    ...textBase,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: fonts.family.regular,
+    color: '#DC2626',
+    marginLeft: spacing.xs,
+    ...textBase,
   },
   loadingContainer: {
     flex: 1,

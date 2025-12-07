@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   placeholder: {
-    width: 44,
+    minWidth: 44,
   },
   titlePlaceholder: {
     flex: 1,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   leftActionButton: {
     alignItems: 'flex-start',
-    minWidth: 80,
+    minWidth: 44,
   },
   rightActionsContainer: {
     flexDirection: 'row',

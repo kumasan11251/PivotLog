@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Alert,
-  TextInput,
-  TouchableWithoutFeedback,
-  Keyboard,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import type { EditLifespanScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
 import { colors, fonts, spacing, textBase } from '../theme';
-import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
+import LifespanSlider from '../components/common/LifespanSlider';
 
 const EditLifespanScreen: React.FC = () => {
   const navigation = useNavigation<EditLifespanScreenNavigationProp>();
-  const [targetLifespan, setTargetLifespan] = useState<string>('');
+  const [targetLifespan, setTargetLifespan] = useState<number>(80);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [birthday, setBirthday] = useState<string>('');
 
   useEffect(() => {
@@ -31,7 +31,7 @@ const EditLifespanScreen: React.FC = () => {
     try {
       const settings = await loadUserSettings();
       if (settings) {
-        setTargetLifespan(String(settings.targetLifespan));
+        setTargetLifespan(settings.targetLifespan);
         setBirthday(settings.birthday);
       }
     } catch (error) {
@@ -41,41 +41,63 @@ const EditLifespanScreen: React.FC = () => {
     }
   };
 
+  // 現在の年齢を計算
+  const currentAge = useMemo(() => {
+    if (!birthday) return 0;
+    const [year, month, day] = birthday.split('-').map(Number);
+    const birthDate = new Date(year, month - 1, day);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return Math.max(0, age);
+  }, [birthday]);
+
+  // 最小寿命（現在の年齢 + 1）
+  const minLifespan = useMemo(() => currentAge + 1, [currentAge]);
+  const maxLifespan = 120;
+
+  // バリデーション
+  const isValid = useMemo(() => {
+    return targetLifespan >= minLifespan && targetLifespan <= maxLifespan;
+  }, [targetLifespan, minLifespan, maxLifespan]);
+
   const handleSave = async () => {
-    // 入力値のバリデーション
-    if (!targetLifespan) {
-      Alert.alert('エラー', '目標寿命を入力してください');
+    if (!isValid) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert('エラー', `目標寿命は${minLifespan}〜${maxLifespan}の範囲で設定してください`);
       return;
     }
 
-    const lifespanNum = parseInt(targetLifespan, 10);
-
-    // 現在の年齢を計算
-    const [year] = birthday.split('-').map(Number);
-    const currentAge = new Date().getFullYear() - year;
-    const minLifespan = currentAge + 1;
-    const maxLifespan = 130;
-
-    if (isNaN(lifespanNum) || lifespanNum < minLifespan || lifespanNum > maxLifespan) {
-      Alert.alert('エラー', `目標寿命は${minLifespan}〜${maxLifespan}の範囲で入力してください`);
-      return;
-    }
+    setIsSaving(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       await saveUserSettings({
         birthday: birthday,
-        targetLifespan: lifespanNum,
+        targetLifespan: targetLifespan,
       });
 
       navigation.goBack();
     } catch {
       Alert.alert('エラー', '設定の保存に失敗しました。もう一度お試しください。');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
+        <ScreenHeader
+          title="目標寿命"
+          leftAction={{
+            type: 'backIcon',
+            onPress: () => navigation.goBack(),
+          }}
+        />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>読み込み中...</Text>
         </View>
@@ -84,42 +106,55 @@ const EditLifespanScreen: React.FC = () => {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container}>
-        <ScreenHeader
-          title="目標寿命の変更"
-          leftAction={{
-            type: 'backIcon',
-            onPress: () => navigation.goBack(),
-          }}
-        />
+    <SafeAreaView style={styles.container}>
+      <ScreenHeader
+        title="目標寿命"
+        leftAction={{
+          type: 'backIcon',
+          onPress: () => navigation.goBack(),
+        }}
+        rightAction={{
+          type: 'text',
+          label: isSaving ? '保存中...' : '保存',
+          onPress: handleSave,
+          color: isValid ? colors.primary : colors.text.secondary,
+        }}
+      />
 
-        <View style={styles.content}>
-          <View style={styles.section}>
-            <Text style={styles.label}>目標寿命</Text>
-            <View style={styles.lifespanInputContainer}>
-              <TextInput
-                style={styles.lifespanInput}
-                value={targetLifespan}
-                onChangeText={setTargetLifespan}
-                keyboardType="number-pad"
-                placeholder="80"
-                maxLength={3}
-              />
-              <Text style={styles.lifespanUnit}>歳</Text>
-            </View>
-            <Text style={styles.hint}>
-              現在の年齢より大きい値を入力してください
-            </Text>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <Button title="保存" onPress={handleSave} />
-            <Button title="キャンセル" onPress={() => navigation.goBack()} variant="secondary" />
-          </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 説明テキスト */}
+        <View style={styles.descriptionContainer}>
+          <Text style={styles.descriptionText}>
+            目標寿命を設定すると、残りの時間が計算されます。
+          </Text>
+          <Text style={styles.descriptionSubText}>
+            現在の年齢: {currentAge}歳
+          </Text>
         </View>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+
+        {/* スライダー */}
+        <View style={styles.sliderContainer}>
+          <LifespanSlider
+            value={targetLifespan}
+            onValueChange={setTargetLifespan}
+            minValue={minLifespan}
+            maxValue={maxLifespan}
+            currentAge={currentAge}
+          />
+        </View>
+
+        {/* モチベーションメッセージ */}
+        <View style={styles.motivationContainer}>
+          <Text style={styles.motivationText}>
+            この{targetLifespan - currentAge}年を、最高の時間にしよう
+          </Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -128,55 +163,54 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: spacing.padding.screen,
-    justifyContent: 'space-between',
   },
-  section: {
+  scrollContent: {
+    padding: spacing.padding.screen,
+    paddingBottom: spacing.xxl,
+  },
+  descriptionContainer: {
     marginBottom: spacing.xl,
   },
-  label: {
-    fontSize: fonts.size.body,
-    fontWeight: fonts.weight.medium,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
+  descriptionText: {
+    fontSize: 15,
     fontFamily: fonts.family.regular,
-    ...textBase,
-  },
-  lifespanInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  lifespanInput: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
-    borderRadius: spacing.borderRadius.medium,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: fonts.size.body,
-    color: colors.text.primary,
-    fontFamily: fonts.family.regular,
-    ...textBase,
-  },
-  lifespanUnit: {
-    fontSize: fonts.size.body,
     color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
+    textAlign: 'center',
+    lineHeight: 22,
     ...textBase,
   },
-  hint: {
-    fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
+  descriptionSubText: {
+    fontSize: 14,
+    fontFamily: fonts.family.bold,
+    color: colors.primary,
+    textAlign: 'center',
     marginTop: spacing.sm,
-    fontFamily: fonts.family.regular,
     ...textBase,
   },
-  buttonContainer: {
-    gap: spacing.md,
+  sliderContainer: {
+    marginTop: spacing.md,
+  },
+  motivationContainer: {
+    marginTop: spacing.xl,
+    padding: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  motivationText: {
+    fontSize: 16,
+    fontFamily: fonts.family.regular,
+    color: colors.text.primary,
+    textAlign: 'center',
+    lineHeight: 24,
+    ...textBase,
   },
   loadingContainer: {
     flex: 1,

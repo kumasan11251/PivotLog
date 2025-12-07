@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -115,6 +115,9 @@ const InitialSetupScreen: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<number>(1);
   const [selectedDay, setSelectedDay] = useState<number>(1);
 
+  // 年選択ScrollViewのref
+  const yearScrollRef = useRef<ScrollView>(null);
+
   // 目標寿命の状態
   const [targetLifespan, setTargetLifespan] = useState<number>(80);
 
@@ -172,6 +175,20 @@ const InitialSetupScreen: React.FC = () => {
   const adjustedLifespan = useMemo(() => {
     return targetLifespan < minLifespan ? minLifespan : targetLifespan;
   }, [targetLifespan, minLifespan]);
+
+  // 年選択の初期スクロール位置設定
+  useEffect(() => {
+    if (yearScrollRef.current && currentStepIndex === 0) {
+      const yearIndex = YEARS.findIndex((y) => y === selectedYear);
+      if (yearIndex > 0) {
+        const itemWidth = 72; // pickerItemの幅 + gap
+        const scrollX = yearIndex * itemWidth - 100;
+        setTimeout(() => {
+          yearScrollRef.current?.scrollTo({ x: Math.max(0, scrollX), animated: false });
+        }, 100);
+      }
+    }
+  }, [currentStepIndex, selectedYear]);
 
   // ハプティックフィードバック付きのセッター
   const handleYearSelect = useCallback((year: number) => {
@@ -312,6 +329,7 @@ const InitialSetupScreen: React.FC = () => {
       <View style={styles.pickerSection}>
         <Text style={styles.pickerLabel}>年</Text>
         <ScrollView
+          ref={yearScrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.pickerScrollContainer}
