@@ -2,6 +2,7 @@
 export const colors = {
   // プライマリカラー
   primary: '#8B9D83', // セージグリーン（メインアクセント）
+  primaryDark: '#5A6B52', // セージグリーン（濃い・高コントラスト用）
 
   // 背景色
   background: '#F5F5F5', // メイン背景（少し暗く）

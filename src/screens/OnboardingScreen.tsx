@@ -357,10 +357,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 18,
-    fontFamily: fonts.family.regular,
-    color: colors.primary,
+    fontFamily: fonts.family.bold,
+    color: colors.primaryDark,
     textAlign: 'center',
     marginBottom: spacing.lg,
+    letterSpacing: 0.3,
   },
   description: {
     fontSize: 15,

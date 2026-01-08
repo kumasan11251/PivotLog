@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, Feather } from '@expo/vector-icons';
@@ -14,9 +14,8 @@ import { useDisplaySettings } from '../hooks/useDisplaySettings';
 import { useTodayDiary } from '../hooks/useTodayDiary';
 import { useHomeAnimations } from '../hooks/useHomeAnimations';
 import { loadUserSettings } from '../utils/storage';
-import { getTodayDateString, isBirthday, getGreeting, getStreakInfo } from '../utils/homeHelpers';
+import { getTodayDateString, getStreakInfo } from '../utils/homeHelpers';
 import { getEffectiveToday } from '../utils/dateUtils';
-import { SMALL_SCREEN_HEIGHT } from '../constants/home';
 
 // アイコンコンポーネント
 const EditIcon: React.FC<{ size?: number; color?: string }> = ({
@@ -39,8 +38,6 @@ const CheckIcon: React.FC<{ size?: number; color?: string }> = ({
  */
 const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { height: windowHeight } = useWindowDimensions();
-  const isSmallScreen = windowHeight < SMALL_SCREEN_HEIGHT;
 
   // 1日の開始時刻（設定から読み込み）
   const [dayStartHour, setDayStartHour] = useState(0);
@@ -61,9 +58,6 @@ const HomeContent: React.FC = () => {
     clearJustCompleted,
     refresh: refreshTodayDiary
   } = useTodayDiary({ dayStartHour });
-
-  // 誕生日チェック用
-  const [isBirthdayToday, setIsBirthdayToday] = useState(false);
 
   // アニメーション管理をカスタムフックに委譲
   const {
@@ -92,14 +86,11 @@ const HomeContent: React.FC = () => {
     toggleProgressMode,
   });
 
-  // 設定読み込み（誕生日チェック & dayStartHour）
+  // 設定読み込み（dayStartHour）
   useEffect(() => {
     const loadSettings = async () => {
       const settings = await loadUserSettings();
       if (settings) {
-        if (settings.birthday) {
-          setIsBirthdayToday(isBirthday(settings.birthday));
-        }
         setDayStartHour(settings.dayStartHour ?? 0);
       }
     };
@@ -139,8 +130,7 @@ const HomeContent: React.FC = () => {
     navigation.navigate('DiaryEntry', { initialDate: effectiveToday });
   }, [navigation, dayStartHour]);
 
-  // 挨拶メッセージとストリーク情報
-  const greeting = getGreeting(isBirthdayToday);
+  // 今日の日付とストリーク情報
   const todayDate = getTodayDateString();
 
   // ストリーク情報（連続記録があればストリーク、なければ総記録日数を表示）
@@ -199,21 +189,13 @@ const HomeContent: React.FC = () => {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          !isSmallScreen && styles.scrollContentCentered,
-        ]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        bounces={isSmallScreen}
-        scrollEnabled={isSmallScreen}
+        bounces={true}
       >
-        {/* 日付と挨拶メッセージ */}
-        <View style={styles.greetingContainer}>
+        {/* 日付 */}
+        <View style={styles.dateContainer}>
           <Text style={styles.dateText}>{todayDate}</Text>
-          <Text style={[
-            styles.greetingText,
-            isBirthdayToday && styles.birthdayText
-          ]}>{greeting}</Text>
         </View>
 
         {/* 上部セクション：残り時間カウントダウン */}
@@ -287,10 +269,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: spacing.padding.screen,
+    paddingBottom: spacing.xl,
     gap: spacing.md,
-  },
-  scrollContentCentered: {
-    justifyContent: 'space-between',
   },
   sectionWrapper: {
     width: '100%',
@@ -376,29 +356,15 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     ...textBase,
   },
-  greetingContainer: {
+  dateContainer: {
     alignItems: 'center',
     marginBottom: spacing.sm,
   },
   dateText: {
-    fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    marginBottom: spacing.xs,
-    ...textBase,
-  },
-  greetingText: {
     fontSize: fonts.size.body,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
-    letterSpacing: 1,
-    ...textBase,
-  },
-  birthdayText: {
-    fontSize: fonts.size.body,
-    color: colors.primary,
-    fontFamily: fonts.family.bold,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     ...textBase,
   },
   bottomSection: {
