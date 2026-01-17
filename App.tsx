@@ -15,6 +15,7 @@ import EditLifespanScreen from './src/screens/EditLifespanScreen';
 import LinkAccountScreen from './src/screens/LinkAccountScreen';
 import FeedbackScreen from './src/screens/FeedbackScreen';
 import AuthScreen from './src/screens/AuthScreen';
+import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
@@ -105,6 +106,7 @@ function MainNavigator() {
       <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
       <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
+      <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} />
     </Stack.Navigator>
   );
 }

@@ -6,7 +6,6 @@ import { saveDiaryEntry, getDiaryByDate, DiaryEntry } from '../utils/storage';
 import {
   PLACEHOLDERS,
   ENCOURAGEMENT_MESSAGES,
-  getRandomElement,
   getDailyElement,
 } from '../constants/diaryEntry';
 import { formatDateToString } from '../utils/dateUtils';

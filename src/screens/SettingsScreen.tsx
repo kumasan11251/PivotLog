@@ -254,6 +254,12 @@ const SettingsScreen: React.FC = () => {
               value={formatDayStartHour(dayStartHour)}
               onPress={() => setShowDayStartPicker(true)}
               isLoading={isLoading}
+            />
+            <SettingItem
+              icon="apps-outline"
+              label="ウィジェット設定"
+              value="ホーム画面に追加"
+              onPress={() => navigation.navigate('WidgetSettings')}
               isLast
             />
           </View>

@@ -1,0 +1,7 @@
+<resources>
+  <string name="app_name">pivot-log</string>
+  <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
+  <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
+  <string name="widget_name">人生の進捗</string>
+  <string name="widget_description">目標寿命までの進捗率を表示します</string>
+</resources>
