@@ -185,9 +185,7 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
 
       await saveDiaryEntry(entry);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('保存完了', '記録を保存しました', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      navigation.goBack();
     } catch {
       Alert.alert('エラー', '保存に失敗しました。もう一度お試しください。');
     } finally {

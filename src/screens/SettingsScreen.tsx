@@ -254,7 +254,15 @@ const SettingsScreen: React.FC = () => {
               value={formatDayStartHour(dayStartHour)}
               onPress={() => setShowDayStartPicker(true)}
               isLoading={isLoading}
+              isLast
             />
+          </View>
+        </View>
+
+        {/* ウィジェットセクション */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ウィジェット</Text>
+          <View style={styles.sectionCard}>
             <SettingItem
               icon="apps-outline"
               label="ウィジェット設定"
@@ -263,9 +271,6 @@ const SettingsScreen: React.FC = () => {
               isLast
             />
           </View>
-          <Text style={styles.sectionHint}>
-            深夜に前日の記録をする場合は、開始時刻を遅めに設定してください
-          </Text>
         </View>
 
         {/* アプリ情報 */}
@@ -761,14 +766,6 @@ const styles = StyleSheet.create({
   },
   linkedBadgeText: {
     color: '#4CAF50',
-  },
-  sectionHint: {
-    fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    marginTop: spacing.sm,
-    marginHorizontal: spacing.padding.screen,
-    ...textBase,
   },
   modalOverlay: {
     flex: 1,

@@ -114,37 +114,51 @@ struct ProgressWidgetSmallView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text("人生の進捗")
-        .font(.caption2)
-        .foregroundColor(.secondary)
-
+      // 進捗率
       Text(String(format: "%.1f%%", entry.calculatedProgress))
-        .font(.system(size: 28, weight: .bold, design: .rounded))
+        .font(.system(size: 26, weight: .bold, design: .rounded))
         .foregroundColor(primaryColor)
+
+      // 残り時間
+      Text(entry.formattedRemainingTime)
+        .font(.system(size: 11))
+        .foregroundColor(Color.primary.opacity(0.6))
 
       // プログレスバー
       GeometryReader { geometry in
         ZStack(alignment: .leading) {
           Rectangle()
             .fill(primaryColor.opacity(0.2))
-            .frame(height: 6)
-            .cornerRadius(3)
+            .frame(height: 4)
+            .cornerRadius(2)
 
           Rectangle()
             .fill(primaryColor)
-            .frame(width: geometry.size.width * CGFloat(entry.calculatedProgress / 100), height: 6)
-            .cornerRadius(3)
+            .frame(width: geometry.size.width * CGFloat(entry.calculatedProgress / 100), height: 4)
+            .cornerRadius(2)
         }
       }
-      .frame(height: 6)
+      .frame(height: 4)
 
-      Spacer()
-
-      Text(entry.formattedRemainingTime)
-        .font(.caption2)
-        .foregroundColor(.secondary)
+      // カスタムテキスト（上下中央配置、最大行数）
+      if !entry.widgetData.customText.isEmpty {
+        Spacer(minLength: 4)
+        VStack {
+          Spacer(minLength: 0)
+          Text(entry.widgetData.customText)
+            .font(.system(size: 14))
+            .foregroundColor(Color.primary.opacity(0.6))
+            .lineLimit(3)
+            .minimumScaleFactor(0.8)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          Spacer(minLength: 0)
+        }
+      } else {
+        Spacer()
+      }
     }
-    .padding()
+    .padding(8)
   }
 }
 
@@ -155,60 +169,57 @@ struct ProgressWidgetMediumView: View {
   private let primaryColor = Color(red: 139 / 255, green: 157 / 255, blue: 131 / 255)
 
   var body: some View {
-    HStack(spacing: 16) {
-      // 左側: 進捗表示
-      VStack(alignment: .leading, spacing: 4) {
-        Text("人生の進捗")
-          .font(.caption)
-          .foregroundColor(.secondary)
-
+    VStack(alignment: .leading, spacing: 4) {
+      // 上部: 進捗率と残り時間
+      HStack(alignment: .firstTextBaseline) {
         Text(String(format: "%.1f%%", entry.calculatedProgress))
-          .font(.system(size: 32, weight: .bold, design: .rounded))
+          .font(.system(size: 28, weight: .bold, design: .rounded))
           .foregroundColor(primaryColor)
 
-        // プログレスバー
-        GeometryReader { geometry in
-          ZStack(alignment: .leading) {
-            Rectangle()
-              .fill(primaryColor.opacity(0.2))
-              .frame(height: 8)
-              .cornerRadius(4)
+        Spacer()
 
-            Rectangle()
-              .fill(primaryColor)
-              .frame(
-                width: geometry.size.width * CGFloat(entry.calculatedProgress / 100), height: 8
-              )
-              .cornerRadius(4)
-          }
-        }
-        .frame(height: 8)
+        Text(entry.formattedRemainingTime)
+          .font(.caption)
+          .foregroundColor(Color.primary.opacity(0.6))
       }
-      .frame(maxWidth: .infinity, alignment: .leading)
 
-      // 右側: 詳細情報
-      VStack(alignment: .trailing, spacing: 8) {
-        VStack(alignment: .trailing, spacing: 2) {
-          Text("残り時間")
-            .font(.caption2)
-            .foregroundColor(.secondary)
-          Text(entry.formattedRemainingTime)
-            .font(.subheadline)
-            .fontWeight(.medium)
-            .foregroundColor(.primary)
+      // プログレスバー
+      GeometryReader { geometry in
+        ZStack(alignment: .leading) {
+          Rectangle()
+            .fill(primaryColor.opacity(0.2))
+            .frame(height: 5)
+            .cornerRadius(2.5)
+
+          Rectangle()
+            .fill(primaryColor)
+            .frame(
+              width: geometry.size.width * CGFloat(entry.calculatedProgress / 100), height: 5
+            )
+            .cornerRadius(2.5)
         }
+      }
+      .frame(height: 5)
 
-        if !entry.widgetData.customText.isEmpty {
+      // カスタムテキスト（上下中央配置、最大行数）
+      if !entry.widgetData.customText.isEmpty {
+        Spacer(minLength: 4)
+        VStack {
+          Spacer(minLength: 0)
           Text(entry.widgetData.customText)
-            .font(.caption)
-            .foregroundColor(.secondary)
-            .lineLimit(2)
-            .multilineTextAlignment(.trailing)
+            .font(.system(size: 14))
+            .foregroundColor(Color.primary.opacity(0.6))
+            .lineLimit(4)
+            .minimumScaleFactor(0.8)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          Spacer(minLength: 0)
         }
+      } else {
+        Spacer()
       }
-      .frame(maxWidth: .infinity, alignment: .trailing)
     }
-    .padding()
+    .padding(10)
   }
 }
 
@@ -219,25 +230,21 @@ struct ProgressWidgetLargeView: View {
   private let primaryColor = Color(red: 139 / 255, green: 157 / 255, blue: 131 / 255)
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      // ヘッダー
-      HStack {
-        Text("人生の進捗")
-          .font(.headline)
-          .foregroundColor(.primary)
-        Spacer()
-        Image(systemName: "leaf.fill")
-          .foregroundColor(primaryColor)
-      }
-
+    VStack(alignment: .leading, spacing: 8) {
       // 進捗率
       HStack(alignment: .firstTextBaseline) {
         Text(String(format: "%.1f", entry.calculatedProgress))
-          .font(.system(size: 48, weight: .bold, design: .rounded))
+          .font(.system(size: 40, weight: .bold, design: .rounded))
           .foregroundColor(primaryColor)
         Text("%")
-          .font(.system(size: 24, weight: .medium, design: .rounded))
+          .font(.system(size: 20, weight: .medium, design: .rounded))
           .foregroundColor(primaryColor.opacity(0.7))
+
+        Spacer()
+
+        Text(entry.formattedRemainingTime)
+          .font(.subheadline)
+          .foregroundColor(Color.primary.opacity(0.6))
       }
 
       // プログレスバー
@@ -245,53 +252,37 @@ struct ProgressWidgetLargeView: View {
         ZStack(alignment: .leading) {
           Rectangle()
             .fill(primaryColor.opacity(0.2))
-            .frame(height: 10)
-            .cornerRadius(5)
+            .frame(height: 8)
+            .cornerRadius(4)
 
           Rectangle()
             .fill(primaryColor)
-            .frame(width: geometry.size.width * CGFloat(entry.calculatedProgress / 100), height: 10)
-            .cornerRadius(5)
+            .frame(width: geometry.size.width * CGFloat(entry.calculatedProgress / 100), height: 8)
+            .cornerRadius(4)
         }
       }
-      .frame(height: 10)
+      .frame(height: 8)
 
-      // 詳細情報
-      HStack {
-        VStack(alignment: .leading, spacing: 4) {
-          Text("残り時間")
-            .font(.caption)
-            .foregroundColor(.secondary)
-          Text(entry.formattedRemainingTime)
-            .font(.subheadline)
-            .fontWeight(.semibold)
-        }
-
-        Spacer()
-
-        VStack(alignment: .trailing, spacing: 4) {
-          Text("残り日数")
-            .font(.caption)
-            .foregroundColor(.secondary)
-          Text("\(entry.widgetData.remainingDays)日")
-            .font(.subheadline)
-            .fontWeight(.semibold)
-        }
-      }
-
-      // カスタムテキスト
+      // カスタムテキスト（上下中央配置、最大行数）
       if !entry.widgetData.customText.isEmpty {
         Divider()
-        Text(entry.widgetData.customText)
-          .font(.subheadline)
-          .foregroundColor(.secondary)
-          .lineLimit(3)
-          .italic()
+          .padding(.vertical, 2)
+        VStack {
+          Spacer(minLength: 0)
+          Text(entry.widgetData.customText)
+            .font(.system(size: 14))
+            .foregroundColor(Color.primary.opacity(0.6))
+            .lineLimit(12)
+            .minimumScaleFactor(0.8)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+          Spacer(minLength: 0)
+        }
       }
 
       Spacer()
     }
-    .padding()
+    .padding(12)
   }
 }
 
@@ -362,6 +353,9 @@ struct ProgressWidgetEntryView: View {
       remainingDays: 13687,
       currentAge: 35.0,
       customText: "今日も1日を大切に過ごしましょう",
+      showProgress: true,
+      showRemainingTime: true,
+      showCustomText: true,
       lastUpdated: ISO8601DateFormatter().string(from: Date())
     ))
 }

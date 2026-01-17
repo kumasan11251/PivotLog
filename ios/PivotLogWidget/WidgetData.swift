@@ -16,6 +16,9 @@ struct WidgetData: Codable {
   let remainingDays: Int
   let currentAge: Double
   let customText: String
+  let showProgress: Bool
+  let showRemainingTime: Bool
+  let showCustomText: Bool
   let lastUpdated: String
 
   /// デフォルト値（データがない場合に使用）
@@ -26,7 +29,10 @@ struct WidgetData: Codable {
     remainingYears: 37.5,
     remainingDays: 13687,
     currentAge: 35.0,
-    customText: "",
+    customText: "人生を大切に",
+    showProgress: true,
+    showRemainingTime: true,
+    showCustomText: true,
     lastUpdated: ISO8601DateFormatter().string(from: Date())
   )
 }

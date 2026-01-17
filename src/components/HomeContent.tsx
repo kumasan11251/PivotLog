@@ -8,6 +8,7 @@ import { colors, fonts, spacing, textBase } from '../theme';
 import ScreenHeader from './common/ScreenHeader';
 import CountdownSection from './home/CountdownSection';
 import ProgressSection from './home/ProgressSection';
+import PerspectiveSection from './home/PerspectiveSection';
 import { useTimeCalculation } from '../hooks/useTimeCalculation';
 import { useProgressAnimation } from '../hooks/useProgressAnimation';
 import { useDisplaySettings } from '../hooks/useDisplaySettings';
@@ -219,6 +220,17 @@ const HomeContent: React.FC = () => {
             animatedValues={animatedValues}
             onToggleMode={handleToggleProgressMode}
             contentOpacity={progressFadeAnim}
+          />
+        </View>
+
+        {/* 日替わり視点メッセージ */}
+        <View style={styles.sectionWrapper}>
+          <PerspectiveSection
+            remainingYears={timeLeft.totalYears}
+            remainingDays={timeLeft.totalDays}
+            remainingWeeks={timeLeft.totalWeeks}
+            currentAge={currentAge}
+            progressPercent={lifeProgress}
           />
         </View>
 

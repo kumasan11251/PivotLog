@@ -1,0 +1,23 @@
+{
+  "configurations": [
+    {
+      "name": "iOS",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/node_modules/react-native/React/**",
+        "${workspaceFolder}/node_modules/react-native/ReactCommon/**",
+        "${workspaceFolder}/ios/Pods/Headers/Public/**",
+        "${workspaceFolder}/ios/Pods/Headers/Private/**"
+      ],
+      "defines": [],
+      "macFrameworkPath": [
+        "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks"
+      ],
+      "compilerPath": "/usr/bin/clang",
+      "cStandard": "c17",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "macos-clang-arm64"
+    }
+  ],
+  "version": 4
+}

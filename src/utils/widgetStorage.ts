@@ -65,6 +65,9 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
       remainingDays: Math.floor(timeLeft.totalDays),
       currentAge,
       customText: widgetSettings.customText,
+      showProgress: true,        // 常に表示
+      showRemainingTime: true,   // 常に表示
+      showCustomText: true,      // 常に表示
       lastUpdated: new Date().toISOString(),
     };
   } catch (error) {
@@ -91,7 +94,6 @@ export const syncWidgetData = async (): Promise<boolean> => {
 
     if (WidgetBridge && typeof WidgetBridge.updateWidgetData === 'function') {
       await WidgetBridge.updateWidgetData(widgetData);
-      console.log('ウィジェットデータを同期しました:', widgetData.lastUpdated);
       return true;
     } else {
       // ネイティブモジュールが未実装の場合はログのみ

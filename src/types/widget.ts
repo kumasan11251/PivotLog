@@ -20,6 +20,11 @@ export interface WidgetData {
   // カスタムテキスト（ウィジェット設定画面で入力）
   customText: string;         // ユーザーが設定したテキスト
 
+  // 表示設定
+  showProgress: boolean;      // 進捗を表示するか
+  showRemainingTime: boolean; // 残り時間を表示するか
+  showCustomText: boolean;    // カスタムテキストを表示するか
+
   // メタデータ
   lastUpdated: string;        // 最終更新日時 ISO 8601
 }
@@ -31,11 +36,6 @@ export interface WidgetData {
 export interface WidgetSettings {
   // カスタムテキスト
   customText: string;
-
-  // 表示設定（将来の拡張用）
-  showProgress: boolean;      // 進捗を表示するか
-  showRemainingTime: boolean; // 残り時間を表示するか
-  showCustomText: boolean;    // カスタムテキストを表示するか
 }
 
 /**
@@ -43,9 +43,6 @@ export interface WidgetSettings {
  */
 export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
   customText: '',
-  showProgress: true,
-  showRemainingTime: true,
-  showCustomText: true,
 };
 
 /**

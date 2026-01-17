@@ -49,8 +49,8 @@ const ToggleIcon: React.FC<{ size?: number; color?: string }> = ({
 
 // 砂時計アイコン
 const HourglassIcon: React.FC<{ size?: number; color?: string }> = ({
-  size = 20,
-  color = colors.primary
+  size = 16,
+  color = colors.text.secondary
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
@@ -86,8 +86,8 @@ const HourglassIcon: React.FC<{ size?: number; color?: string }> = ({
 
 // 双葉アイコン（シンプルな芽）
 const SproutIcon: React.FC<{ size?: number; color?: string }> = ({
-  size = 20,
-  color = colors.primary
+  size = 16,
+  color = colors.text.secondary
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     {/* 茂 */}
@@ -141,10 +141,8 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   return (
     <View style={styles.titleContainer}>
       <View style={styles.titleWithIcon}>
-        {icon && <View style={styles.iconContainer}>{renderIcon()}</View>}
+        {icon && renderIcon()}
         <Text style={styles.title}>{title}</Text>
-        {/* アイコンと同じ幅のスペーサーで左右のバランスを取る */}
-        {icon && <View style={styles.iconSpacer} />}
       </View>
       <TouchableOpacity
         style={styles.toggleButton}
@@ -152,7 +150,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <ToggleIcon />
+        <ToggleIcon size={14} />
       </TouchableOpacity>
     </View>
   );
@@ -162,36 +160,23 @@ const styles = StyleSheet.create({
   titleContainer: {
     width: '100%',
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg,
-    position: 'relative',
+    marginBottom: spacing.md,
   },
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  iconContainer: {
-    width: 20,
-    marginRight: spacing.sm,
-  },
-  iconSpacer: {
-    width: 20,
-    marginLeft: spacing.sm,
+    gap: spacing.xs,
   },
   title: {
-    fontSize: fonts.size.sectionTitle,
-    fontWeight: fonts.weight.semibold,
-    color: colors.text.primary,
-    textAlign: 'center',
-    letterSpacing: 3,
-    fontFamily: fonts.family.bold,
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
     ...textBase,
   },
   toggleButton: {
-    position: 'absolute',
-    right: 0,
-    padding: spacing.sm,
+    padding: spacing.xs,
     backgroundColor: 'rgba(139, 157, 131, 0.1)',
     borderRadius: spacing.borderRadius.small,
   },

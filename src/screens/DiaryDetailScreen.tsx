@@ -223,20 +223,19 @@ const DiaryDetailScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      // トランジション中は再読み込みしない
-      if (isLoading || isTransitioning) {
-        return;
-      }
-
       // 内部遷移フラグがセットされていれば再読み込みをスキップ
       if (isInternalNavigationRef.current) {
         isInternalNavigationRef.current = false; // リセット
         return;
       }
 
+      // トランジション中は再読み込みしない
+      if (isTransitioning) {
+        return;
+      }
+
       // 外部から戻ってきた場合のみ再読み込み（編集画面から戻った場合など）
       loadDiary(currentDate);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentDate, isTransitioning])
   );
 
@@ -446,8 +445,8 @@ const DiaryDetailScreen: React.FC = () => {
             color: colors.error,
           },
           {
-            type: 'text',
-            label: '編集',
+            type: 'icon',
+            iconName: 'create-outline',
             onPress: () => navigation.navigate('DiaryEntry', { initialDate: currentDate }),
           },
         ]}
