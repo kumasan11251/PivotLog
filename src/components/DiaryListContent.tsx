@@ -5,7 +5,6 @@ import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, spacing } from '../theme';
 import { DiaryEntry } from '../utils/storage';
 import { useDiaryList } from '../hooks/useDiaryList';
-import { useDiaryListAnimation } from '../hooks/useDiaryListAnimation';
 import ScreenHeader from './common/ScreenHeader';
 import {
   DiaryCard,
@@ -48,16 +47,6 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     removeDiaryFromCache,
   } = useDiaryList({ shouldRefresh });
 
-  // カードアニメーションの制御
-  const {
-    listKey,
-    getShouldAnimate,
-    markNavigatedToDetail,
-    triggerMonthChangeAnimation,
-    triggerViewModeChangeAnimation,
-    resetAnimationFlag,
-  } = useDiaryListAnimation();
-
   // ========================================
   // ナビゲーションハンドラー
   // ========================================
@@ -65,14 +54,6 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const handleNavigateToSettings = useCallback(() => {
     navigation.navigate('Settings');
   }, [navigation]);
-
-  const handleNavigateToDetail = useCallback(
-    (date: string) => {
-      markNavigatedToDetail();
-      navigation.navigate('DiaryDetail', { date, fromList: true });
-    },
-    [navigation, markNavigatedToDetail]
-  );
 
   const handleNavigateToEntry = useCallback(
     (date: string) => {
@@ -95,13 +76,11 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
 
   const handlePreviousMonth = useCallback(() => {
     goToPreviousMonth();
-    triggerMonthChangeAnimation();
-  }, [goToPreviousMonth, triggerMonthChangeAnimation]);
+  }, [goToPreviousMonth]);
 
   const handleNextMonth = useCallback(() => {
     goToNextMonth();
-    triggerMonthChangeAnimation();
-  }, [goToNextMonth, triggerMonthChangeAnimation]);
+  }, [goToNextMonth]);
 
   const handleOpenYearMonthPicker = useCallback(() => {
     setYearMonthPickerVisible(true);
@@ -114,10 +93,9 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const handleConfirmYearMonth = useCallback(
     (year: number, month: number) => {
       setYearMonth(year, month);
-      triggerMonthChangeAnimation();
       setYearMonthPickerVisible(false);
     },
-    [setYearMonth, triggerMonthChangeAnimation]
+    [setYearMonth]
   );
 
   // ========================================
@@ -125,12 +103,8 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   // ========================================
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
-    // カレンダーからリストに切り替える時のみアニメーション
-    if (mode === 'list' && viewMode === 'calendar') {
-      triggerViewModeChangeAnimation();
-    }
     setViewMode(mode);
-  }, [viewMode, triggerViewModeChangeAnimation]);
+  }, []);
 
   // ========================================
   // Pull-to-refresh
@@ -147,25 +121,16 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   // ========================================
 
   const renderDiaryItem = useCallback(
-    ({ item, index }: { item: DiaryEntry; index: number }) => {
-      const shouldAnimate = getShouldAnimate();
-
-      // 最初のアイテムレンダリング時にフラグをリセット
-      if (index === 0 && shouldAnimate) {
-        resetAnimationFlag();
-      }
-
+    ({ item }: { item: DiaryEntry }) => {
       return (
         <DiaryCard
           entry={item}
-          onPress={() => handleNavigateToDetail(item.date)}
+          onPress={() => handleNavigateToEntry(item.date)}
           onDelete={handleDeleteDiary}
-          index={index}
-          shouldAnimate={shouldAnimate}
         />
       );
     },
-    [getShouldAnimate, resetAnimationFlag, handleNavigateToDetail, handleDeleteDiary]
+    [handleNavigateToEntry, handleDeleteDiary]
   );
 
   const keyExtractor = useCallback((item: DiaryEntry) => item.id, []);
@@ -202,7 +167,6 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
 
       {viewMode === 'list' ? (
         <FlatList
-          key={listKey}
           data={filteredDiaries}
           renderItem={renderDiaryItem}
           keyExtractor={keyExtractor}
@@ -218,7 +182,6 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
           filteredDiaries={filteredDiaries}
           selectedDate={selectedDate}
           onSelectedDateChange={setSelectedDate}
-          onNavigateToDetail={handleNavigateToDetail}
           onNavigateToEntry={handleNavigateToEntry}
         />
       )}

@@ -78,28 +78,16 @@ struct ProgressProvider: TimelineProvider {
     let data = WidgetDataManager.shared.loadData()
     let currentDate = Date()
 
-    // 15分ごとに更新
-    var entries: [ProgressEntry] = []
-    for hourOffset in 0..<24 {
-      let entryDate =
-        Calendar.current.date(
-          byAdding: .minute,
-          value: hourOffset * 15,
-          to: currentDate
-        ) ?? currentDate
-      let entry = ProgressEntry(date: entryDate, widgetData: data)
-      entries.append(entry)
-    }
+    // 現在のエントリを作成
+    let entry = ProgressEntry(date: currentDate, widgetData: data)
 
-    // 次の更新は15分後
-    let nextUpdate =
-      Calendar.current.date(
-        byAdding: .minute,
-        value: 15,
-        to: currentDate
-      ) ?? currentDate
+    // 次の更新は翌日の0時（深夜）
+    // 人生進捗は1日で約0.003%しか変化しないため、1日1回の更新で十分
+    let calendar = Calendar.current
+    let tomorrow = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+    let nextMidnight = calendar.startOfDay(for: tomorrow)
 
-    let timeline = Timeline(entries: entries, policy: .after(nextUpdate))
+    let timeline = Timeline(entries: [entry], policy: .after(nextMidnight))
     completion(timeline)
   }
 }

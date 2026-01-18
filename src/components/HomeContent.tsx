@@ -151,43 +151,6 @@ const HomeContent: React.FC = () => {
         }}
       />
 
-      {/* 記録完了の祝福メッセージ（マイルストーン達成時は表示しない、再開時は励ましメッセージ） */}
-      {justCompleted && !activeMilestone && (
-        <Animated.View
-          style={[
-            styles.celebrationContainer,
-            { opacity: celebrationAnim },
-          ]}
-        >
-          <View style={styles.celebrationContent}>
-            <Text style={styles.celebrationEmoji}>{celebrationMessage.emoji}</Text>
-            <Text style={styles.celebrationText}>{celebrationMessage.text}</Text>
-            <Text style={styles.celebrationSubtext}>{celebrationMessage.subtext}</Text>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* マイルストーン達成の特別演出（連続記録または総記録） */}
-      {activeMilestone && milestoneMessage && (
-        <Animated.View
-          style={[
-            styles.milestoneOverlay,
-            { opacity: milestoneAnim },
-          ]}
-        >
-          <Animated.View
-            style={[
-              styles.milestoneContent,
-              { transform: [{ scale: milestoneScaleAnim }] },
-            ]}
-          >
-            <Text style={styles.milestoneEmoji}>{milestoneMessage.emoji}</Text>
-            <Text style={styles.milestoneTitle}>{milestoneMessage.title}</Text>
-            <Text style={styles.milestoneSubtitle}>{milestoneMessage.subtitle}</Text>
-          </Animated.View>
-        </Animated.View>
-      )}
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -286,87 +249,6 @@ const styles = StyleSheet.create({
   },
   sectionWrapper: {
     width: '100%',
-  },
-  celebrationContainer: {
-    position: 'absolute',
-    top: 100,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    alignItems: 'center',
-  },
-  celebrationContent: {
-    backgroundColor: colors.card,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: spacing.borderRadius.large,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  celebrationEmoji: {
-    fontSize: 32,
-    marginBottom: spacing.xs,
-  },
-  celebrationText: {
-    fontSize: fonts.size.body,
-    color: colors.primary,
-    fontFamily: fonts.family.bold,
-    ...textBase,
-  },
-  celebrationSubtext: {
-    fontSize: fonts.size.label,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    marginTop: 2,
-    ...textBase,
-  },
-  milestoneOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    zIndex: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  milestoneContent: {
-    backgroundColor: colors.card,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.xl * 1.5,
-    borderRadius: spacing.borderRadius.large * 1.5,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 16,
-    maxWidth: '85%',
-  },
-  milestoneEmoji: {
-    fontSize: 56,
-    marginBottom: spacing.md,
-  },
-  milestoneTitle: {
-    fontSize: fonts.size.title,
-    color: colors.primary,
-    fontFamily: fonts.family.bold,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-    ...textBase,
-  },
-  milestoneSubtitle: {
-    fontSize: fonts.size.body,
-    color: colors.text.secondary,
-    fontFamily: fonts.family.regular,
-    textAlign: 'center',
-    lineHeight: 24,
-    ...textBase,
   },
   dateContainer: {
     alignItems: 'center',

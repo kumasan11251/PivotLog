@@ -15,7 +15,6 @@ interface CalendarViewProps {
   filteredDiaries: DiaryEntry[];
   selectedDate: string | null;
   onSelectedDateChange: (date: string | null) => void;
-  onNavigateToDetail: (date: string) => void;
   onNavigateToEntry: (date: string) => void;
 }
 
@@ -25,7 +24,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   filteredDiaries,
   selectedDate,
   onSelectedDateChange,
-  onNavigateToDetail,
   onNavigateToEntry,
 }) => {
   const { weeks, selectedDiary, handleDayPress, diaryCount } =
@@ -59,7 +57,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         <View style={styles.selectedCardContainer}>
           <DiaryCard
             entry={selectedDiary}
-            onPress={() => onNavigateToDetail(selectedDate)}
+            onPress={() => onNavigateToEntry(selectedDate)}
           />
         </View>
       );

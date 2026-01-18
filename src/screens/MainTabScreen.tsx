@@ -37,11 +37,14 @@ const MainTabScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.contentContainer}>
-        {activeTab === 'home' ? (
+        {/* 両コンテンツを常にマウントしておき、表示/非表示を切り替える */}
+        {/* これによりDiaryListのキャッシュが保持され、タブ切り替えが高速化される */}
+        <View style={[styles.tabContent, activeTab !== 'home' && styles.hidden]}>
           <HomeContent />
-        ) : (
+        </View>
+        <View style={[styles.tabContent, activeTab !== 'diaryList' && styles.hidden]}>
           <DiaryListContent shouldRefresh={shouldRefresh} />
-        )}
+        </View>
       </View>
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
     </SafeAreaView>
@@ -55,6 +58,12 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+  },
+  tabContent: {
+    flex: 1,
+  },
+  hidden: {
+    display: 'none',
   },
 });
 

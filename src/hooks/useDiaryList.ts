@@ -58,9 +58,10 @@ export const useDiaryList = ({ shouldRefresh }: UseDiaryListOptions = {}): UseDi
   const loadMonthData = useCallback(async (year: number, month: number, forceRefresh = false) => {
     const cacheKey = getCacheKey(year, month);
 
-    // キャッシュがあり、強制リフレッシュでなければキャッシュを使用
+    // キャッシュがあり、強制リフレッシュでなければキャッシュを使用（ローディング状態をスキップ）
     if (!forceRefresh && cacheRef.current[cacheKey]) {
       setDiaries(cacheRef.current[cacheKey]);
+      setIsLoading(false);
       return;
     }
 

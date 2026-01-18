@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { DiaryEntryScreenNavigationProp, RootStackParamList } from '../types/navigation';
-import { saveDiaryEntry, getDiaryByDate, DiaryEntry } from '../utils/storage';
+import { saveDiaryEntry, getDiaryByDate, deleteDiaryEntry, DiaryEntry } from '../utils/storage';
 import {
   PLACEHOLDERS,
   ENCOURAGEMENT_MESSAGES,
@@ -21,6 +20,9 @@ interface DiaryFormState {
   tomorrow: string;
 }
 
+// 保存ステータスの型
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 interface UseDiaryEntryReturn {
   // フォーム状態
   formState: DiaryFormState;
@@ -36,7 +38,7 @@ interface UseDiaryEntryReturn {
   // UI状態
   focusedField: DiaryFieldKey | null;
   setFocusedField: (field: DiaryFieldKey | null) => void;
-  isSaving: boolean;
+  saveStatus: SaveStatus;
   showDatePicker: boolean;
   setShowDatePicker: (show: boolean) => void;
 
@@ -46,7 +48,6 @@ interface UseDiaryEntryReturn {
   placeholders: Record<DiaryFieldKey, string>;
 
   // アクション
-  handleSave: () => Promise<void>;
   handleBack: () => void;
   handleDateChange: (event: unknown, date?: Date) => void;
 }
@@ -81,7 +82,14 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
 
   // UI状態
   const [focusedField, setFocusedField] = useState<DiaryFieldKey | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+
+  // 自動保存用のタイマーref
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 保存ステータス表示用のタイマーref
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 現在保存中かどうか
+  const isSavingRef = useRef(false);
 
   // 選択された日付をYYYY-MM-DD形式に変換（ローカル時間基準）
   const dateString = formatDateToString(selectedDate);
@@ -159,60 +167,138 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
         setFormState(emptyState);
         setInitialFormState(emptyState);
       }
+      // 日付変更時は保存ステータスをリセット
+      setSaveStatus('idle');
     };
     loadDiary();
   }, [dateString]);
 
-  // 保存処理
-  const handleSave = useCallback(async () => {
-    if (!formState.goodTime.trim() && !formState.wastedTime.trim() && !formState.tomorrow.trim()) {
-      Alert.alert('エラー', '少なくとも1つの質問に回答してください');
+  // 自動保存処理
+  const performAutoSave = useCallback(async (currentFormState: DiaryFormState) => {
+    // 全て空欄の場合は保存しない（既存エントリがあれば削除）
+    const isEmpty = !currentFormState.goodTime.trim() &&
+                    !currentFormState.wastedTime.trim() &&
+                    !currentFormState.tomorrow.trim();
+
+    if (isEmpty) {
+      // 既存エントリがあった場合は削除
+      if (initialFormState.goodTime.trim() || initialFormState.wastedTime.trim() || initialFormState.tomorrow.trim()) {
+        try {
+          await deleteDiaryEntry(dateString);
+          setInitialFormState({ goodTime: '', wastedTime: '', tomorrow: '' });
+        } catch {
+          console.error('日記の削除に失敗しました');
+        }
+      }
+      setSaveStatus('idle');
       return;
     }
 
-    setIsSaving(true);
+    // 変更がない場合は保存しない
+    const hasChanges =
+      currentFormState.goodTime.trim() !== initialFormState.goodTime.trim() ||
+      currentFormState.wastedTime.trim() !== initialFormState.wastedTime.trim() ||
+      currentFormState.tomorrow.trim() !== initialFormState.tomorrow.trim();
+
+    if (!hasChanges) {
+      setSaveStatus('idle');
+      return;
+    }
+
+    // 保存中フラグを立てる
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+    setSaveStatus('saving');
+
     try {
       const now = new Date().toISOString();
       const entry: DiaryEntry = {
         id: dateString,
         date: dateString,
-        goodTime: formState.goodTime.trim(),
-        wastedTime: formState.wastedTime.trim(),
-        tomorrow: formState.tomorrow.trim(),
+        goodTime: currentFormState.goodTime.trim(),
+        wastedTime: currentFormState.wastedTime.trim(),
+        tomorrow: currentFormState.tomorrow.trim(),
         createdAt: now,
         updatedAt: now,
       };
 
       await saveDiaryEntry(entry);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      navigation.goBack();
+
+      // 保存成功後、初期値を更新
+      setInitialFormState({
+        goodTime: currentFormState.goodTime.trim(),
+        wastedTime: currentFormState.wastedTime.trim(),
+        tomorrow: currentFormState.tomorrow.trim(),
+      });
+
+      setSaveStatus('saved');
+
+      // 2秒後に「保存済み」表示を消す
+      if (statusTimerRef.current) {
+        clearTimeout(statusTimerRef.current);
+      }
+      statusTimerRef.current = setTimeout(() => {
+        setSaveStatus('idle');
+      }, 2000);
+
     } catch {
-      Alert.alert('エラー', '保存に失敗しました。もう一度お試しください。');
+      setSaveStatus('error');
+      console.error('自動保存に失敗しました');
     } finally {
-      setIsSaving(false);
+      isSavingRef.current = false;
     }
-  }, [formState, dateString, navigation]);
+  }, [dateString, initialFormState]);
 
-  // 戻るボタン処理
+  // フォーム変更時のデバウンス付き自動保存
+  useEffect(() => {
+    // 初回ロード時は自動保存しない
+    if (initialFormState.goodTime === '' &&
+        initialFormState.wastedTime === '' &&
+        initialFormState.tomorrow === '' &&
+        formState.goodTime === '' &&
+        formState.wastedTime === '' &&
+        formState.tomorrow === '') {
+      return;
+    }
+
+    // 既存のタイマーをクリア
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    // 800ms後に自動保存
+    saveTimerRef.current = setTimeout(() => {
+      performAutoSave(formState);
+    }, 800);
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [formState, performAutoSave, initialFormState]);
+
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      if (statusTimerRef.current) {
+        clearTimeout(statusTimerRef.current);
+      }
+    };
+  }, []);
+
+  // 戻るボタン処理（自動保存なので確認不要）
   const handleBack = useCallback(() => {
-    const hasChanges =
-      formState.goodTime.trim() !== initialFormState.goodTime.trim() ||
-      formState.wastedTime.trim() !== initialFormState.wastedTime.trim() ||
-      formState.tomorrow.trim() !== initialFormState.tomorrow.trim();
-
-    if (hasChanges) {
-      Alert.alert(
-        '確認',
-        '保存せずに戻りますか？',
-        [
-          { text: 'キャンセル', style: 'cancel' },
-          { text: '戻る', onPress: () => navigation.goBack(), style: 'destructive' },
-        ]
-      );
-    } else {
-      navigation.goBack();
+    // 保存中の場合は即座に保存を実行
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      performAutoSave(formState);
     }
-  }, [formState, initialFormState, navigation]);
+    navigation.goBack();
+  }, [formState, navigation, performAutoSave]);
 
   return {
     formState,
@@ -224,13 +310,12 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
     isToday,
     focusedField,
     setFocusedField,
-    isSaving,
+    saveStatus,
     showDatePicker,
     setShowDatePicker,
     progress,
     encouragement,
     placeholders,
-    handleSave,
     handleBack,
     handleDateChange,
   };

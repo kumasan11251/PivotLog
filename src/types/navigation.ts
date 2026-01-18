@@ -7,7 +7,6 @@ export type RootStackParamList = {
   InitialSetup: undefined;
   Home: { initialTab?: 'home' | 'diaryList' } | undefined;
   DiaryEntry: { initialDate?: string };
-  DiaryDetail: { date: string; direction?: 'prev' | 'next'; fromList?: boolean };
   Settings: undefined;
   EditBirthday: undefined;
   EditLifespan: undefined;
@@ -22,7 +21,6 @@ export type OnboardingScreenNavigationProp = NativeStackNavigationProp<RootStack
 export type InitialSetupScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'InitialSetup'>;
 export type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 export type DiaryEntryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DiaryEntry'>;
-export type DiaryDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DiaryDetail'>;
 export type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 export type EditBirthdayScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditBirthday'>;
 export type EditLifespanScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditLifespan'>;

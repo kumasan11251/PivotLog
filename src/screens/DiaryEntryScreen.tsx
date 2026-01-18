@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
-import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
 import {
   EncouragementHeader,
@@ -33,13 +32,11 @@ const DiaryEntryScreen: React.FC = () => {
     isToday,
     focusedField,
     setFocusedField,
-    isSaving,
     showDatePicker,
     setShowDatePicker,
     progress,
     encouragement,
     placeholders,
-    handleSave,
     handleBack,
     handleDateChange,
   } = useDiaryEntry();
@@ -206,12 +203,8 @@ const DiaryEntryScreen: React.FC = () => {
                 </View>
               ))}
 
-              <Button
-                title={isSaving ? '保存中...' : '記録する'}
-                onPress={handleSave}
-                disabled={isSaving}
-                style={styles.saveButton}
-              />
+              {/* 下部の余白 */}
+              <View style={styles.bottomSpacer} />
             </View>
           </ScrollView>
 
@@ -241,10 +234,8 @@ const styles = StyleSheet.create({
   scrollViewContent: {
     flexGrow: 1,
   },
-  saveButton: {
-    marginHorizontal: spacing.padding.screen,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.xxl * 2,
+  bottomSpacer: {
+    height: spacing.xxl * 2,
   },
 });
 

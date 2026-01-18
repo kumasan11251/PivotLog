@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/refs */
 'use no memo';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,8 +18,6 @@ import { DiaryEntry, deleteDiaryEntry } from '../../utils/storage';
 import { DIARY_QUESTIONS } from '../../constants/diary';
 
 const CARD_HEIGHT = 140;
-const ANIMATION_DURATION = 300;
-const STAGGER_DELAY = 50;
 const DELETE_BUTTON_WIDTH = 80;
 
 interface DateParts {
@@ -32,8 +30,6 @@ interface DiaryCardProps {
   entry: DiaryEntry;
   onPress: () => void;
   onDelete?: (id: string) => void;
-  index?: number;
-  shouldAnimate?: boolean;
 }
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -72,15 +68,9 @@ export const getFilledQuestions = (
   return questions;
 };
 
-const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onPress, onDelete, index = 0, shouldAnimate = false }) => {
+const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onPress, onDelete }) => {
   const dateParts = formatDateParts(entry.date);
   const filledQuestions = getFilledQuestions(entry);
-
-  // アニメーション用の値（初期値は表示状態）
-  const animatedValues = useMemo(() => ({
-    fade: new Animated.Value(1),
-    translateY: new Animated.Value(0),
-  }), []);
 
   // スワイプ用のアニメーション値（useMemoで安定化）
   const swipeAnim = useMemo(() => new Animated.Value(0), []);
@@ -226,31 +216,6 @@ const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onPress, onDelete, index =
     }
   };
 
-  useEffect(() => {
-    if (shouldAnimate) {
-      // アニメーション開始前に初期値にリセット
-      animatedValues.fade.setValue(0);
-      animatedValues.translateY.setValue(15);
-
-      const delay = index * STAGGER_DELAY;
-      Animated.parallel([
-        Animated.timing(animatedValues.fade, {
-          toValue: 1,
-          duration: ANIMATION_DURATION,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animatedValues.translateY, {
-          toValue: 0,
-          duration: ANIMATION_DURATION,
-          delay,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-    // shouldAnimate=falseの場合は既に初期値が表示状態なので何もしない
-  }, [shouldAnimate, index, animatedValues]);
-
   const dateSectionStyle =
     dateParts.dayOfWeek === 0
       ? styles.dateSectionSunday
@@ -266,60 +231,53 @@ const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onPress, onDelete, index =
         : null;
 
   return (
-    <Animated.View
-      style={{
-        opacity: animatedValues.fade,
-        transform: [{ translateY: animatedValues.translateY }],
-      }}
-    >
-      <View style={styles.swipeContainer}>
-        {/* 削除ボタン（背景に配置） */}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={handleDeletePress}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="trash-outline" size={24} color={colors.text.inverse} />
-          <Text style={styles.deleteButtonText}>削除</Text>
-        </TouchableOpacity>
+    <View style={styles.swipeContainer}>
+      {/* 削除ボタン（背景に配置） */}
+      <TouchableOpacity
+        style={styles.deleteButton}
+        onPress={handleDeletePress}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="trash-outline" size={24} color={colors.text.inverse} />
+        <Text style={styles.deleteButtonText}>削除</Text>
+      </TouchableOpacity>
 
-        {/* カード本体（スワイプ対象） */}
-        <Animated.View
-          style={[
-            styles.cardAnimatedWrapper,
-            { transform: [{ translateX: swipeAnim }] },
-          ]}
-          {...panResponder.panHandlers}
-        >
-          <TouchableOpacity style={styles.container} onPress={handleCardPress}>
-            <View style={[styles.dateSection, dateSectionStyle]}>
-              <Text style={[styles.weekdayText, dateTextStyle]}>
-                {dateParts.weekday}
-              </Text>
-              <Text style={[styles.dayText, dateTextStyle]}>{dateParts.day}</Text>
+      {/* カード本体（スワイプ対象） */}
+      <Animated.View
+        style={[
+          styles.cardAnimatedWrapper,
+          { transform: [{ translateX: swipeAnim }] },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity style={styles.container} onPress={handleCardPress}>
+          <View style={[styles.dateSection, dateSectionStyle]}>
+            <Text style={[styles.weekdayText, dateTextStyle]}>
+              {dateParts.weekday}
+            </Text>
+            <Text style={[styles.dayText, dateTextStyle]}>{dateParts.day}</Text>
+          </View>
+          <View style={styles.contentWrapper}>
+            <View style={styles.contentSection}>
+              {filledQuestions.length > 0 ? (
+                filledQuestions.map((q, qIndex) => (
+                  <View key={qIndex} style={styles.questionItem}>
+                    <Text style={styles.questionLabel}>{q.label}</Text>
+                    <Text style={styles.questionContent}>{q.content}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.emptyContent}>内容がありません</Text>
+              )}
             </View>
-            <View style={styles.contentWrapper}>
-              <View style={styles.contentSection}>
-                {filledQuestions.length > 0 ? (
-                  filledQuestions.map((q, qIndex) => (
-                    <View key={qIndex} style={styles.questionItem}>
-                      <Text style={styles.questionLabel}>{q.label}</Text>
-                      <Text style={styles.questionContent}>{q.content}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.emptyContent}>内容がありません</Text>
-                )}
-              </View>
-              <LinearGradient
-                colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
-                style={styles.fadeOverlay}
-              />
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-    </Animated.View>
+            <LinearGradient
+              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
+              style={styles.fadeOverlay}
+            />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 };
 

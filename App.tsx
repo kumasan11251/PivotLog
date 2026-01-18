@@ -8,7 +8,6 @@ import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import MainTabScreen from './src/screens/MainTabScreen';
 import DiaryEntryScreen from './src/screens/DiaryEntryScreen';
-import DiaryDetailScreen from './src/screens/DiaryDetailScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
 import EditLifespanScreen from './src/screens/EditLifespanScreen';
@@ -94,13 +93,6 @@ function MainNavigator() {
       <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
       <Stack.Screen name="Home" component={MainTabScreen} />
       <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />
-      <Stack.Screen
-        name="DiaryDetail"
-        component={DiaryDetailScreen}
-        options={({ route }) => ({
-          animation: route.params?.direction === 'prev' ? 'slide_from_left' : 'slide_from_right',
-        })}
-      />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
       <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />

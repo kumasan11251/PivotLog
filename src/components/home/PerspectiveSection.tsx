@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, fonts, spacing, textBase } from '../../theme';
 import { getTodayPerspectiveMessage, formatPerspectiveMessage } from '../../utils/perspectiveHelpers';
@@ -28,18 +28,6 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   currentAge,
   progressPercent,
 }) => {
-  // フェードインアニメーション（useMemoでAnimated.Valueを安定させる）
-  const fadeAnim = useMemo(() => new Animated.Value(0), []);
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      delay: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
   // 今日のメッセージを取得
   const todayMessage = getTodayPerspectiveMessage();
   const formattedMessage = formatPerspectiveMessage(todayMessage, {
@@ -51,7 +39,7 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   });
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <View style={styles.container}>
       <View style={styles.headerRow}>
         <MaterialCommunityIcons
           name="lightbulb-outline"
@@ -68,7 +56,7 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
           <Text style={styles.subtext}>{formattedMessage.subtext}</Text>
         )}
       </View>
-    </Animated.View>
+    </View>
   );
 };
 
