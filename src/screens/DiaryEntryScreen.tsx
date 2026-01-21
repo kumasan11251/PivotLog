@@ -18,8 +18,12 @@ import {
   DiaryInputField,
   DatePickerModal,
   DiaryInputFieldRef,
+  AIReflectionCard,
+  AIReflectionButton,
+  AIReflectionLoading,
 } from '../components/diary';
 import { useDiaryEntry, DiaryFieldKey } from '../hooks/useDiaryEntry';
+import { useAIReflection } from '../hooks/useAIReflection';
 import { DIARY_QUESTIONS } from '../constants/diary';
 
 const DiaryEntryScreen: React.FC = () => {
@@ -40,6 +44,24 @@ const DiaryEntryScreen: React.FC = () => {
     handleBack,
     handleDateChange,
   } = useDiaryEntry();
+
+  // AIリフレクション機能
+  const {
+    reflectionState: aiReflectionState,
+    reflection: aiReflection,
+    fadeAnim: reflectionFadeAnim,
+    getReflection: handleGetAIReflection,
+    loadSavedReflection,
+    resetReflection: _resetReflection, // 将来使用予定
+  } = useAIReflection({ dateString, formState });
+
+  // 日記が入力されているかどうか
+  const hasDiaryContent = formState.goodTime.trim() || formState.wastedTime.trim() || formState.tomorrow.trim();
+
+  // 日付が変わったら保存済みリフレクションを読み込む
+  useEffect(() => {
+    loadSavedReflection();
+  }, [dateString, loadSavedReflection]);
 
   // Refs
   const scrollViewRef = useRef<ScrollView>(null);
@@ -202,6 +224,26 @@ const DiaryEntryScreen: React.FC = () => {
                   />
                 </View>
               ))}
+
+              {/* AIリフレクションセクション */}
+              {aiReflectionState === 'loading' && (
+                <AIReflectionLoading />
+              )}
+
+              {aiReflectionState === 'loaded' && aiReflection && (
+                <AIReflectionCard
+                  reflection={aiReflection}
+                  fadeAnim={reflectionFadeAnim}
+                />
+              )}
+
+              {(aiReflectionState === 'idle' || aiReflectionState === 'loaded') && (
+                <AIReflectionButton
+                  onPress={handleGetAIReflection}
+                  disabled={!hasDiaryContent}
+                  hasReflection={aiReflectionState === 'loaded'}
+                />
+              )}
 
               {/* 下部の余白 */}
               <View style={styles.bottomSpacer} />

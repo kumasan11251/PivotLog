@@ -12,6 +12,7 @@ import {
   deleteAllUserDataFromFirestore,
   getDiariesByMonthFromFirestore,
 } from '../services/firebase/firestore';
+import type { AIReflectionData } from '../types/aiReflection';
 
 export interface UserSettings {
   birthday: string; // ISO 8601 format (YYYY-MM-DD)
@@ -27,6 +28,7 @@ export interface DiaryEntry {
   tomorrow: string; // 明日はどう過ごしますか
   createdAt: string; // 作成日時 ISO 8601
   updatedAt: string; // 更新日時 ISO 8601
+  aiReflection?: AIReflectionData; // AIからの気づき（オプショナル）
 }
 
 export interface HomeDisplaySettings {

@@ -12,3 +12,9 @@ export { default as DiaryInputField } from './DiaryInputField';
 export type { DiaryInputFieldRef } from './DiaryInputField';
 export { default as DatePickerModal } from './DatePickerModal';
 export { default as YearMonthPickerModal } from './YearMonthPickerModal';
+
+// AIリフレクション機能
+export { default as AIReflectionCard } from './AIReflectionCard';
+export type { AIReflectionData } from './AIReflectionCard';
+export { default as AIReflectionButton } from './AIReflectionButton';
+export { default as AIReflectionLoading } from './AIReflectionLoading';

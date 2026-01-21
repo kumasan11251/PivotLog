@@ -42,3 +42,12 @@ export {
   getDiariesByMonthFromFirestore,
 } from './firestore';
 export type { UserSettings, DiaryEntry, HomeDisplaySettings } from './firestore';
+
+// Cloud Functionsサービス
+export {
+  generateReflectionViaCloudFunctions,
+} from './functions';
+export type {
+  GenerateReflectionRequest,
+  ReflectionResponse,
+} from './functions';

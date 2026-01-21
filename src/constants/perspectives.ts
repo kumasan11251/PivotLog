@@ -3,6 +3,18 @@
  * 毎日異なる視点で残り時間を表現し、新鮮さを保つ
  */
 
+/**
+ * 表示条件の型定義
+ * - displayMonths: 表示する月（1-12）の配列。指定がなければ通年表示
+ * - requiresBirthday: trueの場合、ユーザーの誕生日月に表示
+ */
+export interface DisplayCondition {
+  /** 表示する月（1=1月, 12=12月）。未指定なら通年表示 */
+  displayMonths?: number[];
+  /** 誕生日月に表示するか */
+  requiresBirthday?: boolean;
+}
+
 export interface PerspectiveMessage {
   /** メッセージID（重複防止用） */
   id: string;
@@ -14,6 +26,8 @@ export interface PerspectiveMessage {
   subtext?: string;
   /** アイコン絵文字 */
   emoji: string;
+  /** 表示条件（未指定なら通年表示） */
+  displayCondition?: DisplayCondition;
 }
 
 /**
@@ -45,6 +59,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingSprings}回の桜を見届けられる',
     subtext: '今年の桜は、今年だけのもの',
     emoji: '🌸',
+    displayCondition: { displayMonths: [3, 4, 5] }, // 春（3〜5月）
   },
   {
     id: 'summers',
@@ -52,6 +67,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: '残り{remainingSummers}回の夏',
     subtext: '花火、海、かき氷…夏の思い出を大切に',
     emoji: '🍉',
+    displayCondition: { displayMonths: [6, 7, 8] }, // 夏（6〜8月）
   },
   {
     id: 'autumns',
@@ -59,6 +75,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingAutumns}回の紅葉の秋',
     subtext: '色づく季節は、何度でも心を動かす',
     emoji: '🍂',
+    displayCondition: { displayMonths: [9, 10, 11] }, // 秋（9〜11月）
   },
   {
     id: 'winters',
@@ -66,6 +83,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: '残り{remainingWinters}回の冬を迎える',
     subtext: '寒い季節も、温かい思い出になる',
     emoji: '❄️',
+    displayCondition: { displayMonths: [12, 1, 2] }, // 冬（12〜2月）
   },
   {
     id: 'newyears',
@@ -73,6 +91,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingYears}回のお正月',
     subtext: '新しい年を迎えられることは、当たり前ではない',
     emoji: '🎍',
+    displayCondition: { displayMonths: [12, 1] }, // 年末年始
   },
   {
     id: 'birthdays',
@@ -80,6 +99,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: '残り{remainingYears}回の誕生日',
     subtext: '歳を重ねることは、祝福すべきこと',
     emoji: '🎂',
+    displayCondition: { requiresBirthday: true }, // 誕生日月
   },
   {
     id: 'christmases',
@@ -87,6 +107,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと約{remainingYears}回のクリスマス',
     subtext: '大切な人と過ごす時間を大切に',
     emoji: '🎄',
+    displayCondition: { displayMonths: [12] }, // 12月
   },
   {
     id: 'days-value',
@@ -101,6 +122,27 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あなたの人生は、あと約{remainingWeeks}週間',
     subtext: '1週間1週間を、丁寧に過ごそう',
     emoji: '📅',
+  },
+  {
+    id: 'mornings',
+    category: 'countdown',
+    template: 'あと{remainingDays}回の「おはよう」を言える',
+    subtext: '今日の朝も、当たり前ではない',
+    emoji: '🌤️',
+  },
+  {
+    id: 'conversations',
+    category: 'countdown',
+    template: '大切な人と話せる時間は、あと何時間だろう',
+    subtext: '今日、誰かと心を通わせよう',
+    emoji: '💬',
+  },
+  {
+    id: 'sleeps',
+    category: 'countdown',
+    template: 'あと{remainingDays}回、目を閉じて眠りにつく',
+    subtext: '明日また目覚められることに感謝を',
+    emoji: '🌙',
   },
 
   // === 比較・視点変換系: 別の角度から時間を見る ===
@@ -153,6 +195,34 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     subtext: '月を見上げる時間を持とう',
     emoji: '🌕',
   },
+  {
+    id: 'heartbeats',
+    category: 'comparison',
+    template: '心臓は1日約10万回鼓動する。残り約{remainingDays}日分',
+    subtext: 'この鼓動が続く限り、人生は続く',
+    emoji: '💓',
+  },
+  {
+    id: 'walks',
+    category: 'comparison',
+    template: '毎日30分歩くなら、あと{remainingDays}回の散歩',
+    subtext: '歩くたびに、世界は少し広がる',
+    emoji: '🚶',
+  },
+  {
+    id: 'laughs',
+    category: 'comparison',
+    template: '人は1日平均15回笑う。残り{remainingDays}日で何回笑える？',
+    subtext: '笑顔は、人生を豊かにする',
+    emoji: '😊',
+  },
+  {
+    id: 'seasons-total',
+    category: 'comparison',
+    template: 'あと{remainingYears}回×4の季節の移ろい',
+    subtext: '同じ季節は二度とない',
+    emoji: '🍃',
+  },
 
   // === 問いかけ系: 内省を促す ===
   {
@@ -189,6 +259,34 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: '限られた{remainingDays}日、何に時間を使いたい？',
     subtext: '時間は、最も貴重な資源',
     emoji: '⏰',
+  },
+  {
+    id: 'question-courage',
+    category: 'question',
+    template: '「いつか」を「今日」に変える勇気はある？',
+    subtext: '先延ばしの代償は、時間そのもの',
+    emoji: '🦁',
+  },
+  {
+    id: 'question-legacy',
+    category: 'question',
+    template: 'あなたが残したいものは何ですか？',
+    subtext: '人は去っても、想いは残る',
+    emoji: '🌳',
+  },
+  {
+    id: 'question-now',
+    category: 'question',
+    template: '今この瞬間、本当にやりたいことをしている？',
+    subtext: '「今」は、唯一コントロールできる時間',
+    emoji: '🎯',
+  },
+  {
+    id: 'question-forgive',
+    category: 'question',
+    template: '許したい人、許されたい人はいますか？',
+    subtext: '心の荷物を降ろす時間も、有限',
+    emoji: '🤝',
   },
 
   // === 名言・格言系 ===
@@ -241,6 +339,34 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     subtext: '— マーク・トウェイン',
     emoji: '⛵',
   },
+  {
+    id: 'quote-thoreau',
+    category: 'quote',
+    template: '「大切なのは、ただ生きることではなく、善く生きること」',
+    subtext: '— ソクラテス',
+    emoji: '🏺',
+  },
+  {
+    id: 'quote-ichigo',
+    category: 'quote',
+    template: '「一期一会」— この出会いは、一生に一度きり',
+    subtext: '— 千利休の茶道の心得',
+    emoji: '🍵',
+  },
+  {
+    id: 'quote-dogen',
+    category: 'quote',
+    template: '「今日なすべきことを明日に延ばすな」',
+    subtext: '— 道元禅師',
+    emoji: '⛩️',
+  },
+  {
+    id: 'quote-kenko',
+    category: 'quote',
+    template: '「命あるものを見るに、人ばかり久しきはなし」',
+    subtext: '— 吉田兼好『徒然草』',
+    emoji: '📝',
+  },
 
   // === マイルストーン・気づき系 ===
   {
@@ -277,6 +403,34 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: '今日という日は、人生で一度きり',
     subtext: '特別な日を待たなくていい。今日が特別',
     emoji: '🌟',
+  },
+  {
+    id: 'breath',
+    category: 'milestone',
+    template: '今、息ができている。それだけで奇跡',
+    subtext: '生きているから、何でもできる',
+    emoji: '🌬️',
+  },
+  {
+    id: 'choices',
+    category: 'milestone',
+    template: '今日も無数の選択をする。その一つ一つが人生を形作る',
+    subtext: '小さな選択の積み重ねが、大きな違いを生む',
+    emoji: '🔀',
+  },
+  {
+    id: 'connections',
+    category: 'milestone',
+    template: 'あなたが出会える人の数には限りがある',
+    subtext: '一つ一つの縁を大切に',
+    emoji: '🔗',
+  },
+  {
+    id: 'morning-gift',
+    category: 'milestone',
+    template: '目が覚めた。今日という贈り物を受け取った',
+    subtext: '新しい一日は、新しいチャンス',
+    emoji: '🎁',
   },
 ];
 

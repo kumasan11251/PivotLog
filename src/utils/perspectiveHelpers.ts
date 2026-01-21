@@ -19,13 +19,70 @@ const seededRandom = (seed: number): number => {
 };
 
 /**
+ * メッセージが現在の条件で表示可能かチェック
+ */
+const isMessageDisplayable = (
+  message: PerspectiveMessage,
+  currentMonth: number,
+  birthdayMonth?: number
+): boolean => {
+  const condition = message.displayCondition;
+
+  // 条件がなければ通年表示
+  if (!condition) {
+    return true;
+  }
+
+  // 誕生日月条件
+  if (condition.requiresBirthday) {
+    if (!birthdayMonth) {
+      return false; // 誕生日情報がなければ表示しない
+    }
+    return currentMonth === birthdayMonth;
+  }
+
+  // 表示月条件
+  if (condition.displayMonths && condition.displayMonths.length > 0) {
+    return condition.displayMonths.includes(currentMonth);
+  }
+
+  return true;
+};
+
+/**
+ * 表示可能なメッセージをフィルタリング
+ */
+const getDisplayableMessages = (
+  currentMonth: number,
+  birthdayMonth?: number
+): PerspectiveMessage[] => {
+  return PERSPECTIVE_MESSAGES.filter(msg =>
+    isMessageDisplayable(msg, currentMonth, birthdayMonth)
+  );
+};
+
+/**
  * 今日の視点メッセージを取得
  * 日付ベースで決定されるため、同じ日は同じメッセージが表示される
+ * 季節や誕生日に応じて適切なメッセージのみを対象とする
+ *
+ * @param birthdayMonth ユーザーの誕生日月（1-12）。誕生日関連メッセージの表示判定に使用
  */
-export const getTodayPerspectiveMessage = (): PerspectiveMessage => {
+export const getTodayPerspectiveMessage = (birthdayMonth?: number): PerspectiveMessage => {
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1; // 1-12
   const seed = getDailySeed();
-  const index = Math.floor(seededRandom(seed) * PERSPECTIVE_MESSAGES.length);
-  return PERSPECTIVE_MESSAGES[index];
+
+  const displayableMessages = getDisplayableMessages(currentMonth, birthdayMonth);
+
+  // 表示可能なメッセージがない場合はフォールバック（通常はありえない）
+  if (displayableMessages.length === 0) {
+    const index = Math.floor(seededRandom(seed) * PERSPECTIVE_MESSAGES.length);
+    return PERSPECTIVE_MESSAGES[index];
+  }
+
+  const index = Math.floor(seededRandom(seed) * displayableMessages.length);
+  return displayableMessages[index];
 };
 
 /**
@@ -80,9 +137,20 @@ export const formatPerspectiveMessage = (
 
 /**
  * デバッグ用: 特定の日付のメッセージを取得
+ * @param date 対象の日付
+ * @param birthdayMonth ユーザーの誕生日月（1-12）
  */
-export const getPerspectiveMessageForDate = (date: Date): PerspectiveMessage => {
+export const getPerspectiveMessageForDate = (date: Date, birthdayMonth?: number): PerspectiveMessage => {
+  const currentMonth = date.getMonth() + 1;
   const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
-  const index = Math.floor(seededRandom(seed) * PERSPECTIVE_MESSAGES.length);
-  return PERSPECTIVE_MESSAGES[index];
+
+  const displayableMessages = getDisplayableMessages(currentMonth, birthdayMonth);
+
+  if (displayableMessages.length === 0) {
+    const index = Math.floor(seededRandom(seed) * PERSPECTIVE_MESSAGES.length);
+    return PERSPECTIVE_MESSAGES[index];
+  }
+
+  const index = Math.floor(seededRandom(seed) * displayableMessages.length);
+  return displayableMessages[index];
 };

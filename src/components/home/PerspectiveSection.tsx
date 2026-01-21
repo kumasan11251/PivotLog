@@ -15,6 +15,8 @@ interface PerspectiveSectionProps {
   currentAge: number;
   /** 人生の進捗% */
   progressPercent: number;
+  /** 誕生日（YYYY-MM-DD形式）*/
+  birthday?: string;
 }
 
 /**
@@ -27,9 +29,15 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   remainingWeeks,
   currentAge,
   progressPercent,
+  birthday,
 }) => {
-  // 今日のメッセージを取得
-  const todayMessage = getTodayPerspectiveMessage();
+  // 誕生日月を抽出（1-12）
+  const birthdayMonth = birthday
+    ? parseInt(birthday.split('-')[1], 10)
+    : undefined;
+
+  // 今日のメッセージを取得（誕生日月を渡して季節・誕生日メッセージをフィルタリング）
+  const todayMessage = getTodayPerspectiveMessage(birthdayMonth);
   const formattedMessage = formatPerspectiveMessage(todayMessage, {
     remainingYears,
     remainingDays,

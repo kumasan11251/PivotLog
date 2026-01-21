@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import type { EditLifespanScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
+import { syncWidgetData } from '../utils/widgetStorage';
 import { colors, fonts, spacing, textBase } from '../theme';
 import ScreenHeader from '../components/common/ScreenHeader';
 import LifespanSlider from '../components/common/LifespanSlider';
@@ -79,6 +80,9 @@ const EditLifespanScreen: React.FC = () => {
         birthday: birthday,
         targetLifespan: targetLifespan,
       });
+
+      // ウィジェットデータを同期
+      await syncWidgetData();
 
       navigation.goBack();
     } catch {

@@ -194,6 +194,7 @@ const HomeContent: React.FC = () => {
             remainingWeeks={timeLeft.totalWeeks}
             currentAge={currentAge}
             progressPercent={lifeProgress}
+            birthday={birthday}
           />
         </View>
 
