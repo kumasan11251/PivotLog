@@ -15,15 +15,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import type { SettingsScreenNavigationProp } from '../types/navigation';
-import { colors, fonts, spacing, textBase } from '../theme';
+import { colors, fonts, spacing, textBase, getColors, Colors } from '../theme';
 import { loadUserSettings, saveUserSettings, resetOnboarding } from '../utils/storage';
 import { getCurrentUser, deleteAccount } from '../services/firebase';
 import { deleteAllUserData } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 
 // 1日の開始時刻の選択肢（0時〜12時）
 const DAY_START_HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => i);
+
+// テーマの選択肢
+const THEME_OPTIONS: { value: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { value: 'light', label: 'ライト', icon: 'sunny-outline' },
+  { value: 'dark', label: 'ダーク', icon: 'moon-outline' },
+  { value: 'system', label: 'システム設定に従う', icon: 'phone-portrait-outline' },
+];
 
 interface SettingItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -32,6 +40,7 @@ interface SettingItemProps {
   onPress: () => void;
   isLoading?: boolean;
   isLast?: boolean;
+  themeColors?: Colors;
 }
 
 const SettingItem: React.FC<SettingItemProps> = ({
@@ -41,29 +50,30 @@ const SettingItem: React.FC<SettingItemProps> = ({
   onPress,
   isLoading = false,
   isLast = false,
+  themeColors: tc = colors,
 }) => (
   <TouchableOpacity
-    style={[styles.settingItem, isLast && styles.settingItemLast]}
+    style={[styles.settingItem, { borderBottomColor: tc.border }, isLast && styles.settingItemLast]}
     onPress={() => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onPress();
     }}
     activeOpacity={0.6}
   >
-    <View style={styles.settingIconContainer}>
-      <Ionicons name={icon} size={20} color={colors.primary} />
+    <View style={[styles.settingIconContainer, { backgroundColor: `${tc.primary}15` }]}>
+      <Ionicons name={icon} size={20} color={tc.primary} />
     </View>
     <View style={styles.settingContent}>
-      <Text style={styles.settingLabel}>{label}</Text>
+      <Text style={[styles.settingLabel, { color: tc.text.primary }]}>{label}</Text>
       <View style={styles.settingValueContainer}>
         {isLoading ? (
-          <View style={styles.loadingPlaceholder} />
+          <View style={[styles.loadingPlaceholder, { backgroundColor: tc.border }]} />
         ) : (
-          <Text style={styles.settingValue}>{value || ' '}</Text>
+          <Text style={[styles.settingValue, { color: tc.text.secondary }]}>{value || ' '}</Text>
         )}
       </View>
     </View>
-    <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+    <Ionicons name="chevron-forward" size={18} color={tc.text.secondary} />
   </TouchableOpacity>
 );
 
@@ -73,9 +83,12 @@ const SettingsScreen: React.FC = () => {
   const [targetLifespan, setTargetLifespan] = useState<number>(0);
   const [dayStartHour, setDayStartHour] = useState<number>(0);
   const [showDayStartPicker, setShowDayStartPicker] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDebugSection, setShowDebugSection] = useState(false);
   const user = getCurrentUser();
+  const { themeMode, setThemeMode, isDark } = useTheme();
+  const themeColors = getColors(isDark);
 
   // デバッグセクションのアニメーション
   const debugHeightAnim = useRef(new Animated.Value(0)).current;
@@ -198,6 +211,16 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
+  const handleThemeChange = async (mode: ThemeMode) => {
+    setShowThemePicker(false);
+    try {
+      await setThemeMode(mode);
+    } catch (error) {
+      console.error('テーマの保存に失敗:', error);
+      Alert.alert('エラー', '設定の保存に失敗しました');
+    }
+  };
+
   const formatDayStartHour = (hour: number): string => {
     return hour === 0 ? '0時（深夜0時）' : `${hour}時`;
   };
@@ -207,8 +230,64 @@ const SettingsScreen: React.FC = () => {
     return `${year}年${parseInt(month)}月${parseInt(day)}日`;
   };
 
+  const getThemeLabel = (mode: ThemeMode): string => {
+    const option = THEME_OPTIONS.find((opt) => opt.value === mode);
+    return option?.label || 'システム設定に従う';
+  };
+
+  // 動的なスタイル
+  const dynamicStyles = {
+    container: {
+      backgroundColor: themeColors.background,
+    },
+    sectionTitle: {
+      color: themeColors.text.secondary,
+    },
+    sectionCard: {
+      backgroundColor: themeColors.surface,
+      shadowColor: themeColors.shadow,
+    },
+    settingItem: {
+      borderBottomColor: themeColors.border,
+    },
+    settingIconContainer: {
+      backgroundColor: `${themeColors.primary}15`,
+    },
+    settingLabel: {
+      color: themeColors.text.primary,
+    },
+    settingValue: {
+      color: themeColors.text.secondary,
+    },
+    footerText: {
+      color: themeColors.primary,
+    },
+    footerSubtext: {
+      color: themeColors.text.secondary,
+    },
+    modalOverlay: {
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+      backgroundColor: themeColors.surface,
+      shadowColor: themeColors.shadow,
+    },
+    modalHeader: {
+      borderBottomColor: themeColors.border,
+    },
+    modalTitle: {
+      color: themeColors.text.primary,
+    },
+    modalOption: {
+      borderBottomColor: themeColors.border,
+    },
+    modalOptionText: {
+      color: themeColors.text.primary,
+    },
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, dynamicStyles.container]} edges={['top', 'left', 'right']}>
       <ScreenHeader
         title="設定"
         leftAction={{
@@ -224,14 +303,15 @@ const SettingsScreen: React.FC = () => {
       >
         {/* プロフィール設定セクション */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>プロフィール</Text>
-          <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>プロフィール</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             <SettingItem
               icon="calendar-outline"
               label="誕生日"
               value={birthday ? formatBirthday(birthday) : undefined}
               onPress={() => navigation.navigate('EditBirthday')}
               isLoading={isLoading}
+              themeColors={themeColors}
             />
             <SettingItem
               icon="flag-outline"
@@ -240,14 +320,30 @@ const SettingsScreen: React.FC = () => {
               onPress={() => navigation.navigate('EditLifespan')}
               isLoading={isLoading}
               isLast
+              themeColors={themeColors}
+            />
+          </View>
+        </View>
+
+        {/* 外観設定セクション */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>外観</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <SettingItem
+              icon="contrast-outline"
+              label="テーマ"
+              value={getThemeLabel(themeMode)}
+              onPress={() => setShowThemePicker(true)}
+              isLast
+              themeColors={themeColors}
             />
           </View>
         </View>
 
         {/* 記録設定セクション */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>記録設定</Text>
-          <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>記録設定</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             <SettingItem
               icon="time-outline"
               label="1日の開始時刻"
@@ -255,45 +351,47 @@ const SettingsScreen: React.FC = () => {
               onPress={() => setShowDayStartPicker(true)}
               isLoading={isLoading}
               isLast
+              themeColors={themeColors}
             />
           </View>
         </View>
 
         {/* ウィジェットセクション */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ウィジェット</Text>
-          <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>ウィジェット</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             <SettingItem
               icon="apps-outline"
               label="ウィジェット設定"
               value="ホーム画面に追加"
               onPress={() => navigation.navigate('WidgetSettings')}
               isLast
+              themeColors={themeColors}
             />
           </View>
         </View>
 
         {/* アプリ情報 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>アプリ情報</Text>
-          <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>アプリ情報</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             {/* バージョン（タップで開発者メニューをトグル） */}
             <TouchableOpacity
-              style={[styles.settingItem, !showDebugSection && styles.settingItemLast]}
+              style={[styles.settingItem, dynamicStyles.settingItem, !showDebugSection && styles.settingItemLast]}
               onPress={toggleDebugSection}
               activeOpacity={0.6}
             >
-              <View style={styles.settingIconContainer}>
-                <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
+                <Ionicons name="information-circle-outline" size={20} color={themeColors.primary} />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>バージョン</Text>
-                <Text style={styles.settingValue}>1.0.0</Text>
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>バージョン</Text>
+                <Text style={[styles.settingValue, dynamicStyles.settingValue]}>1.0.0</Text>
               </View>
               <Ionicons
                 name={showDebugSection ? 'chevron-up' : 'chevron-down'}
                 size={18}
-                color={colors.text.secondary}
+                color={themeColors.text.secondary}
               />
             </TouchableOpacity>
 
@@ -368,7 +466,7 @@ const SettingsScreen: React.FC = () => {
                 >
                   <Ionicons name="settings-outline" size={18} color="#FF9800" />
                   <Text style={styles.debugItemText}>初期設定を再表示</Text>
-                  <Ionicons name="chevron-forward" size={16} color={colors.text.secondary} />
+                  <Ionicons name="chevron-forward" size={16} color={themeColors.text.secondary} />
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -377,30 +475,31 @@ const SettingsScreen: React.FC = () => {
 
         {/* フィードバック */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>フィードバック</Text>
-          <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>フィードバック</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             <SettingItem
               icon="chatbubble-ellipses-outline"
               label="ご意見・ご要望を送る"
               value="不具合報告や機能改善など"
               onPress={() => navigation.navigate('Feedback')}
               isLast
+              themeColors={themeColors}
             />
           </View>
         </View>
 
         {/* アカウント */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>アカウント</Text>
-          <View style={styles.sectionCard}>
-            <View style={[styles.infoItem]}>
-              <View style={styles.settingIconContainer}>
-                <Ionicons name="person-outline" size={20} color={colors.primary} />
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>アカウント</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <View style={[styles.infoItem, dynamicStyles.settingItem]}>
+              <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
+                <Ionicons name="person-outline" size={20} color={themeColors.primary} />
               </View>
               <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>ログイン状態</Text>
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>ログイン状態</Text>
                 <View style={styles.accountStatusRow}>
-                  <Text style={styles.settingValue}>
+                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
                     {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
                   </Text>
                   <View style={[
@@ -430,14 +529,14 @@ const SettingsScreen: React.FC = () => {
                   onPress={() => navigation.navigate('LinkAccount')}
                   activeOpacity={0.6}
                 >
-                  <View style={[styles.settingIconContainer, styles.linkAccountIconContainer]}>
-                    <Ionicons name="link-outline" size={20} color={colors.primary} />
+                  <View style={[styles.settingIconContainer, styles.linkAccountIconContainer, dynamicStyles.settingIconContainer]}>
+                    <Ionicons name="link-outline" size={20} color={themeColors.primary} />
                   </View>
                   <View style={styles.settingContent}>
-                    <Text style={styles.settingLabel}>アカウントを連携</Text>
-                    <Text style={styles.linkAccountSubtext}>メールアドレスでデータをバックアップ</Text>
+                    <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>アカウントを連携</Text>
+                    <Text style={[styles.linkAccountSubtext, dynamicStyles.settingValue]}>メールアドレスでデータをバックアップ</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                  <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
                 </TouchableOpacity>
               </>
             ) : (
@@ -454,7 +553,7 @@ const SettingsScreen: React.FC = () => {
                   <View style={styles.settingContent}>
                     <Text style={[styles.settingLabel, styles.logoutText]}>ログアウト</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+                  <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
                 </TouchableOpacity>
               </>
             )}
@@ -463,8 +562,8 @@ const SettingsScreen: React.FC = () => {
 
         {/* データ削除セクション */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>データ管理</Text>
-          <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>データ管理</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             <TouchableOpacity
               style={[styles.settingItem, styles.settingItemLast]}
               onPress={handleDeleteAccount}
@@ -477,21 +576,21 @@ const SettingsScreen: React.FC = () => {
                 <Text style={[styles.settingLabel, styles.deleteText]}>
                   {user?.isAnonymous ? 'すべてのデータを削除' : 'アカウントを削除'}
                 </Text>
-                <Text style={styles.deleteSubtext}>
+                <Text style={[styles.deleteSubtext, dynamicStyles.settingValue]}>
                   {user?.isAnonymous
                     ? 'ローカルデータがすべて削除されます'
                     : 'アカウントとすべてのデータが削除されます'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
+              <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* フッター */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>PivotLog</Text>
-          <Text style={styles.footerSubtext}>人生の時間を可視化する</Text>
+          <Text style={[styles.footerText, dynamicStyles.footerText]}>PivotLog</Text>
+          <Text style={[styles.footerSubtext, dynamicStyles.footerSubtext]}>人生の時間を可視化する</Text>
         </View>
       </ScrollView>
 
@@ -503,15 +602,15 @@ const SettingsScreen: React.FC = () => {
         onRequestClose={() => setShowDayStartPicker(false)}
       >
         <TouchableOpacity
-          style={styles.modalOverlay}
+          style={[styles.modalOverlay, dynamicStyles.modalOverlay]}
           activeOpacity={1}
           onPress={() => setShowDayStartPicker(false)}
         >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>1日の開始時刻</Text>
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <View style={[styles.modalHeader, dynamicStyles.modalHeader]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>1日の開始時刻</Text>
               <TouchableOpacity onPress={() => setShowDayStartPicker(false)}>
-                <Ionicons name="close" size={24} color={colors.text.secondary} />
+                <Ionicons name="close" size={24} color={themeColors.text.secondary} />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -522,33 +621,94 @@ const SettingsScreen: React.FC = () => {
                   <TouchableOpacity
                     style={[
                       styles.modalOption,
-                      item === dayStartHour && styles.modalOptionSelected,
+                      dynamicStyles.modalOption,
+                      item === dayStartHour && { backgroundColor: `${themeColors.primary}10` },
                     ]}
                     onPress={() => handleDayStartHourChange(item)}
                   >
                     <Text
                       style={[
                         styles.modalOptionText,
-                        item === dayStartHour && styles.modalOptionTextSelected,
+                        dynamicStyles.modalOptionText,
+                        item === dayStartHour && { color: themeColors.primary, fontWeight: fonts.weight.medium },
                       ]}
                     >
                       {item}時
                     </Text>
                     {item === dayStartHour && (
-                      <Ionicons name="checkmark" size={20} color={colors.primary} />
+                      <Ionicons name="checkmark" size={20} color={themeColors.primary} />
                     )}
                   </TouchableOpacity>
                 );
               }}
               style={styles.modalList}
               ListHeaderComponent={
-                <View style={styles.modalDescription}>
-                  <Text style={styles.modalDescriptionText}>
+                <View style={[styles.modalDescription, { backgroundColor: `${themeColors.primary}08`, borderBottomColor: themeColors.border }]}>
+                  <Text style={[styles.modalDescriptionText, dynamicStyles.settingValue]}>
                     設定した時刻以降を「今日」として扱います。{"\n"}
                     例：4時に設定すると、3時に記録しても「昨日」の記録になります。
                   </Text>
                 </View>
               }
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* テーマピッカーモーダル */}
+      <Modal
+        visible={showThemePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemePicker(false)}
+      >
+        <TouchableOpacity
+          style={[styles.modalOverlay, dynamicStyles.modalOverlay]}
+          activeOpacity={1}
+          onPress={() => setShowThemePicker(false)}
+        >
+          <View style={[styles.modalContent, dynamicStyles.modalContent]}>
+            <View style={[styles.modalHeader, dynamicStyles.modalHeader]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>テーマ</Text>
+              <TouchableOpacity onPress={() => setShowThemePicker(false)}>
+                <Ionicons name="close" size={24} color={themeColors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={THEME_OPTIONS}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item, index }) => {
+                const isSelected = item.value === themeMode;
+                const isLast = index === THEME_OPTIONS.length - 1;
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.modalOption,
+                      dynamicStyles.modalOption,
+                      isSelected && { backgroundColor: `${themeColors.primary}10` },
+                      isLast && { borderBottomWidth: 0 },
+                    ]}
+                    onPress={() => handleThemeChange(item.value)}
+                  >
+                    <View style={styles.themeOptionContent}>
+                      <Ionicons name={item.icon} size={20} color={isSelected ? themeColors.primary : themeColors.text.secondary} />
+                      <Text
+                        style={[
+                          styles.modalOptionText,
+                          dynamicStyles.modalOptionText,
+                          isSelected && { color: themeColors.primary, fontWeight: fonts.weight.medium },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={20} color={themeColors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              style={styles.modalList}
             />
           </View>
         </TouchableOpacity>
@@ -838,6 +998,11 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     lineHeight: 18,
     ...textBase,
+  },
+  themeOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
 });
 

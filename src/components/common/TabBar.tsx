@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { colors, fonts, spacing, textBase, getColors } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type TabType = 'home' | 'diaryList';
 
@@ -11,21 +12,24 @@ interface TabBarProps {
 }
 
 export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
       <TouchableOpacity
         style={styles.tab}
         onPress={() => onTabChange('home')}
         activeOpacity={0.7}
       >
-        <View style={[styles.iconContainer, activeTab === 'home' && styles.activeIcon]}>
+        <View style={[styles.iconContainer, activeTab === 'home' && { backgroundColor: themeColors.primary + '15' }]}>
           <Ionicons
             name={activeTab === 'home' ? 'home' : 'home-outline'}
             size={20}
-            color={activeTab === 'home' ? colors.primary : colors.text.secondary}
+            color={activeTab === 'home' ? themeColors.primary : themeColors.text.secondary}
           />
         </View>
-        <Text style={[styles.label, activeTab === 'home' && styles.activeLabel]}>
+        <Text style={[styles.label, { color: themeColors.text.secondary }, activeTab === 'home' && { color: themeColors.primary }]}>
           ホーム
         </Text>
       </TouchableOpacity>
@@ -35,14 +39,14 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
         onPress={() => onTabChange('diaryList')}
         activeOpacity={0.7}
       >
-        <View style={[styles.iconContainer, activeTab === 'diaryList' && styles.activeIcon]}>
+        <View style={[styles.iconContainer, activeTab === 'diaryList' && { backgroundColor: themeColors.primary + '15' }]}>
           <Ionicons
             name={activeTab === 'diaryList' ? 'list' : 'list-outline'}
             size={20}
-            color={activeTab === 'diaryList' ? colors.primary : colors.text.secondary}
+            color={activeTab === 'diaryList' ? themeColors.primary : themeColors.text.secondary}
           />
         </View>
-        <Text style={[styles.label, activeTab === 'diaryList' && styles.activeLabel]}>
+        <Text style={[styles.label, { color: themeColors.text.secondary }, activeTab === 'diaryList' && { color: themeColors.primary }]}>
           記録一覧
         </Text>
       </TouchableOpacity>

@@ -13,7 +13,8 @@ import * as Haptics from 'expo-haptics';
 import type { EditBirthdayScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
 import { syncWidgetData } from '../utils/widgetStorage';
-import { colors, fonts, spacing, textBase } from '../theme';
+import { getColors, fonts, spacing, textBase } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 
 // 年月日の選択肢を生成
@@ -43,18 +44,31 @@ interface PickerItemProps {
   isSelected: boolean;
   onPress: () => void;
   suffix: string;
+  themeColors: ReturnType<typeof getColors>;
 }
 
-const PickerItem: React.FC<PickerItemProps> = ({ value, isSelected, onPress, suffix }) => (
+const PickerItem: React.FC<PickerItemProps> = ({ value, isSelected, onPress, suffix, themeColors }) => (
   <TouchableOpacity
-    style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+    style={[
+      styles.pickerItem,
+      { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+      isSelected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+    ]}
     onPress={onPress}
     activeOpacity={0.7}
   >
-    <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
+    <Text style={[
+      styles.pickerItemText,
+      { color: themeColors.text.primary },
+      isSelected && { color: themeColors.text.inverse },
+    ]}>
       {value}
     </Text>
-    <Text style={[styles.pickerItemSuffix, isSelected && styles.pickerItemSuffixSelected]}>
+    <Text style={[
+      styles.pickerItemSuffix,
+      { color: themeColors.text.secondary },
+      isSelected && { color: themeColors.text.inverse },
+    ]}>
       {suffix}
     </Text>
   </TouchableOpacity>
@@ -66,6 +80,8 @@ const YEAR_ITEM_GAP = 4; // spacing.xs
 
 const EditBirthdayScreen: React.FC = () => {
   const navigation = useNavigation<EditBirthdayScreenNavigationProp>();
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [targetLifespan, setTargetLifespan] = useState<number>(0);
@@ -211,7 +227,7 @@ const EditBirthdayScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <ScreenHeader
           title="誕生日"
           leftAction={{
@@ -220,14 +236,14 @@ const EditBirthdayScreen: React.FC = () => {
           }}
         />
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>読み込み中...</Text>
+          <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>読み込み中...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScreenHeader
         title="誕生日"
         leftAction={{
@@ -238,7 +254,7 @@ const EditBirthdayScreen: React.FC = () => {
           type: 'text',
           label: isSaving ? '保存中...' : '保存',
           onPress: handleSave,
-          color: isFutureDate ? colors.text.secondary : colors.primary,
+          color: isFutureDate ? themeColors.text.secondary : themeColors.primary,
         }}
       />
 
@@ -249,7 +265,7 @@ const EditBirthdayScreen: React.FC = () => {
       >
         {/* 年選択 */}
         <View style={styles.pickerSection}>
-          <Text style={styles.pickerLabel}>年</Text>
+          <Text style={[styles.pickerLabel, { color: themeColors.text.secondary }]}>年</Text>
           <ScrollView
             ref={yearScrollRef}
             horizontal
@@ -263,6 +279,7 @@ const EditBirthdayScreen: React.FC = () => {
                 isSelected={selectedYear === year}
                 onPress={() => handleYearSelect(year)}
                 suffix="年"
+                themeColors={themeColors}
               />
             ))}
           </ScrollView>
@@ -270,7 +287,7 @@ const EditBirthdayScreen: React.FC = () => {
 
         {/* 月選択 */}
         <View style={styles.pickerSection}>
-          <Text style={styles.pickerLabel}>月</Text>
+          <Text style={[styles.pickerLabel, { color: themeColors.text.secondary }]}>月</Text>
           <View style={styles.pickerGrid}>
             {MONTHS.map((month) => (
               <PickerItem
@@ -279,6 +296,7 @@ const EditBirthdayScreen: React.FC = () => {
                 isSelected={selectedMonth === month}
                 onPress={() => handleMonthSelect(month)}
                 suffix="月"
+                themeColors={themeColors}
               />
             ))}
           </View>
@@ -286,7 +304,7 @@ const EditBirthdayScreen: React.FC = () => {
 
         {/* 日選択 */}
         <View style={styles.pickerSection}>
-          <Text style={styles.pickerLabel}>日</Text>
+          <Text style={[styles.pickerLabel, { color: themeColors.text.secondary }]}>日</Text>
           <View style={styles.pickerGrid}>
             {DAYS.map((day) => (
               <PickerItem
@@ -295,21 +313,30 @@ const EditBirthdayScreen: React.FC = () => {
                 isSelected={adjustedDay === day}
                 onPress={() => handleDaySelect(day)}
                 suffix="日"
+                themeColors={themeColors}
               />
             ))}
           </View>
         </View>
 
         {/* 選択結果表示 */}
-        <View style={[styles.selectedDateContainer, isFutureDate && styles.selectedDateContainerError]}>
-          <Text style={styles.selectedDateLabel}>選択中：</Text>
-          <Text style={[styles.selectedDateValue, isFutureDate && styles.errorText]}>
+        <View style={[
+          styles.selectedDateContainer,
+          { backgroundColor: `${themeColors.primary}10` },
+          isFutureDate && styles.selectedDateContainerError,
+        ]}>
+          <Text style={[styles.selectedDateLabel, { color: themeColors.text.secondary }]}>選択中：</Text>
+          <Text style={[
+            styles.selectedDateValue,
+            { color: themeColors.text.primary },
+            isFutureDate && styles.errorText,
+          ]}>
             {selectedYear}年{selectedMonth}月{adjustedDay}日
           </Text>
           {isFutureDate ? (
             <Text style={styles.errorText}>（未来の日付です）</Text>
           ) : (
-            <Text style={styles.ageText}>（{currentAge}歳）</Text>
+            <Text style={[styles.ageText, { color: themeColors.primary }]}>（{currentAge}歳）</Text>
           )}
         </View>
       </ScrollView>
@@ -320,7 +347,6 @@ const EditBirthdayScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -335,7 +361,6 @@ const styles = StyleSheet.create({
   pickerLabel: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginBottom: spacing.sm,
     ...textBase,
   },
@@ -353,36 +378,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.border,
     minWidth: 56,
     justifyContent: 'center',
-  },
-  pickerItemSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   pickerItemText: {
     fontSize: 15,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     ...textBase,
-  },
-  pickerItemTextSelected: {
-    color: colors.text.inverse,
-    fontFamily: fonts.family.bold,
   },
   pickerItemSuffix: {
     fontSize: 11,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginLeft: 2,
     ...textBase,
-  },
-  pickerItemSuffixSelected: {
-    color: colors.text.inverse,
   },
   selectedDateContainer: {
     flexDirection: 'row',
@@ -390,7 +400,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: spacing.md,
     padding: spacing.md,
-    backgroundColor: `${colors.primary}10`,
     borderRadius: 12,
   },
   selectedDateContainerError: {
@@ -399,20 +408,17 @@ const styles = StyleSheet.create({
   selectedDateLabel: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     ...textBase,
   },
   selectedDateValue: {
     fontSize: 16,
     fontFamily: fonts.family.bold,
-    color: colors.text.primary,
     marginLeft: spacing.xs,
     ...textBase,
   },
   ageText: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.primary,
     marginLeft: spacing.xs,
     ...textBase,
   },
@@ -430,7 +436,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: fonts.size.body,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },

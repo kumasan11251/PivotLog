@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import type { WidgetSettingsScreenNavigationProp } from '../types/navigation';
-import { colors, fonts, spacing } from '../theme';
+import { getColors, fonts, spacing } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 import {
   loadWidgetSettings,
@@ -36,6 +37,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const WidgetSettingsScreen: React.FC = () => {
   const navigation = useNavigation<WidgetSettingsScreenNavigationProp>();
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [customText, setCustomText] = useState('');
@@ -129,7 +132,7 @@ const WidgetSettingsScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top', 'left', 'right']}>
         <ScreenHeader
           title="ウィジェット設定"
           leftAction={{
@@ -138,14 +141,14 @@ const WidgetSettingsScreen: React.FC = () => {
           }}
         />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={themeColors.primary} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top', 'left', 'right']}>
       <ScreenHeader
         title="ウィジェット設定"
         leftAction={{
@@ -156,7 +159,7 @@ const WidgetSettingsScreen: React.FC = () => {
           type: 'text',
           label: isSaving ? '保存中...' : '保存',
           onPress: handleSave,
-          color: hasChanges ? colors.primary : colors.text.secondary,
+          color: hasChanges ? themeColors.primary : themeColors.text.secondary,
         }}
       />
 
@@ -169,13 +172,20 @@ const WidgetSettingsScreen: React.FC = () => {
         {/* カスタムメッセージ */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>カスタムメッセージ</Text>
-            <Text style={styles.charCount}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>カスタムメッセージ</Text>
+            <Text style={[styles.charCount, { color: themeColors.text.secondary }]}>
               {customText.length} / {MAX_CUSTOM_TEXT_LENGTH}
             </Text>
           </View>
           <TextInput
-            style={styles.textInput}
+            style={[
+              styles.textInput,
+              {
+                backgroundColor: themeColors.surface,
+                borderColor: themeColors.border,
+                color: themeColors.text.primary,
+              },
+            ]}
             value={customText}
             onChangeText={(text) => {
               if (text.length <= MAX_CUSTOM_TEXT_LENGTH) {
@@ -183,7 +193,7 @@ const WidgetSettingsScreen: React.FC = () => {
               }
             }}
             placeholder="ウィジェットに表示するメッセージを入力..."
-            placeholderTextColor={colors.text.secondary}
+            placeholderTextColor={themeColors.text.secondary}
             multiline
             maxLength={MAX_CUSTOM_TEXT_LENGTH}
           />
@@ -196,42 +206,42 @@ const WidgetSettingsScreen: React.FC = () => {
             onPress={toggleHelp}
             activeOpacity={0.7}
           >
-            <Text style={styles.sectionTitle}>ウィジェットの追加方法</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>ウィジェットの追加方法</Text>
             <Ionicons
               name={isHelpExpanded ? 'chevron-up' : 'chevron-down'}
               size={18}
-              color={colors.text.secondary}
+              color={themeColors.text.secondary}
             />
           </TouchableOpacity>
           {isHelpExpanded && (
-            <View style={styles.sectionCard}>
+            <View style={[styles.sectionCard, { backgroundColor: themeColors.card, borderColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' }]}>
               <View style={styles.stepItem}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>1</Text>
+                <View style={[styles.stepNumber, { backgroundColor: themeColors.primary }]}>
+                  <Text style={[styles.stepNumberText, { color: themeColors.background }]}>1</Text>
                 </View>
-                <Text style={styles.stepText}>ホーム画面を長押しします</Text>
+                <Text style={[styles.stepText, { color: themeColors.text.primary }]}>ホーム画面を長押しします</Text>
               </View>
               <View style={styles.stepItem}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>2</Text>
+                <View style={[styles.stepNumber, { backgroundColor: themeColors.primary }]}>
+                  <Text style={[styles.stepNumberText, { color: themeColors.background }]}>2</Text>
                 </View>
-                <Text style={styles.stepText}>
+                <Text style={[styles.stepText, { color: themeColors.text.primary }]}>
                   {Platform.OS === 'ios'
                     ? '左上の「編集」→「ウィジェットを追加」をタップ'
                     : '「ウィジェット」を選択'}
                 </Text>
               </View>
               <View style={styles.stepItem}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>3</Text>
+                <View style={[styles.stepNumber, { backgroundColor: themeColors.primary }]}>
+                  <Text style={[styles.stepNumberText, { color: themeColors.background }]}>3</Text>
                 </View>
-                <Text style={styles.stepText}>「PivotLog」を検索して選択</Text>
+                <Text style={[styles.stepText, { color: themeColors.text.primary }]}>「PivotLog」を検索して選択</Text>
               </View>
               <View style={styles.stepItem}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>4</Text>
+                <View style={[styles.stepNumber, { backgroundColor: themeColors.primary }]}>
+                  <Text style={[styles.stepNumberText, { color: themeColors.background }]}>4</Text>
                 </View>
-                <Text style={styles.stepText}>好みのサイズを選んで追加</Text>
+                <Text style={[styles.stepText, { color: themeColors.text.primary }]}>好みのサイズを選んで追加</Text>
               </View>
             </View>
           )}
@@ -246,7 +256,6 @@ const WidgetSettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -272,7 +281,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontFamily: fonts.family.bold,
-    color: colors.text.secondary,
     marginLeft: spacing.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -285,28 +293,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   sectionCard: {
-    backgroundColor: colors.card,
     borderRadius: spacing.borderRadius.large,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
   },
   textInput: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     minHeight: 100,
     textAlignVertical: 'top',
   },
   charCount: {
     fontSize: 12,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginRight: spacing.xs,
   },
   stepItem: {
@@ -319,19 +321,16 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepNumberText: {
     fontSize: 12,
     fontFamily: fonts.family.bold,
-    color: colors.background,
   },
   stepText: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     flex: 1,
   },
   bottomSpacer: {

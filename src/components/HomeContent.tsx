@@ -4,7 +4,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import type { HomeScreenNavigationProp } from '../types/navigation';
-import { colors, fonts, spacing, textBase } from '../theme';
+import { colors, fonts, spacing, textBase, getColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import ScreenHeader from './common/ScreenHeader';
 import CountdownSection from './home/CountdownSection';
 import ProgressSection from './home/ProgressSection';
@@ -39,6 +40,8 @@ const CheckIcon: React.FC<{ size?: number; color?: string }> = ({
  */
 const HomeContent: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
 
   // 1日の開始時刻（設定から読み込み）
   const [dayStartHour, setDayStartHour] = useState(0);
@@ -142,7 +145,7 @@ const HomeContent: React.FC = () => {
       : null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScreenHeader
         title="ホーム"
         rightAction={{
@@ -159,7 +162,7 @@ const HomeContent: React.FC = () => {
       >
         {/* 日付 */}
         <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>{todayDate}</Text>
+          <Text style={[styles.dateText, { color: themeColors.text.secondary }]}>{todayDate}</Text>
         </View>
 
         {/* 上部セクション：残り時間カウントダウン */}
@@ -194,7 +197,7 @@ const HomeContent: React.FC = () => {
             remainingWeeks={timeLeft.totalWeeks}
             currentAge={currentAge}
             progressPercent={lifeProgress}
-            birthday={birthday}
+            birthday={birthday ?? undefined}
           />
         </View>
 
@@ -205,7 +208,7 @@ const HomeContent: React.FC = () => {
             {!isStreakLoading && streakInfo && (
               <>
                 <Text style={styles.streakEmoji}>{streakInfo.emoji}</Text>
-                <Text style={styles.streakText}>{streakInfo.message}</Text>
+                <Text style={[styles.streakText, { color: themeColors.text.secondary }]}>{streakInfo.message}</Text>
               </>
             )}
           </View>
@@ -215,14 +218,15 @@ const HomeContent: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.recordButton,
+                { backgroundColor: themeColors.primary },
                 hasTodayEntry && styles.recordButtonCompleted,
               ]}
               onPress={handleNavigateToDiaryEntry}
               activeOpacity={0.8}
             >
               <View style={styles.recordButtonContent}>
-                {hasTodayEntry ? <CheckIcon /> : <EditIcon />}
-                <Text style={styles.recordButtonText}>
+                {hasTodayEntry ? <CheckIcon color={themeColors.text.inverse} /> : <EditIcon color={themeColors.text.inverse} />}
+                <Text style={[styles.recordButtonText, { color: themeColors.text.inverse }]}>
                   {hasTodayEntry ? '今日の記録を見る' : '今日を記録する'}
                 </Text>
               </View>

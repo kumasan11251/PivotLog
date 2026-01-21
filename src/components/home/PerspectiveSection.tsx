@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { getTodayPerspectiveMessage, formatPerspectiveMessage } from '../../utils/perspectiveHelpers';
 
 interface PerspectiveSectionProps {
@@ -31,6 +32,9 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   progressPercent,
   birthday,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   // 誕生日月を抽出（1-12）
   const birthdayMonth = birthday
     ? parseInt(birthday.split('-')[1], 10)
@@ -47,21 +51,21 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.card, borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
       <View style={styles.headerRow}>
         <MaterialCommunityIcons
           name="lightbulb-outline"
           size={16}
-          color={colors.text.secondary}
+          color={themeColors.text.secondary}
         />
-        <Text style={styles.headerText}>今日の視点</Text>
+        <Text style={[styles.headerText, { color: themeColors.text.secondary }]}>今日の視点</Text>
       </View>
 
       <View style={styles.contentContainer}>
         <Text style={styles.emoji}>{formattedMessage.emoji}</Text>
-        <Text style={styles.mainText}>{formattedMessage.mainText}</Text>
+        <Text style={[styles.mainText, { color: themeColors.text.primary }]}>{formattedMessage.mainText}</Text>
         {formattedMessage.subtext && (
-          <Text style={styles.subtext}>{formattedMessage.subtext}</Text>
+          <Text style={[styles.subtext, { color: themeColors.text.secondary }]}>{formattedMessage.subtext}</Text>
         )}
       </View>
     </View>
@@ -70,11 +74,9 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
     borderRadius: spacing.borderRadius.large,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
     // iOS shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -93,7 +95,6 @@ const styles = StyleSheet.create({
     ...textBase,
     fontSize: 13,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
   },
   contentContainer: {
     alignItems: 'center',
@@ -107,7 +108,6 @@ const styles = StyleSheet.create({
     ...textBase,
     fontSize: 16,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: spacing.sm,
@@ -116,7 +116,6 @@ const styles = StyleSheet.create({
     ...textBase,
     fontSize: 13,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     textAlign: 'center',
     marginTop: spacing.sm,
     lineHeight: 20,

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface YearMonthPickerModalProps {
   visible: boolean;
@@ -20,6 +21,8 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [{ year, month }, setSelection] = useState({ year: initialYear, month: initialMonth });
   const { currentYear, currentMonth } = useMemo(() => {
     const now = new Date();
@@ -95,28 +98,28 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
-            <View style={styles.content}>
+            <View style={[styles.content, { backgroundColor: themeColors.surface }]}>
               <View style={styles.header}>
-                <Text style={styles.title}>年月を選択</Text>
+                <Text style={[styles.title, { color: themeColors.text.primary }]}>年月を選択</Text>
                 <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close" size={18} color={colors.text.primary} />
+                  <Ionicons name="close" size={18} color={themeColors.text.primary} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.yearRow}>
-                <TouchableOpacity onPress={() => handleYearChange(-1)} style={styles.yearButton}>
-                  <Ionicons name="chevron-back" size={18} color={colors.text.primary} />
+                <TouchableOpacity onPress={() => handleYearChange(-1)} style={[styles.yearButton, { backgroundColor: themeColors.background }]}>
+                  <Ionicons name="chevron-back" size={18} color={themeColors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.yearText}>{year}年</Text>
+                <Text style={[styles.yearText, { color: themeColors.text.primary }]}>{year}年</Text>
                 <TouchableOpacity
                   onPress={() => handleYearChange(1)}
-                  style={styles.yearButton}
+                  style={[styles.yearButton, { backgroundColor: themeColors.background }]}
                   disabled={nextYearDisabled}
                 >
                   <Ionicons
                     name="chevron-forward"
                     size={18}
-                    color={nextYearDisabled ? colors.text.secondary : colors.text.primary}
+                    color={nextYearDisabled ? themeColors.text.secondary : themeColors.text.primary}
                   />
                 </TouchableOpacity>
               </View>
@@ -130,15 +133,21 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
                   return (
                     <TouchableOpacity
                       key={`month-${monthNumber}`}
-                      style={[styles.monthCell, isSelected && styles.monthCellSelected, isDisabled && styles.monthCellDisabled]}
+                      style={[
+                        styles.monthCell,
+                        { backgroundColor: themeColors.background },
+                        isSelected && { backgroundColor: themeColors.primary },
+                        isDisabled && { backgroundColor: themeColors.surface, borderWidth: spacing.borderWidth, borderColor: themeColors.border },
+                      ]}
                       onPress={() => handleSelectMonth(monthNumber)}
                       disabled={isDisabled}
                     >
                       <Text
                         style={[
                           styles.monthText,
-                          isSelected && styles.monthTextSelected,
-                          isDisabled && styles.monthTextDisabled,
+                          { color: themeColors.text.primary },
+                          isSelected && { color: themeColors.text.inverse },
+                          isDisabled && { color: themeColors.text.secondary },
                         ]}
                       >
                         {monthNumber}月
@@ -149,8 +158,8 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
               </View>
 
               <View style={styles.footer}>
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                  <Text style={styles.closeButtonText}>閉じる</Text>
+                <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeColors.primary }]} onPress={onClose}>
+                  <Text style={[styles.closeButtonText, { color: themeColors.text.inverse }]}>閉じる</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -172,7 +181,6 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     maxWidth: 300,
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     shadowColor: '#000',
@@ -190,7 +198,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
-    color: colors.text.primary,
     ...textBase,
   },
   yearRow: {
@@ -202,12 +209,10 @@ const styles = StyleSheet.create({
   yearButton: {
     padding: spacing.xs,
     borderRadius: spacing.borderRadius.small,
-    backgroundColor: colors.background,
   },
   yearText: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
-    color: colors.text.primary,
     marginHorizontal: spacing.md,
     ...textBase,
   },
@@ -223,27 +228,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: spacing.borderRadius.small,
     alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  monthCellSelected: {
-    backgroundColor: colors.primary,
-  },
-  monthCellDisabled: {
-    backgroundColor: colors.surface,
-    borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
   },
   monthText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
-    color: colors.text.primary,
     ...textBase,
-  },
-  monthTextSelected: {
-    color: colors.text.inverse,
-  },
-  monthTextDisabled: {
-    color: colors.text.secondary,
   },
   footer: {
     flexDirection: 'row',
@@ -253,12 +242,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.lg,
     borderRadius: spacing.borderRadius.small,
-    backgroundColor: colors.primary,
   },
   closeButtonText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
-    color: colors.text.inverse,
     ...textBase,
   },
 });

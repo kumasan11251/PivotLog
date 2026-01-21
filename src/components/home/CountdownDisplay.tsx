@@ -1,42 +1,43 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import type { TimeLeft } from '../../utils/timeCalculations';
 
 // アイコンのProps型
-interface IconProps {
+ interface IconProps {
   size?: number;
   color?: string;
 }
 
 // 春アイコン（花）
-const SpringIcon: React.FC<IconProps> = ({ size = 28, color = colors.text.secondary }) => (
+const SpringIcon: React.FC<IconProps> = ({ size = 28, color = '#888888' }) => (
   <MaterialCommunityIcons name="flower" size={size} color={color} />
 );
 
 // 夏アイコン（太陽）
-const SummerIcon: React.FC<IconProps> = ({ size = 28, color = colors.text.secondary }) => (
+const SummerIcon: React.FC<IconProps> = ({ size = 28, color = '#888888' }) => (
   <MaterialCommunityIcons name="white-balance-sunny" size={size} color={color} />
 );
 
 // 秋アイコン（紅葉）
-const AutumnIcon: React.FC<IconProps> = ({ size = 28, color = colors.text.secondary }) => (
+const AutumnIcon: React.FC<IconProps> = ({ size = 28, color = '#888888' }) => (
   <MaterialCommunityIcons name="leaf-maple" size={size} color={color} />
 );
 
 // 冬アイコン（雪の結晶）
-const WinterIcon: React.FC<IconProps> = ({ size = 28, color = colors.text.secondary }) => (
+const WinterIcon: React.FC<IconProps> = ({ size = 28, color = '#888888' }) => (
   <MaterialCommunityIcons name="snowflake" size={size} color={color} />
 );
 
 // お正月アイコン（パーティー）
-const NewYearIcon: React.FC<IconProps> = ({ size = 28, color = colors.text.secondary }) => (
+const NewYearIcon: React.FC<IconProps> = ({ size = 28, color = '#888888' }) => (
   <MaterialCommunityIcons name="party-popper" size={size} color={color} />
 );
 
 // 誕生日アイコン（ギフト）
-const BirthdayIcon: React.FC<IconProps> = ({ size = 28, color = colors.text.secondary }) => (
+const BirthdayIcon: React.FC<IconProps> = ({ size = 28, color = '#888888' }) => (
   <MaterialCommunityIcons name="gift" size={size} color={color} />
 );
 
@@ -157,26 +158,29 @@ interface CountdownDisplayProps {
 }
 
 const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode, birthday }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   if (mode === 'detailed') {
     return (
       <View style={styles.detailedContainer}>
         {/* 数字の行 */}
         <View style={styles.valuesRow}>
-          <Text style={styles.timeValue}>{String(timeLeft.years).padStart(2, '0')}</Text>
-          <Text style={styles.timeValue}>{String(timeLeft.months).padStart(2, '0')}</Text>
-          <Text style={styles.timeValue}>{String(timeLeft.days).padStart(2, '0')}</Text>
-          <Text style={styles.timeValueSmall}>{String(timeLeft.hours).padStart(2, '0')}</Text>
-          <Text style={styles.timeValueSmall}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
-          <Text style={styles.timeValueSmall}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
+          <Text style={[styles.timeValue, { color: themeColors.text.primary }]}>{String(timeLeft.years).padStart(2, '0')}</Text>
+          <Text style={[styles.timeValue, { color: themeColors.text.primary }]}>{String(timeLeft.months).padStart(2, '0')}</Text>
+          <Text style={[styles.timeValue, { color: themeColors.text.primary }]}>{String(timeLeft.days).padStart(2, '0')}</Text>
+          <Text style={[styles.timeValueSmall, { color: themeColors.text.primary }]}>{String(timeLeft.hours).padStart(2, '0')}</Text>
+          <Text style={[styles.timeValueSmall, { color: themeColors.text.primary }]}>{String(timeLeft.minutes).padStart(2, '0')}</Text>
+          <Text style={[styles.timeValueSmall, { color: themeColors.text.primary }]}>{String(timeLeft.seconds).padStart(2, '0')}</Text>
         </View>
         {/* ラベルの行 */}
         <View style={styles.labelsRow}>
-          <Text style={styles.timeLabel}>年</Text>
-          <Text style={styles.timeLabel}>月</Text>
-          <Text style={styles.timeLabel}>日</Text>
-          <Text style={styles.timeLabelSmall}>時</Text>
-          <Text style={styles.timeLabelSmall}>分</Text>
-          <Text style={styles.timeLabelSmall}>秒</Text>
+          <Text style={[styles.timeLabel, { color: themeColors.text.secondary }]}>年</Text>
+          <Text style={[styles.timeLabel, { color: themeColors.text.secondary }]}>月</Text>
+          <Text style={[styles.timeLabel, { color: themeColors.text.secondary }]}>日</Text>
+          <Text style={[styles.timeLabelSmall, { color: themeColors.text.secondary }]}>時</Text>
+          <Text style={[styles.timeLabelSmall, { color: themeColors.text.secondary }]}>分</Text>
+          <Text style={[styles.timeLabelSmall, { color: themeColors.text.secondary }]}>秒</Text>
         </View>
       </View>
     );
@@ -186,13 +190,13 @@ const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode, bir
     return (
       <View style={styles.countdownContainer}>
         <View style={styles.timeBlock}>
-          <Text style={styles.timeValue}>
+          <Text style={[styles.timeValue, { color: themeColors.text.primary }]}>
             {Math.floor(timeLeft.totalYears)}
-            <Text style={styles.decimalPart}>
+            <Text style={[styles.decimalPart, { color: themeColors.text.secondary }]}>
               {(timeLeft.totalYears % 1).toFixed(8).substring(1)}
             </Text>
           </Text>
-          <Text style={styles.timeLabel}>年</Text>
+          <Text style={[styles.timeLabel, { color: themeColors.text.secondary }]}>年</Text>
         </View>
       </View>
     );
@@ -202,13 +206,13 @@ const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode, bir
     return (
       <View style={styles.countdownContainer}>
         <View style={styles.timeBlock}>
-          <Text style={styles.timeValue}>
+          <Text style={[styles.timeValue, { color: themeColors.text.primary }]}>
             {Math.floor(timeLeft.totalWeeks).toLocaleString('ja-JP')}
-            <Text style={styles.decimalPart}>
+            <Text style={[styles.decimalPart, { color: themeColors.text.secondary }]}>
               {(timeLeft.totalWeeks % 1).toFixed(6).substring(1)}
             </Text>
           </Text>
-          <Text style={styles.timeLabel}>週</Text>
+          <Text style={[styles.timeLabel, { color: themeColors.text.secondary }]}>週</Text>
         </View>
       </View>
     );
@@ -218,13 +222,13 @@ const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode, bir
     return (
       <View style={styles.countdownContainer}>
         <View style={styles.timeBlock}>
-          <Text style={styles.timeValue}>
+          <Text style={[styles.timeValue, { color: themeColors.text.primary }]}>
             {Math.floor(timeLeft.totalDays).toLocaleString('ja-JP')}
-            <Text style={styles.decimalPart}>
+            <Text style={[styles.decimalPart, { color: themeColors.text.secondary }]}>
               {(timeLeft.totalDays % 1).toFixed(5).substring(1)}
             </Text>
           </Text>
-          <Text style={styles.timeLabel}>日</Text>
+          <Text style={[styles.timeLabel, { color: themeColors.text.secondary }]}>日</Text>
         </View>
       </View>
     );
@@ -236,14 +240,14 @@ const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode, bir
   // アイコンの選択
   const renderIcon = () => {
     if (seasonData.iconType === 'newyear') {
-      return <NewYearIcon size={28} color={colors.text.secondary} />;
+      return <NewYearIcon size={28} color={themeColors.text.secondary} />;
     }
     if (seasonData.iconType === 'birthday') {
-      return <BirthdayIcon size={28} color={colors.text.secondary} />;
+      return <BirthdayIcon size={28} color={themeColors.text.secondary} />;
     }
     // 季節アイコン
     const SeasonIcon = SeasonIcons[seasonData.seasonKey || 'spring'];
-    return <SeasonIcon size={36} color={colors.text.secondary} />;
+    return <SeasonIcon size={36} color={themeColors.text.secondary} />;
   };
 
   return (
@@ -252,9 +256,9 @@ const CountdownDisplay: React.FC<CountdownDisplayProps> = ({ timeLeft, mode, bir
         {renderIcon()}
       </View>
       <View style={styles.seasonTextContainer}>
-        <Text style={styles.seasonMessage}>{seasonData.message}</Text>
-        <Text style={styles.seasonCount}>{seasonData.count}</Text>
-        <Text style={styles.seasonMessage}>{seasonData.subMessage}</Text>
+        <Text style={[styles.seasonMessage, { color: themeColors.text.secondary }]}>{seasonData.message}</Text>
+        <Text style={[styles.seasonCount, { color: themeColors.text.primary }]}>{seasonData.count}</Text>
+        <Text style={[styles.seasonMessage, { color: themeColors.text.secondary }]}>{seasonData.subMessage}</Text>
       </View>
     </View>
   );
@@ -295,7 +299,6 @@ const styles = StyleSheet.create({
   timeValue: {
     fontSize: fonts.size.countdownLarge,
     fontWeight: fonts.weight.light,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     minWidth: spacing.countdown.blockWidthLarge,
     textAlign: 'center',
@@ -303,7 +306,6 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontSize: fonts.size.label,
-    color: colors.text.secondary,
     letterSpacing: 1,
     fontFamily: fonts.family.regular,
     minWidth: spacing.countdown.blockWidthLarge,
@@ -313,14 +315,12 @@ const styles = StyleSheet.create({
   decimalPart: {
     fontSize: fonts.size.countdownSmall,
     fontWeight: fonts.weight.light,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   timeValueSmall: {
     fontSize: fonts.size.countdownSmall,
     fontWeight: fonts.weight.light,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     minWidth: spacing.countdown.blockWidthSmall,
     textAlign: 'center',
@@ -328,7 +328,6 @@ const styles = StyleSheet.create({
   },
   timeLabelSmall: {
     fontSize: fonts.size.label,
-    color: colors.text.secondary,
     letterSpacing: 1,
     fontFamily: fonts.family.regular,
     minWidth: spacing.countdown.blockWidthSmall,
@@ -353,14 +352,12 @@ const styles = StyleSheet.create({
   },
   seasonMessage: {
     fontSize: fonts.size.body,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   seasonCount: {
     fontSize: fonts.size.countdownLarge,
     fontWeight: fonts.weight.light,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },

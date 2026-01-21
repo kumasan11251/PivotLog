@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import CountdownDisplay from './CountdownDisplay';
 import SectionHeader from './SectionHeader';
-import { colors, spacing } from '../../theme';
+import { getColors, spacing } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import type { CountdownMode } from '../../hooks/useDisplaySettings';
 import type { TimeLeft } from '../../utils/timeCalculations';
 
@@ -30,13 +31,16 @@ const CountdownSection: React.FC<CountdownSectionProps> = ({
   contentOpacity,
   birthday,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   const ContentWrapper = contentOpacity ? Animated.View : View;
   const contentStyle = contentOpacity
     ? [styles.contentContainer, { opacity: contentOpacity }]
     : styles.contentContainer;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.card, borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
       <SectionHeader
         title="残りの時間"
         onToggle={onToggleMode}
@@ -51,11 +55,9 @@ const CountdownSection: React.FC<CountdownSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.card,
     borderRadius: spacing.borderRadius.large,
     padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.04)',
     // iOS shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface EncouragementHeaderProps {
   emoji: string;
@@ -13,11 +14,14 @@ const EncouragementHeader: React.FC<EncouragementHeaderProps> = ({
   title,
   subtitle,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.emoji}>{emoji}</Text>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>{subtitle}</Text>
+      <Text style={[styles.title, { color: themeColors.text.primary }]}>{title}</Text>
+      <Text style={[styles.subtitle, { color: themeColors.text.secondary }]}>{subtitle}</Text>
     </View>
   );
 };
@@ -34,14 +38,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fonts.size.title,
-    color: colors.text.primary,
     fontFamily: fonts.family.bold,
     marginBottom: spacing.xs,
     ...textBase,
   },
   subtitle: {
     fontSize: fonts.size.body,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },

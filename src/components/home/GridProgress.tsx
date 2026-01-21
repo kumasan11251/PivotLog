@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface GridProgressProps {
   targetLifespan: number;
@@ -16,6 +17,9 @@ const GridProgress: React.FC<GridProgressProps> = ({
   targetLifespan,
   currentAge,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   // 現在の年齢（整数部分）
   const completedYears = Math.floor(currentAge);
   // 現在進行中の年の進捗（0-1）
@@ -75,16 +79,16 @@ const GridProgress: React.FC<GridProgressProps> = ({
             style={[
               styles.block,
               { width: blockSize, height: blockSize },
-              block.status === 'completed' && styles.blockCompleted,
-              block.status === 'current' && styles.blockCurrent,
-              block.status === 'remaining' && styles.blockRemaining,
+              block.status === 'completed' && { backgroundColor: themeColors.primary },
+              block.status === 'current' && { backgroundColor: themeColors.progress.background, borderWidth: 1, borderColor: themeColors.primary },
+              block.status === 'remaining' && { backgroundColor: themeColors.progress.background },
             ]}
           >
             {block.status === 'current' && (
               <View
                 style={[
                   styles.blockCurrentFill,
-                  { height: `${currentYearProgress * 100}%` }
+                  { height: `${currentYearProgress * 100}%`, backgroundColor: themeColors.primary }
                 ]}
               />
             )}
@@ -95,15 +99,15 @@ const GridProgress: React.FC<GridProgressProps> = ({
       {/* 統計情報 */}
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <View style={[styles.legendDot, styles.legendCompleted]} />
-          <Text style={styles.statLabel}>経過</Text>
-          <Text style={styles.statValue}>{completedYears}年</Text>
+          <View style={[styles.legendDot, { backgroundColor: themeColors.primary }]} />
+          <Text style={[styles.statLabel, { color: themeColors.text.secondary }]}>経過</Text>
+          <Text style={[styles.statValue, { color: themeColors.text.primary }]}>{completedYears}年</Text>
         </View>
-        <View style={styles.statDivider} />
+        <View style={[styles.statDivider, { backgroundColor: themeColors.border }]} />
         <View style={styles.statItem}>
-          <View style={[styles.legendDot, styles.legendRemaining]} />
-          <Text style={styles.statLabel}>残り</Text>
-          <Text style={styles.statValue}>{remainingYears}年</Text>
+          <View style={[styles.legendDot, { backgroundColor: themeColors.progress.background }]} />
+          <Text style={[styles.statLabel, { color: themeColors.text.secondary }]}>残り</Text>
+          <Text style={[styles.statValue, { color: themeColors.text.primary }]}>{remainingYears}年</Text>
         </View>
       </View>
     </View>
@@ -126,22 +130,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     overflow: 'hidden',
   },
-  blockCompleted: {
-    backgroundColor: colors.primary,
-  },
-  blockCurrent: {
-    backgroundColor: colors.progress.background,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    justifyContent: 'flex-end',
-  },
   blockCurrentFill: {
-    backgroundColor: colors.primary,
     opacity: 0.6,
     width: '100%',
-  },
-  blockRemaining: {
-    backgroundColor: colors.progress.background,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -160,28 +151,19 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 2,
   },
-  legendCompleted: {
-    backgroundColor: colors.primary,
-  },
-  legendRemaining: {
-    backgroundColor: colors.progress.background,
-  },
   statLabel: {
     fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   statValue: {
     fontSize: fonts.size.label,
-    color: colors.text.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
   statDivider: {
     width: 1,
     height: 16,
-    backgroundColor: colors.border,
   },
 });
 

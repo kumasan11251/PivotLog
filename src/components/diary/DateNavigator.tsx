@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { formatDateWithWeekday } from '../../constants/diaryEntry';
 
 interface DateNavigatorProps {
@@ -19,21 +20,32 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   onNext,
   onOpenPicker,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   return (
     <View style={styles.container}>
       <View style={styles.navigationContainer}>
         <TouchableOpacity style={styles.arrowButton} onPress={onPrevious}>
-          <Ionicons name="chevron-back" size={24} color={colors.primary} />
+          <Ionicons name="chevron-back" size={24} color={themeColors.primary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.dateButton} onPress={onOpenPicker}>
+        <TouchableOpacity
+          style={[
+            styles.dateButton,
+            { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+          ]}
+          onPress={onOpenPicker}
+        >
           <Ionicons
             name="calendar-outline"
             size={20}
-            color={colors.primary}
+            color={themeColors.primary}
             style={styles.calendarIcon}
           />
-          <Text style={styles.dateText}>{formatDateWithWeekday(dateString)}</Text>
+          <Text style={[styles.dateText, { color: themeColors.text.primary }]}>
+            {formatDateWithWeekday(dateString)}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -44,7 +56,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
           <Ionicons
             name="chevron-forward"
             size={24}
-            color={isToday ? colors.border : colors.primary}
+            color={isToday ? themeColors.border : themeColors.primary}
           />
         </TouchableOpacity>
       </View>
@@ -72,10 +84,8 @@ const styles = StyleSheet.create({
   dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
@@ -84,7 +94,6 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },

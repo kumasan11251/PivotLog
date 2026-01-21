@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { colors, fonts, spacing } from '../../theme';
+import { getColors, fonts, spacing } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SLIDER_PADDING = spacing.xl;
@@ -60,6 +61,8 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
   maxValue = 120,
   currentAge,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [sliderWidth, setSliderWidth] = useState(SLIDER_WIDTH);
   const [isDragging, setIsDragging] = useState(false);
   const animatedValue = useMemo(() => new Animated.Value(0), []);
@@ -143,15 +146,15 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
     <View style={styles.container}>
       {/* 現在の値表示 */}
       <View style={styles.valueContainer}>
-        <Text style={styles.valueNumber}>{value}</Text>
-        <Text style={styles.valueUnit}>歳</Text>
+        <Text style={[styles.valueNumber, { color: themeColors.primary }]}>{value}</Text>
+        <Text style={[styles.valueUnit, { color: themeColors.text.secondary }]}>歳</Text>
       </View>
 
       {/* 残り年数表示 */}
-      <View style={styles.remainingContainer}>
-        <Text style={styles.remainingLabel}>残り約</Text>
-        <Text style={styles.remainingValue}>{remainingYears}</Text>
-        <Text style={styles.remainingUnit}>年</Text>
+      <View style={[styles.remainingContainer, { backgroundColor: `${themeColors.primary}1a` }]}>
+        <Text style={[styles.remainingLabel, { color: themeColors.text.secondary }]}>残り約</Text>
+        <Text style={[styles.remainingValue, { color: themeColors.primary }]}>{remainingYears}</Text>
+        <Text style={[styles.remainingUnit, { color: themeColors.text.secondary }]}>年</Text>
       </View>
 
       {/* スライダー */}
@@ -169,12 +172,13 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
           onResponderRelease={handleTouchEnd}
           onResponderTerminate={handleTouchEnd}
         >
-          <View style={styles.track}>
+          <View style={[styles.track, { backgroundColor: themeColors.border }]}>
             <Animated.View
               style={[
                 styles.filledTrack,
                 {
                   width: Animated.add(animatedValue, THUMB_SIZE / 2),
+                  backgroundColor: themeColors.primary,
                 },
               ]}
             />
@@ -183,21 +187,22 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
           <Animated.View
             style={[
               styles.thumb,
+              { backgroundColor: themeColors.surface, shadowColor: themeColors.shadow },
               isDragging && styles.thumbActive,
               {
                 transform: [{ translateX: animatedValue }],
               },
             ]}
           >
-            <View style={[styles.thumbInner, isDragging && styles.thumbInnerActive]} />
+            <View style={[styles.thumbInner, { backgroundColor: themeColors.primary }, isDragging && { backgroundColor: themeColors.primary }]} />
           </Animated.View>
         </View>
       </View>
 
       {/* 最小・最大値ラベル */}
       <View style={styles.rangeLabels}>
-        <Text style={styles.rangeLabel}>{minValue}歳</Text>
-        <Text style={styles.rangeLabel}>{maxValue}歳</Text>
+        <Text style={[styles.rangeLabel, { color: themeColors.text.secondary }]}>{minValue}歳</Text>
+        <Text style={[styles.rangeLabel, { color: themeColors.text.secondary }]}>{maxValue}歳</Text>
       </View>
 
       {/* プリセットボタン */}
@@ -207,7 +212,8 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
             key={preset}
             style={[
               styles.presetButton,
-              value === preset && styles.presetButtonActive,
+              { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+              value === preset && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
             ]}
             onPress={() => handlePresetPress(preset)}
             activeOpacity={0.7}
@@ -215,7 +221,8 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
             <Text
               style={[
                 styles.presetText,
-                value === preset && styles.presetTextActive,
+                { color: themeColors.text.secondary },
+                value === preset && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
               ]}
             >
               {preset}歳
@@ -239,19 +246,16 @@ const styles = StyleSheet.create({
   valueNumber: {
     fontSize: 56,
     fontFamily: fonts.family.bold,
-    color: colors.primary,
   },
   valueUnit: {
     fontSize: 24,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginLeft: 4,
   },
   remainingContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
     marginBottom: spacing.xl,
-    backgroundColor: `${colors.primary}10`,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 20,
@@ -259,18 +263,15 @@ const styles = StyleSheet.create({
   remainingLabel: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginRight: 4,
   },
   remainingValue: {
     fontSize: 20,
     fontFamily: fonts.family.bold,
-    color: colors.primary,
   },
   remainingUnit: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginLeft: 2,
   },
   sliderContainer: {
@@ -285,13 +286,11 @@ const styles = StyleSheet.create({
   },
   track: {
     height: TRACK_HEIGHT,
-    backgroundColor: colors.border,
     borderRadius: TRACK_HEIGHT / 2,
     overflow: 'hidden',
   },
   filledTrack: {
     height: TRACK_HEIGHT,
-    backgroundColor: colors.primary,
     borderRadius: TRACK_HEIGHT / 2,
   },
   thumb: {
@@ -300,10 +299,8 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
-    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
@@ -318,10 +315,6 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE - 8,
     height: THUMB_SIZE - 8,
     borderRadius: (THUMB_SIZE - 8) / 2,
-    backgroundColor: colors.primary,
-  },
-  thumbInnerActive: {
-    backgroundColor: colors.primary,
   },
   rangeLabels: {
     flexDirection: 'row',
@@ -333,7 +326,6 @@ const styles = StyleSheet.create({
   rangeLabel: {
     fontSize: 12,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
   },
   presetContainer: {
     flexDirection: 'row',
@@ -344,22 +336,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: 20,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-  },
-  presetButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
   },
   presetText: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
-  },
-  presetTextActive: {
-    color: colors.text.inverse,
-    fontFamily: fonts.family.bold,
   },
 });
 

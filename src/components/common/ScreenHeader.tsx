@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { colors, fonts, spacing, textBase, getColors } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface LeftAction {
   type: 'back' | 'backIcon' | 'close' | 'custom';
@@ -37,6 +38,9 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   rightActions,
   showBorder = true,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
+
   const renderLeftAction = () => {
     if (!leftAction) {
       return <View style={styles.placeholder} />;
@@ -46,24 +50,24 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     switch (leftAction.type) {
       case 'back':
         content = (
-          <Text style={styles.backText}>
+          <Text style={[styles.backText, { color: themeColors.primary }]}>
             {leftAction.label ?? '← 戻る'}
           </Text>
         );
         break;
       case 'backIcon':
         content = (
-          <Ionicons name="chevron-back" size={24} color={colors.text.secondary} />
+          <Ionicons name="chevron-back" size={24} color={themeColors.text.secondary} />
         );
         break;
       case 'close':
         content = (
-          <Ionicons name="close" size={24} color={colors.text.primary} />
+          <Ionicons name="close" size={24} color={themeColors.text.primary} />
         );
         break;
       case 'custom':
         content = (
-          <Text style={styles.actionText}>{leftAction.label}</Text>
+          <Text style={[styles.actionText, { color: themeColors.primary }]}>{leftAction.label}</Text>
         );
         break;
     }
@@ -97,7 +101,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                 <Ionicons
                   name="settings-outline"
                   size={20}
-                  color={action.color ?? colors.text.primary}
+                  color={action.color ?? themeColors.text.primary}
                 />
               );
               break;
@@ -106,13 +110,13 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                 <Ionicons
                   name={action.iconName ?? 'ellipsis-horizontal'}
                   size={20}
-                  color={action.color ?? colors.text.primary}
+                  color={action.color ?? themeColors.text.primary}
                 />
               );
               break;
             case 'text':
               content = (
-                <Text style={[styles.actionText, action.color ? { color: action.color } : null]}>
+                <Text style={[styles.actionText, { color: action.color ?? themeColors.primary }]}>
                   {action.label}
                 </Text>
               );
@@ -135,10 +139,10 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.header, showBorder && styles.headerBorder]}>
+    <View style={[styles.header, { backgroundColor: themeColors.background }, showBorder && { borderBottomColor: themeColors.border, borderBottomWidth: 1 }]}>
       {renderLeftAction()}
       {title ? (
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={[styles.title, { color: themeColors.text.primary }]} numberOfLines={1}>
           {title}
         </Text>
       ) : (

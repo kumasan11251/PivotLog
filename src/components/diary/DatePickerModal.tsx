@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useCalendar } from '../../hooks/useCalendar';
 import { DiaryEntry, loadDiaryEntriesByMonth } from '../../utils/storage';
 import { formatDateToString } from '../../utils/dateUtils';
@@ -27,6 +28,8 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
   onDateChange,
   onClose,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const selectedDateString = useMemo(() => formatDateToString(selectedDate), [selectedDate]);
   const [displayYear, setDisplayYear] = useState(selectedDate.getFullYear());
   const [displayMonth, setDisplayMonth] = useState(selectedDate.getMonth() + 1);
@@ -126,14 +129,14 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
-            <View style={styles.content}>
+            <View style={[styles.content, { backgroundColor: themeColors.surface }]}>
               <View style={styles.header}>
                 <TouchableOpacity onPress={() => handleMonthChange(-1)}>
-                  <Ionicons name="chevron-back" size={20} color={colors.text.primary} />
+                  <Ionicons name="chevron-back" size={20} color={themeColors.text.primary} />
                 </TouchableOpacity>
-                <Text style={styles.monthLabel}>{monthLabel}</Text>
+                <Text style={[styles.monthLabel, { color: themeColors.text.primary }]}>{monthLabel}</Text>
                 <TouchableOpacity onPress={() => handleMonthChange(1)}>
-                  <Ionicons name="chevron-forward" size={20} color={colors.text.primary} />
+                  <Ionicons name="chevron-forward" size={20} color={themeColors.text.primary} />
                 </TouchableOpacity>
               </View>
 
@@ -143,6 +146,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                     <Text
                       style={[
                         styles.weekdayText,
+                        { color: themeColors.text.secondary },
                         index === 0 && styles.sundayText,
                         index === 6 && styles.saturdayText,
                       ]}
@@ -156,7 +160,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
               {isLoading ? (
                 <View style={styles.calendarContainer}>
                   <View style={styles.loaderContainer}>
-                    <ActivityIndicator color={colors.primary} />
+                    <ActivityIndicator color={themeColors.primary} />
                   </View>
                 </View>
               ) : (
@@ -182,19 +186,20 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                                   <View
                                     style={[
                                       styles.dayContent,
-                                      hasDiary && !isToday && !isSelected && styles.hasDiaryContent,
-                                      isToday && styles.todayContent,
-                                      isSelected && !isToday && styles.selectedContent,
+                                      hasDiary && !isToday && !isSelected && { backgroundColor: `${themeColors.primary}33` },
+                                      isToday && { backgroundColor: themeColors.primary },
+                                      isSelected && !isToday && { backgroundColor: themeColors.text.secondary },
                                     ]}
                                   >
                                     <Text
                                       style={[
                                         styles.dayNumber,
+                                        { color: themeColors.text.primary },
                                         dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && styles.sundayText,
                                         dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && styles.saturdayText,
-                                        hasDiary && !isToday && !isSelected && styles.hasDiaryText,
-                                        isToday && styles.todayText,
-                                        isSelected && !isToday && styles.selectedText,
+                                        hasDiary && !isToday && !isSelected && { color: themeColors.primary, fontFamily: fonts.family.bold },
+                                        isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
+                                        isSelected && !isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
                                       ]}
                                     >
                                       {day}
@@ -216,8 +221,8 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                 </View>
               )}
 
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Text style={styles.closeButtonText}>閉じる</Text>
+              <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeColors.primary }]} onPress={onClose}>
+                <Text style={[styles.closeButtonText, { color: themeColors.text.inverse }]}>閉じる</Text>
               </TouchableOpacity>
             </View>
           </TouchableWithoutFeedback>
@@ -238,7 +243,6 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     maxWidth: 320,
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     shadowColor: '#000',
@@ -256,7 +260,6 @@ const styles = StyleSheet.create({
   monthLabel: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
-    color: colors.text.primary,
     ...textBase,
   },
   weekdayHeader: {
@@ -272,7 +275,6 @@ const styles = StyleSheet.create({
   weekdayText: {
     fontSize: 11,
     fontFamily: fonts.family.bold,
-    color: colors.text.secondary,
     ...textBase,
   },
   weekRow: {
@@ -296,32 +298,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 4,
   },
-  hasDiaryContent: {
-    backgroundColor: 'rgba(139, 157, 131, 0.2)',
-  },
-  todayContent: {
-    backgroundColor: colors.primary,
-  },
-  selectedContent: {
-    backgroundColor: colors.text.secondary,
-  },
   dayNumber: {
     fontSize: 13,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     ...textBase,
-  },
-  hasDiaryText: {
-    color: colors.primary,
-    fontFamily: fonts.family.bold,
-  },
-  todayText: {
-    color: colors.text.inverse,
-    fontFamily: fonts.family.bold,
-  },
-  selectedText: {
-    color: colors.text.inverse,
-    fontFamily: fonts.family.bold,
   },
   sundayText: {
     color: '#E57373',
@@ -336,14 +316,12 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     marginTop: spacing.sm,
-    backgroundColor: colors.primary,
     borderRadius: spacing.borderRadius.small,
     paddingVertical: spacing.sm,
     alignItems: 'center',
   },
   closeButtonText: {
     fontSize: fonts.size.label,
-    color: colors.text.inverse,
     fontFamily: fonts.family.bold,
     ...textBase,
   },

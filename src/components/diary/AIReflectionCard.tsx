@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import type { AIReflectionData } from '../../types/aiReflection';
 
 // 共通の型を再エクスポート
@@ -19,29 +20,47 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
   reflection,
   fadeAnim,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   const containerStyle = fadeAnim
-    ? [styles.container, { opacity: fadeAnim }]
-    : styles.container;
+    ? [
+        styles.container,
+        {
+          backgroundColor: themeColors.surface,
+          borderLeftColor: themeColors.primary,
+          shadowColor: themeColors.shadow,
+          opacity: fadeAnim,
+        },
+      ]
+    : [
+        styles.container,
+        {
+          backgroundColor: themeColors.surface,
+          borderLeftColor: themeColors.primary,
+          shadowColor: themeColors.shadow,
+        },
+      ];
 
   return (
     <Animated.View style={containerStyle}>
       {/* ヘッダー */}
       <View style={styles.header}>
         <Text style={styles.headerIcon}>✨</Text>
-        <Text style={styles.headerText}>AIからの気づき</Text>
+        <Text style={[styles.headerText, { color: themeColors.primary }]}>AIからの気づき</Text>
       </View>
 
       {/* メッセージ本文 */}
-      <Text style={styles.contentText}>{reflection.content}</Text>
+      <Text style={[styles.contentText, { color: themeColors.text.primary }]}>{reflection.content}</Text>
 
       {/* 問いかけボックス */}
       {reflection.question && (
-        <View style={styles.questionBox}>
+        <View style={[styles.questionBox, { backgroundColor: `${themeColors.primary}15` }]}>
           <View style={styles.questionHeader}>
             <Text style={styles.questionIcon}>💭</Text>
-            <Text style={styles.questionLabel}>明日へのヒント</Text>
+            <Text style={[styles.questionLabel, { color: themeColors.text.secondary }]}>明日へのヒント</Text>
           </View>
-          <Text style={styles.questionText}>{reflection.question}</Text>
+          <Text style={[styles.questionText, { color: themeColors.text.primary }]}>{reflection.question}</Text>
         </View>
       )}
     </Animated.View>
@@ -50,15 +69,11 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.large,
     padding: spacing.lg,
     marginTop: spacing.lg,
     marginHorizontal: spacing.padding.screen,
     borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    // シャドウ
-    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -78,19 +93,16 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
-    color: colors.primary,
     marginLeft: spacing.sm,
     ...textBase,
   },
   contentText: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     lineHeight: 26,
     ...textBase,
   },
   questionBox: {
-    backgroundColor: 'rgba(139, 157, 131, 0.1)', // primary の薄い背景
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     marginTop: spacing.md,
@@ -106,14 +118,12 @@ const styles = StyleSheet.create({
   questionLabel: {
     fontSize: fonts.size.labelSmall,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginLeft: spacing.xs,
     ...textBase,
   },
   questionText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     lineHeight: 22,
     fontStyle: 'italic',
     ...textBase,

@@ -36,11 +36,16 @@ export interface HomeDisplaySettings {
   progressMode: 'bar' | 'circle' | 'grid'; // 進捗表示モード
 }
 
+export interface ThemeSettings {
+  themeMode: 'light' | 'dark' | 'system'; // テーマモード
+}
+
 const STORAGE_KEY = '@pivot_log_settings';
 const DIARY_KEY = '@pivot_log_diaries';
 const HOME_DISPLAY_KEY = '@pivot_log_home_display';
 const MIGRATION_KEY = '@pivot_log_migrated';
 const ONBOARDING_KEY = '@pivot_log_onboarding_complete';
+const THEME_KEY = '@pivot_log_theme';
 
 /**
  * Firebaseにログイン中かどうかを確認
@@ -387,6 +392,35 @@ export const deleteAllUserData = async (): Promise<void> => {
     console.log('すべてのユーザーデータを削除しました');
   } catch (error) {
     console.error('ユーザーデータの削除に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * テーマ設定を読み込む
+ */
+export const loadThemeSettings = async (): Promise<ThemeSettings | null> => {
+  try {
+    const jsonValue = await AsyncStorage.getItem(THEME_KEY);
+    if (jsonValue !== null) {
+      return JSON.parse(jsonValue) as ThemeSettings;
+    }
+    return null;
+  } catch (error) {
+    console.error('テーマ設定の読み込みに失敗しました:', error);
+    return null;
+  }
+};
+
+/**
+ * テーマ設定を保存する
+ */
+export const saveThemeSettings = async (settings: ThemeSettings): Promise<void> => {
+  try {
+    const jsonValue = JSON.stringify(settings);
+    await AsyncStorage.setItem(THEME_KEY, jsonValue);
+  } catch (error) {
+    console.error('テーマ設定の保存に失敗しました:', error);
     throw error;
   }
 };

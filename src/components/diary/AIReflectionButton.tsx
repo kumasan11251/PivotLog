@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface AIReflectionButtonProps {
   onPress: () => void;
@@ -17,17 +18,31 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   disabled = false,
   hasReflection = false,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   // 既にリフレクションがある場合は「もう一度受け取る」表示
   const buttonText = hasReflection
     ? 'AIの気づきをもう一度受け取る'
     : 'AIからの気づきを受け取る';
+
+  const buttonBackgroundColor = disabled
+    ? themeColors.border
+    : hasReflection
+    ? 'transparent'
+    : `${themeColors.primary}20`;
+
+  const buttonBorderColor = disabled ? themeColors.border : themeColors.primary;
 
   return (
     <View style={styles.container}>
       <TouchableOpacity
         style={[
           styles.button,
-          disabled && styles.buttonDisabled,
+          {
+            backgroundColor: buttonBackgroundColor,
+            borderColor: buttonBorderColor,
+          },
           hasReflection && styles.buttonSecondary,
         ]}
         onPress={onPress}
@@ -38,7 +53,8 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
         <Text
           style={[
             styles.buttonText,
-            disabled && styles.buttonTextDisabled,
+            { color: themeColors.primary },
+            disabled && { color: themeColors.text.secondary },
             hasReflection && styles.buttonTextSecondary,
           ]}
         >
@@ -47,7 +63,7 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
       </TouchableOpacity>
 
       {disabled && (
-        <Text style={styles.hintText}>
+        <Text style={[styles.hintText, { color: themeColors.text.secondary }]}>
           日記を入力するとAIの気づきを受け取れます
         </Text>
       )}
@@ -61,7 +77,6 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.padding.screen,
   },
   button: {
-    backgroundColor: 'rgba(139, 157, 131, 0.15)', // primary の薄い背景
     borderRadius: spacing.borderRadius.medium,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
@@ -69,14 +84,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  buttonDisabled: {
-    backgroundColor: colors.border,
-    borderColor: colors.border,
   },
   buttonSecondary: {
-    backgroundColor: 'transparent',
     borderStyle: 'dashed',
   },
   icon: {
@@ -86,11 +95,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
-    color: colors.primary,
     ...textBase,
-  },
-  buttonTextDisabled: {
-    color: colors.text.secondary,
   },
   buttonTextSecondary: {
     fontFamily: fonts.family.regular,
@@ -98,7 +103,6 @@ const styles = StyleSheet.create({
   hintText: {
     fontSize: fonts.size.labelSmall,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     textAlign: 'center',
     marginTop: spacing.sm,
     ...textBase,

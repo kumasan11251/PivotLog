@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -26,19 +27,22 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({
   onViewModeChange,
   onMonthPress,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
       <View style={styles.monthSelector}>
         <TouchableOpacity onPress={onPreviousMonth} style={styles.arrowButton}>
-          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+          <Ionicons name="chevron-back" size={24} color={themeColors.text.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onMonthPress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           disabled={!onMonthPress}
-          style={styles.monthButton}
+          style={[styles.monthButton, { borderColor: themeColors.border, backgroundColor: themeColors.background }]}
         >
-          <Text style={styles.monthText}>
+          <Text style={[styles.monthText, { color: themeColors.text.primary }]}>
             {selectedYear}年{selectedMonth}月
           </Text>
         </TouchableOpacity>
@@ -50,28 +54,28 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({
           <Ionicons
             name="chevron-forward"
             size={24}
-            color={isNextDisabled ? colors.text.secondary : colors.text.primary}
+            color={isNextDisabled ? themeColors.text.secondary : themeColors.text.primary}
           />
         </TouchableOpacity>
       </View>
-      <View style={styles.viewModeToggle}>
+      <View style={[styles.viewModeToggle, { backgroundColor: themeColors.background }]}>
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            viewMode === 'list' && styles.toggleButtonActive,
+            viewMode === 'list' && [styles.toggleButtonActive, { backgroundColor: themeColors.primary }],
           ]}
           onPress={() => onViewModeChange('list')}
         >
           <Ionicons
             name="list"
             size={20}
-            color={viewMode === 'list' ? colors.text.inverse : colors.text.secondary}
+            color={viewMode === 'list' ? themeColors.text.inverse : themeColors.text.secondary}
           />
         </TouchableOpacity>
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            viewMode === 'calendar' && styles.toggleButtonActive,
+            viewMode === 'calendar' && [styles.toggleButtonActive, { backgroundColor: themeColors.primary }],
           ]}
           onPress={() => onViewModeChange('calendar')}
         >
@@ -79,7 +83,7 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({
             name="calendar"
             size={20}
             color={
-              viewMode === 'calendar' ? colors.text.inverse : colors.text.secondary
+              viewMode === 'calendar' ? themeColors.text.inverse : themeColors.text.secondary
             }
           />
         </TouchableOpacity>
@@ -95,9 +99,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.padding.screen,
     paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
     borderBottomWidth: spacing.borderWidth,
-    borderBottomColor: colors.border,
   },
   monthSelector: {
     flexDirection: 'row',
@@ -111,21 +113,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: spacing.borderRadius.small,
     borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
     marginHorizontal: spacing.sm,
   },
   monthText: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
-    color: colors.text.primary,
     minWidth: 90,
     textAlign: 'center',
     ...textBase,
   },
   viewModeToggle: {
     flexDirection: 'row',
-    backgroundColor: colors.background,
     borderRadius: spacing.borderRadius.small,
     padding: 2,
   },
@@ -133,9 +131,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     borderRadius: spacing.borderRadius.small,
   },
-  toggleButtonActive: {
-    backgroundColor: colors.primary,
-  },
+  toggleButtonActive: {},
 });
 
 export default MonthSelector;

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface AIReflectionLoadingProps {
   message?: string;
@@ -13,6 +14,9 @@ interface AIReflectionLoadingProps {
 const AIReflectionLoading: React.FC<AIReflectionLoadingProps> = ({
   message = 'あなたの記録を読んでいます...',
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   // ドットアニメーション用（useMemoで安定化）
   const dot1Anim = useMemo(() => new Animated.Value(0.3), []);
   const dot2Anim = useMemo(() => new Animated.Value(0.3), []);
@@ -56,34 +60,37 @@ const AIReflectionLoading: React.FC<AIReflectionLoadingProps> = ({
   }, [dot1Anim, dot2Anim, dot3Anim]);
 
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      {
+        backgroundColor: themeColors.surface,
+        borderLeftColor: themeColors.primary,
+        shadowColor: themeColors.shadow,
+      },
+    ]}>
       <Text style={styles.icon}>✨</Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.message, { color: themeColors.text.primary }]}>{message}</Text>
 
       {/* ローディングドット */}
       <View style={styles.dotsContainer}>
-        <Animated.View style={[styles.dot, { opacity: dot1Anim }]} />
-        <Animated.View style={[styles.dot, { opacity: dot2Anim }]} />
-        <Animated.View style={[styles.dot, { opacity: dot3Anim }]} />
+        <Animated.View style={[styles.dot, { opacity: dot1Anim, backgroundColor: themeColors.primary }]} />
+        <Animated.View style={[styles.dot, { opacity: dot2Anim, backgroundColor: themeColors.primary }]} />
+        <Animated.View style={[styles.dot, { opacity: dot3Anim, backgroundColor: themeColors.primary }]} />
       </View>
 
-      <Text style={styles.subMessage}>少々お待ちください</Text>
+      <Text style={[styles.subMessage, { color: themeColors.text.secondary }]}>少々お待ちください</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.large,
     padding: spacing.xl,
     marginTop: spacing.lg,
     marginHorizontal: spacing.padding.screen,
     alignItems: 'center',
     borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    // シャドウ
-    shadowColor: colors.shadow,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -99,7 +106,6 @@ const styles = StyleSheet.create({
   message: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
-    color: colors.text.primary,
     textAlign: 'center',
     ...textBase,
   },
@@ -114,12 +120,10 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.primary,
   },
   subMessage: {
     fontSize: fonts.size.labelSmall,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     textAlign: 'center',
     ...textBase,
   },

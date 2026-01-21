@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { getProgressMessage } from '../../constants/diaryEntry';
 
 interface ProgressIndicatorProps {
@@ -9,6 +10,9 @@ interface ProgressIndicatorProps {
 }
 
 const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ progress }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   return (
     <View style={styles.container}>
       <View style={styles.dots}>
@@ -17,12 +21,12 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ progress }) => {
             key={index}
             name={index < progress ? 'checkmark-circle' : 'checkmark-circle-outline'}
             size={24}
-            color={index < progress ? colors.primary : colors.border}
+            color={index < progress ? themeColors.primary : themeColors.border}
             style={styles.icon}
           />
         ))}
       </View>
-      <Text style={styles.text}>{getProgressMessage(progress)}</Text>
+      <Text style={[styles.text, { color: themeColors.text.secondary }]}>{getProgressMessage(progress)}</Text>
     </View>
   );
 };
@@ -43,7 +47,6 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },

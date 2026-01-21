@@ -16,9 +16,10 @@ import FeedbackScreen from './src/screens/FeedbackScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
-import { colors, fonts } from './src/theme';
+import { colors, fonts, getColors } from './src/theme';
 import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -29,6 +30,8 @@ function MainNavigator() {
   const [isMigrating, setIsMigrating] = useState<boolean>(false);
   const [isSetupComplete, setIsSetupComplete] = useState<boolean>(false);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -68,10 +71,10 @@ function MainNavigator() {
 
   if (isLoading || isMigrating) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
         {isMigrating && (
-          <Text style={styles.migratingText}>データを同期中...</Text>
+          <Text style={[styles.migratingText, { color: themeColors.text.secondary }]}>データを同期中...</Text>
         )}
       </View>
     );
@@ -106,12 +109,14 @@ function MainNavigator() {
 // ルートナビゲーション（認証状態に応じて切り替え）
 function RootNavigator() {
   const { isAuthenticated, isLoading, showAuthScreen } = useAuth();
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
 
   if (isLoading) {
     // 認証処理中
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={themeColors.primary} />
       </View>
     );
   }
@@ -122,6 +127,12 @@ function RootNavigator() {
   }
 
   return <MainNavigator />;
+}
+
+// StatusBarをテーマに応じて切り替えるコンポーネント
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 
 export default function App() {
@@ -142,12 +153,14 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-      </AuthProvider>
-      <StatusBar style="auto" />
+      <ThemeProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+        <ThemedStatusBar />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

@@ -5,7 +5,8 @@ import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import TabBar from '../components/common/TabBar';
 import HomeContent from '../components/HomeContent';
 import DiaryListContent from '../components/DiaryListContent';
-import { colors } from '../theme';
+import { colors, getColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
 
 type TabType = 'home' | 'diaryList';
@@ -15,6 +16,8 @@ const MainTabScreen: React.FC = () => {
   const route = useRoute<MainTabScreenRouteProp>();
   const initialTab = route.params?.initialTab ?? 'home';
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
 
   const [shouldRefresh, setShouldRefresh] = useState(false);
 
@@ -35,7 +38,7 @@ const MainTabScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.contentContainer}>
         {/* 両コンテンツを常にマウントしておき、表示/非表示を切り替える */}
         {/* これによりDiaryListのキャッシュが保持され、タブ切り替えが高速化される */}

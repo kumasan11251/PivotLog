@@ -1,7 +1,8 @@
-import React, { forwardRef, useRef, useImperativeHandle } from 'react';
+import React, { forwardRef, useRef, useImperativeHandle, useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { MAX_CHARS } from '../../constants/diaryEntry';
 
 interface DiaryInputFieldProps {
@@ -36,6 +37,8 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
     },
     ref
   ) => {
+    const { isDark } = useTheme();
+    const themeColors = useMemo(() => getColors(isDark), [isDark]);
     const inputRef = useRef<TextInput>(null);
 
     useImperativeHandle(ref, () => ({
@@ -47,30 +50,36 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
       <View style={styles.container}>
         <View style={styles.labelContainer}>
           <View style={styles.labelWithCheck}>
-            <Text style={styles.label}>{label}</Text>
+            <Text style={[styles.label, { color: themeColors.text.primary }]}>{label}</Text>
             {showCheckmark && (
               <Ionicons
                 name="checkmark-circle"
                 size={18}
-                color={colors.primary}
+                color={themeColors.primary}
                 style={styles.checkIcon}
               />
             )}
           </View>
-          <Text style={styles.charCount}>
+          <Text style={[styles.charCount, { color: themeColors.text.secondary }]}>
             {value.length}/{MAX_CHARS}
           </Text>
         </View>
-        <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
+        <View
+          style={[
+            styles.inputContainer,
+            { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+            isFocused && { borderColor: themeColors.primary, borderWidth: 2 },
+          ]}
+        >
           <TextInput
             ref={inputRef}
-            style={styles.textInput}
+            style={[styles.textInput, { color: themeColors.text.primary }]}
             value={value}
             onChangeText={onChangeText}
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            placeholderTextColor={colors.text.secondary}
+            placeholderTextColor={themeColors.text.secondary}
             multiline
             textAlignVertical="top"
             maxLength={MAX_CHARS}
@@ -103,30 +112,21 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   charCount: {
     fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   inputContainer: {
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
     padding: spacing.md,
-  },
-  inputContainerFocused: {
-    borderColor: colors.primary,
-    borderWidth: 2,
   },
   textInput: {
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     lineHeight: 22,
     minHeight: 22,

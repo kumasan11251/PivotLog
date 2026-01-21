@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { DiaryEntry } from '../../utils/storage';
 import { useCalendar } from '../../hooks/useCalendar';
 import DiaryCard, { formatDateParts } from './DiaryCard';
@@ -26,6 +27,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onSelectedDateChange,
   onNavigateToEntry,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   const { weeks, selectedDiary, handleDayPress, diaryCount } =
     useCalendar({
       selectedYear,
@@ -54,7 +58,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
     if (selectedDiary) {
       return (
-        <View style={styles.selectedCardContainer}>
+        <View style={[styles.selectedCardContainer, { borderTopColor: themeColors.border }]}>
           <DiaryCard
             entry={selectedDiary}
             onPress={() => onNavigateToEntry(selectedDate)}
@@ -65,26 +69,26 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
     // 日記がない場合は新規作成ボタンを表示
     return (
-      <View style={styles.selectedCardContainer}>
-        <View style={styles.noEntryCard}>
+      <View style={[styles.selectedCardContainer, { borderTopColor: themeColors.border }]}>
+        <View style={[styles.noEntryCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
           <View style={[styles.dateSection, dateSectionStyle]}>
-            <Text style={[styles.weekdayText, dateTextStyle]}>
+            <Text style={[styles.weekdayText, { color: themeColors.text.secondary }, dateTextStyle]}>
               {dateParts.weekday}
             </Text>
-            <Text style={[styles.dayText, dateTextStyle]}>{dateParts.day}</Text>
+            <Text style={[styles.dayText, { color: themeColors.text.primary }, dateTextStyle]}>{dateParts.day}</Text>
           </View>
           <View style={styles.noEntryContent}>
-            <Text style={styles.noEntryText}>この日の記録はありません</Text>
+            <Text style={[styles.noEntryText, { color: themeColors.text.secondary }]}>この日の記録はありません</Text>
             <TouchableOpacity
-              style={styles.createEntryButton}
+              style={[styles.createEntryButton, { backgroundColor: themeColors.primary }]}
               onPress={() => onNavigateToEntry(selectedDate)}
             >
               <Ionicons
                 name="add-circle-outline"
                 size={18}
-                color={colors.text.inverse}
+                color={themeColors.text.inverse}
               />
-              <Text style={styles.createEntryButtonText}>日記を書く</Text>
+              <Text style={[styles.createEntryButtonText, { color: themeColors.text.inverse }]}>日記を書く</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -101,6 +105,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             <Text
               style={[
                 styles.weekdayHeaderText,
+                { color: themeColors.text.secondary },
                 index === 0 && styles.sundayText,
                 index === 6 && styles.saturdayText,
               ]}
@@ -130,19 +135,20 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   <View
                     style={[
                       styles.dayContent,
-                      hasDiary && !isToday && !isSelected && styles.hasDiaryContent,
-                      isToday && styles.todayContent,
-                      isSelected && !isToday && styles.selectedContent,
+                      hasDiary && !isToday && !isSelected && { backgroundColor: `${themeColors.primary}40` },
+                      isToday && { backgroundColor: themeColors.primary },
+                      isSelected && !isToday && { backgroundColor: themeColors.text.secondary },
                     ]}
                   >
                     <Text
                       style={[
                         styles.dayNumber,
+                        { color: themeColors.text.primary },
                         dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && styles.sundayText,
                         dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && styles.saturdayText,
-                        hasDiary && !isToday && !isSelected && styles.hasDiaryText,
-                        isToday && styles.todayText,
-                        isSelected && !isToday && styles.selectedText,
+                        hasDiary && !isToday && !isSelected && { color: themeColors.primary, fontFamily: fonts.family.bold },
+                        isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
+                        isSelected && !isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
                       ]}
                     >
                       {day}
@@ -160,8 +166,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
       {/* この月の記録サマリー */}
       {!selectedDate && (
-        <View style={styles.calendarSummary}>
-          <Text style={styles.summaryText}>この月の記録: {diaryCount}件</Text>
+        <View style={[styles.calendarSummary, { borderTopColor: themeColors.border }]}>
+          <Text style={[styles.summaryText, { color: themeColors.text.secondary }]}>この月の記録: {diaryCount}件</Text>
         </View>
       )}
     </View>
@@ -185,7 +191,6 @@ const styles = StyleSheet.create({
   weekdayHeaderText: {
     fontSize: fonts.size.labelSmall,
     fontFamily: fonts.family.bold,
-    color: colors.text.secondary,
     ...textBase,
   },
   weekRow: {
@@ -206,33 +211,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: spacing.borderRadius.small,
   },
-  hasDiaryContent: {
-    backgroundColor: 'rgba(139, 157, 131, 0.25)',
-  },
-  todayContent: {
-    backgroundColor: colors.primary,
-  },
-  selectedContent: {
-    backgroundColor: colors.text.secondary,
-  },
+  hasDiaryContent: {},
+  todayContent: {},
+  selectedContent: {},
   dayNumber: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     ...textBase,
   },
-  hasDiaryText: {
-    color: colors.primary,
-    fontFamily: fonts.family.bold,
-  },
-  todayText: {
-    color: colors.text.inverse,
-    fontFamily: fonts.family.bold,
-  },
-  selectedText: {
-    color: colors.text.inverse,
-    fontFamily: fonts.family.bold,
-  },
+  hasDiaryText: {},
+  todayText: {},
+  selectedText: {},
   sundayText: {
     color: '#E57373',
   },
@@ -243,15 +232,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: spacing.borderWidth,
-    borderTopColor: colors.border,
   },
   noEntryCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
     padding: spacing.sm,
     height: CARD_HEIGHT,
     overflow: 'hidden',
@@ -269,13 +255,11 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 20,
     fontWeight: fonts.weight.semibold,
-    color: colors.text.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
   weekdayText: {
     fontSize: 10,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     marginBottom: 2,
     ...textBase,
@@ -289,14 +273,12 @@ const styles = StyleSheet.create({
   noEntryText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     marginBottom: spacing.sm,
     ...textBase,
   },
   createEntryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: spacing.borderRadius.small,
@@ -305,20 +287,17 @@ const styles = StyleSheet.create({
   createEntryButtonText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
-    color: colors.text.inverse,
     ...textBase,
   },
   calendarSummary: {
     marginTop: spacing.lg,
     paddingTop: spacing.md,
     borderTopWidth: spacing.borderWidth,
-    borderTopColor: colors.border,
     alignItems: 'center',
   },
   summaryText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     ...textBase,
   },
 });

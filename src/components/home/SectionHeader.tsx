@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path } from 'react-native-svg';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface SectionHeaderProps {
   title: string;
@@ -13,7 +14,7 @@ interface SectionHeaderProps {
 // 切替アイコン（矢印の循環）
 const ToggleIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 18,
-  color = colors.text.secondary
+  color = '#888888'
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
@@ -50,7 +51,7 @@ const ToggleIcon: React.FC<{ size?: number; color?: string }> = ({
 // 砂時計アイコン
 const HourglassIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = colors.text.secondary
+  color = '#888888'
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Path
@@ -87,7 +88,7 @@ const HourglassIcon: React.FC<{ size?: number; color?: string }> = ({
 // 双葉アイコン（シンプルな芽）
 const SproutIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = colors.text.secondary
+  color = '#888888'
 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     {/* 茂 */}
@@ -122,6 +123,9 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   onToggle,
   icon,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   const handleToggle = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onToggle();
@@ -130,9 +134,9 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   const renderIcon = () => {
     switch (icon) {
       case 'hourglass':
-        return <HourglassIcon />;
+        return <HourglassIcon color={themeColors.text.secondary} />;
       case 'sprout':
-        return <SproutIcon />;
+        return <SproutIcon color={themeColors.text.secondary} />;
       default:
         return null;
     }
@@ -142,15 +146,15 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
     <View style={styles.titleContainer}>
       <View style={styles.titleWithIcon}>
         {icon && renderIcon()}
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, { color: themeColors.text.secondary }]}>{title}</Text>
       </View>
       <TouchableOpacity
-        style={styles.toggleButton}
+        style={[styles.toggleButton, { backgroundColor: `${themeColors.primary}1a` }]}
         onPress={handleToggle}
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <ToggleIcon size={14} />
+        <ToggleIcon size={14} color={themeColors.text.secondary} />
       </TouchableOpacity>
     </View>
   );
@@ -171,13 +175,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 13,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   toggleButton: {
     padding: spacing.xs,
-    backgroundColor: 'rgba(139, 157, 131, 0.1)',
     borderRadius: spacing.borderRadius.small,
   },
 });

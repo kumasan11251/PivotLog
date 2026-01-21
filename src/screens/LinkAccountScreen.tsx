@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,8 @@ import {
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
-import { colors, fonts, spacing, textBase } from '../theme';
+import { getColors, fonts, spacing, textBase } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
 import {
@@ -67,6 +68,8 @@ const GoogleIcon: React.FC<{ size?: number }> = ({ size = 24 }) => (
 
 const LinkAccountScreen: React.FC = () => {
   const navigation = useNavigation<LinkAccountScreenNavigationProp>();
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -223,7 +226,7 @@ const LinkAccountScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScreenHeader
         title="アカウント連携"
         leftAction={{
@@ -241,8 +244,8 @@ const LinkAccountScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           {/* 説明 */}
-          <View style={styles.descriptionContainer}>
-            <Text style={styles.description}>
+          <View style={[styles.descriptionContainer, { backgroundColor: themeColors.surface }]}>
+            <Text style={[styles.description, { color: themeColors.text.primary }]}>
               アカウントを連携すると、機種変更時やアプリの再インストール時にデータを復元できます。
               {'\n'}複数の認証方法を追加することで、どちらでもログインできるようになります。
             </Text>
@@ -250,21 +253,21 @@ const LinkAccountScreen: React.FC = () => {
 
           {/* 連携状態 */}
           {!isAnonymous && (
-            <View style={styles.statusContainer}>
-              <Text style={styles.statusTitle}>連携済みの認証方法</Text>
+            <View style={[styles.statusContainer, { backgroundColor: themeColors.surface }]}>
+              <Text style={[styles.statusTitle, { color: themeColors.text.secondary }]}>連携済みの認証方法</Text>
               <View style={styles.statusList}>
                 {isLinkedWith('google.com') && (
                   <View style={styles.statusItem}>
                     <GoogleIcon size={16} />
-                    <Text style={styles.statusText}>Google</Text>
-                    <Text style={styles.statusBadge}>連携済み</Text>
+                    <Text style={[styles.statusText, { color: themeColors.text.primary }]}>Google</Text>
+                    <Text style={[styles.statusBadge, { color: themeColors.primary, backgroundColor: `${themeColors.primary}20` }]}>連携済み</Text>
                   </View>
                 )}
                 {isLinkedWith('password') && (
                   <View style={styles.statusItem}>
                     <Text style={styles.statusIcon}>✉️</Text>
-                    <Text style={styles.statusText}>メールアドレス</Text>
-                    <Text style={styles.statusBadge}>連携済み</Text>
+                    <Text style={[styles.statusText, { color: themeColors.text.primary }]}>メールアドレス</Text>
+                    <Text style={[styles.statusBadge, { color: themeColors.primary, backgroundColor: `${themeColors.primary}20` }]}>連携済み</Text>
                   </View>
                 )}
               </View>
@@ -276,17 +279,17 @@ const LinkAccountScreen: React.FC = () => {
             {!isLinkedWith('google.com') ? (
               <>
                 <TouchableOpacity
-                  style={styles.socialButton}
+                  style={[styles.socialButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
                   onPress={handleLinkWithGoogle}
                   disabled={isAnyLoading}
                   activeOpacity={0.7}
                 >
                   {isGoogleLoading ? (
-                    <ActivityIndicator color={colors.text.primary} size="small" />
+                    <ActivityIndicator color={themeColors.text.primary} size="small" />
                   ) : (
                     <>
                       <GoogleIcon size={20} />
-                      <Text style={styles.socialButtonText}>Googleで連携</Text>
+                      <Text style={[styles.socialButtonText, { color: themeColors.text.primary }]}>Googleで連携</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -297,9 +300,9 @@ const LinkAccountScreen: React.FC = () => {
                 </View>
               </>
             ) : (
-              <View style={[styles.socialButton, styles.linkedButton]}>
+              <View style={[styles.socialButton, styles.linkedButton, { backgroundColor: themeColors.background, borderColor: themeColors.primary }]}>
                 <GoogleIcon size={20} />
-                <Text style={styles.linkedButtonText}>Google連携済み</Text>
+                <Text style={[styles.linkedButtonText, { color: themeColors.primary }]}>Google連携済み</Text>
               </View>
             )}
 
@@ -309,9 +312,9 @@ const LinkAccountScreen: React.FC = () => {
           {/* 区切り線 - メール未連携の場合のみ表示 */}
           {!isLinkedWith('password') && (
             <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>または</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
+              <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>または</Text>
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
             </View>
           )}
 
@@ -319,18 +322,18 @@ const LinkAccountScreen: React.FC = () => {
           {!isLinkedWith('password') ? (
             <View style={styles.form}>
               <View style={styles.emailFormHeader}>
-                <Text style={styles.emailFormNote}>
+                <Text style={[styles.emailFormNote, { color: themeColors.primary, backgroundColor: `${themeColors.primary}10` }]}>
                   💡 メールアドレスで連携後も、同じGoogleアカウントであれば後からGoogle連携を追加できます。
                 </Text>
               </View>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>メールアドレス</Text>
+                <Text style={[styles.label, { color: themeColors.text.secondary }]}>メールアドレス</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: themeColors.surface, borderColor: themeColors.border, color: themeColors.text.primary }]}
                   value={email}
                   onChangeText={setEmail}
                   placeholder="example@email.com"
-                  placeholderTextColor={colors.text.secondary}
+                  placeholderTextColor={themeColors.text.secondary}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
@@ -339,13 +342,13 @@ const LinkAccountScreen: React.FC = () => {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>パスワード</Text>
+                <Text style={[styles.label, { color: themeColors.text.secondary }]}>パスワード</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: themeColors.surface, borderColor: themeColors.border, color: themeColors.text.primary }]}
                   value={password}
                   onChangeText={setPassword}
                   placeholder="6文字以上"
-                  placeholderTextColor={colors.text.secondary}
+                  placeholderTextColor={themeColors.text.secondary}
                   secureTextEntry
                   autoComplete="new-password"
                   editable={!isAnyLoading}
@@ -353,13 +356,13 @@ const LinkAccountScreen: React.FC = () => {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>パスワード（確認）</Text>
+                <Text style={[styles.label, { color: themeColors.text.secondary }]}>パスワード（確認）</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: themeColors.surface, borderColor: themeColors.border, color: themeColors.text.primary }]}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="もう一度入力"
-                  placeholderTextColor={colors.text.secondary}
+                  placeholderTextColor={themeColors.text.secondary}
                   secureTextEntry
                   autoComplete="new-password"
                   editable={!isAnyLoading}
@@ -377,22 +380,22 @@ const LinkAccountScreen: React.FC = () => {
                 />
                 {isLoading && (
                   <ActivityIndicator
-                    color={colors.text.inverse}
+                    color={themeColors.text.inverse}
                     style={styles.loadingIndicator}
                   />
                 )}
               </View>
             </View>
           ) : (
-            <View style={styles.linkedEmailContainer}>
-              <Text style={styles.linkedEmailText}>✉️ メールアドレス連携済み</Text>
+            <View style={[styles.linkedEmailContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.primary }]}>
+              <Text style={[styles.linkedEmailText, { color: themeColors.primary }]}>✉️ メールアドレス連携済み</Text>
             </View>
           )}
 
           {/* 全て連携済みの場合のメッセージ */}
           {isLinkedWith('google.com') && isLinkedWith('password') && (
-            <View style={styles.allLinkedContainer}>
-              <Text style={styles.allLinkedText}>
+            <View style={[styles.allLinkedContainer, { backgroundColor: `${themeColors.primary}10` }]}>
+              <Text style={[styles.allLinkedText, { color: themeColors.primary }]}>
                 ✅ すべての認証方法が連携されています
               </Text>
             </View>
@@ -400,7 +403,7 @@ const LinkAccountScreen: React.FC = () => {
 
           {/* 注意書き */}
           <View style={styles.noteContainer}>
-            <Text style={styles.noteText}>
+            <Text style={[styles.noteText, { color: themeColors.text.secondary }]}>
               ※ 連携後も現在のデータはそのまま引き継がれます
             </Text>
           </View>
@@ -409,21 +412,21 @@ const LinkAccountScreen: React.FC = () => {
           {isAnonymous && (
             <View style={styles.existingAccountContainer}>
               <View style={styles.existingAccountDivider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>既にアカウントをお持ちの方</Text>
-                <View style={styles.dividerLine} />
+                <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
+                <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>既にアカウントをお持ちの方</Text>
+                <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
               </View>
-              <Text style={styles.existingAccountDescription}>
+              <Text style={[styles.existingAccountDescription, { color: themeColors.text.secondary }]}>
                 以前登録したアカウントがある場合は、そのアカウントでログインできます。
                 現在のデータは破棄され、既存アカウントのデータに切り替わります。
               </Text>
               <TouchableOpacity
-                style={styles.existingAccountButton}
+                style={[styles.existingAccountButton, { borderColor: themeColors.text.secondary }]}
                 onPress={() => setShowLoginModal(true)}
                 disabled={isAnyLoading}
                 activeOpacity={0.7}
               >
-                <Text style={styles.existingAccountButtonText}>
+                <Text style={[styles.existingAccountButtonText, { color: themeColors.text.secondary }]}>
                   既存アカウントでログイン
                 </Text>
               </TouchableOpacity>
@@ -439,8 +442,8 @@ const LinkAccountScreen: React.FC = () => {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowLoginModal(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.background }]}>
+          <View style={[styles.modalHeader, { borderBottomColor: themeColors.border }]}>
             <TouchableOpacity
               onPress={() => {
                 setShowLoginModal(false);
@@ -450,9 +453,9 @@ const LinkAccountScreen: React.FC = () => {
               }}
               disabled={isLoginLoading || isGoogleLoginLoading}
             >
-              <Text style={styles.modalCloseButton}>キャンセル</Text>
+              <Text style={[styles.modalCloseButton, { color: themeColors.primary }]}>キャンセル</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>既存アカウントでログイン</Text>
+            <Text style={[styles.modalTitle, { color: themeColors.text.primary }]}>既存アカウントでログイン</Text>
             <View style={styles.modalHeaderSpacer} />
           </View>
 
@@ -469,37 +472,37 @@ const LinkAccountScreen: React.FC = () => {
 
             {/* Googleログイン */}
             <TouchableOpacity
-              style={styles.socialButton}
+              style={[styles.socialButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
               onPress={handleLoginWithGoogle}
               disabled={isLoginLoading || isGoogleLoginLoading}
               activeOpacity={0.7}
             >
               {isGoogleLoginLoading ? (
-                <ActivityIndicator color={colors.text.primary} size="small" />
+                <ActivityIndicator color={themeColors.text.primary} size="small" />
               ) : (
                 <>
                   <GoogleIcon size={20} />
-                  <Text style={styles.socialButtonText}>Googleでログイン</Text>
+                  <Text style={[styles.socialButtonText, { color: themeColors.text.primary }]}>Googleでログイン</Text>
                 </>
               )}
             </TouchableOpacity>
 
             <View style={styles.dividerContainer}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>または</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
+              <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>または</Text>
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
             </View>
 
             {/* メールログインフォーム */}
             <View style={styles.form}>
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>メールアドレス</Text>
+                <Text style={[styles.label, { color: themeColors.text.secondary }]}>メールアドレス</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: themeColors.surface, borderColor: themeColors.border, color: themeColors.text.primary }]}
                   value={loginEmail}
                   onChangeText={setLoginEmail}
                   placeholder="example@email.com"
-                  placeholderTextColor={colors.text.secondary}
+                  placeholderTextColor={themeColors.text.secondary}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
@@ -508,13 +511,13 @@ const LinkAccountScreen: React.FC = () => {
               </View>
 
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>パスワード</Text>
+                <Text style={[styles.label, { color: themeColors.text.secondary }]}>パスワード</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: themeColors.surface, borderColor: themeColors.border, color: themeColors.text.primary }]}
                   value={loginPassword}
                   onChangeText={setLoginPassword}
                   placeholder="パスワード"
-                  placeholderTextColor={colors.text.secondary}
+                  placeholderTextColor={themeColors.text.secondary}
                   secureTextEntry
                   autoComplete="password"
                   editable={!isLoginLoading && !isGoogleLoginLoading}
@@ -532,7 +535,7 @@ const LinkAccountScreen: React.FC = () => {
                 />
                 {isLoginLoading && (
                   <ActivityIndicator
-                    color={colors.text.inverse}
+                    color={themeColors.text.inverse}
                     style={styles.loadingIndicator}
                   />
                 )}
@@ -548,7 +551,6 @@ const LinkAccountScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   keyboardView: {
     flex: 1,
@@ -562,14 +564,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   descriptionContainer: {
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
   description: {
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     lineHeight: 24,
     ...textBase,
@@ -582,49 +582,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: spacing.borderRadius.medium,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     gap: spacing.sm,
   },
-  // Apple連携は Apple Developer Program 登録後に有効化
-  // appleButton: {
-  //   backgroundColor: '#000000',
-  //   borderColor: '#000000',
-  // },
   socialButtonText: {
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
   linkedButton: {
-    backgroundColor: colors.background,
-    borderColor: colors.primary,
     borderWidth: 2,
   },
   linkedButtonText: {
     fontSize: fonts.size.body,
-    color: colors.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
-  // Apple連携は Apple Developer Program 登録後に有効化
-  // appleButtonText: {
-  //   color: '#FFFFFF',
-  // },
   statusContainer: {
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
   statusTitle: {
     fontSize: fonts.size.label,
-    color: colors.text.secondary,
     fontFamily: fonts.family.bold,
     marginBottom: spacing.sm,
     ...textBase,
@@ -642,38 +625,31 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     flex: 1,
     ...textBase,
   },
   statusBadge: {
     fontSize: fonts.size.labelSmall,
-    color: colors.primary,
     fontFamily: fonts.family.bold,
-    backgroundColor: `${colors.primary}20`,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: spacing.borderRadius.small,
     ...textBase,
   },
   linkedEmailContainer: {
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     alignItems: 'center',
     marginBottom: spacing.lg,
     borderWidth: 2,
-    borderColor: colors.primary,
   },
   linkedEmailText: {
     fontSize: fonts.size.body,
-    color: colors.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
   allLinkedContainer: {
-    backgroundColor: `${colors.primary}10`,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     alignItems: 'center',
@@ -681,7 +657,6 @@ const styles = StyleSheet.create({
   },
   allLinkedText: {
     fontSize: fonts.size.body,
-    color: colors.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
@@ -693,12 +668,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: colors.border,
   },
   dividerText: {
     marginHorizontal: spacing.md,
     fontSize: fonts.size.label,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
@@ -710,19 +683,15 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fonts.size.label,
-    color: colors.text.secondary,
     marginBottom: spacing.xs,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   input: {
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
@@ -751,11 +720,9 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: fonts.size.labelSmall,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
-  // Google連携の注意書き
   googleNoteContainer: {
     backgroundColor: '#FFF8E1',
     borderRadius: spacing.borderRadius.medium,
@@ -769,21 +736,17 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     ...textBase,
   },
-  // メールフォームのヘッダー
   emailFormHeader: {
     marginBottom: spacing.md,
   },
   emailFormNote: {
     fontSize: fonts.size.labelSmall,
-    color: colors.primary,
     fontFamily: fonts.family.regular,
     lineHeight: 18,
-    backgroundColor: `${colors.primary}10`,
     padding: spacing.sm,
     borderRadius: spacing.borderRadius.medium,
     ...textBase,
   },
-  // 既存アカウントログインセクション
   existingAccountContainer: {
     marginTop: spacing.xl,
     paddingTop: spacing.lg,
@@ -795,7 +758,6 @@ const styles = StyleSheet.create({
   },
   existingAccountDescription: {
     fontSize: fonts.size.label,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
     marginBottom: spacing.md,
@@ -805,7 +767,6 @@ const styles = StyleSheet.create({
   existingAccountButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: colors.text.secondary,
     borderRadius: spacing.borderRadius.medium,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
@@ -813,14 +774,11 @@ const styles = StyleSheet.create({
   },
   existingAccountButtonText: {
     fontSize: fonts.size.body,
-    color: colors.text.secondary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
-  // モーダル
   modalContainer: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -829,17 +787,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   modalCloseButton: {
     fontSize: fonts.size.body,
-    color: colors.primary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
   modalTitle: {
     fontSize: fonts.size.body,
-    color: colors.text.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },

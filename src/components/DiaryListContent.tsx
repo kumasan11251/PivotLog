@@ -2,7 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
-import { colors, spacing } from '../theme';
+import { colors, spacing, getColors } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { DiaryEntry } from '../utils/storage';
 import { useDiaryList } from '../hooks/useDiaryList';
 import ScreenHeader from './common/ScreenHeader';
@@ -27,6 +28,8 @@ interface DiaryListContentProps {
  */
 const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isYearMonthPickerVisible, setYearMonthPickerVisible] = useState(false);
@@ -145,7 +148,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   // ========================================
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScreenHeader
         title="記録一覧"
         rightAction={{

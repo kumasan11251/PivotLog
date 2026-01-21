@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ButtonProps {
   title: string;
@@ -19,11 +20,15 @@ const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        variant === 'primary' ? styles.primaryButton : styles.secondaryButton,
+        { shadowColor: themeColors.shadow },
+        variant === 'primary' ? { backgroundColor: themeColors.primary } : { backgroundColor: themeColors.surface, borderWidth: spacing.borderWidth, borderColor: themeColors.border },
         disabled && styles.disabledButton,
         style,
       ]}
@@ -34,7 +39,7 @@ const Button: React.FC<ButtonProps> = ({
       <Text
         style={[
           styles.buttonText,
-          variant === 'primary' ? styles.primaryButtonText : styles.secondaryButtonText,
+          variant === 'primary' ? { color: themeColors.text.inverse } : { color: themeColors.text.primary },
           disabled && styles.disabledButtonText,
           textStyle,
         ]}
@@ -50,19 +55,10 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.padding.button,
     alignItems: 'center',
-    shadowColor: colors.shadow,
     shadowOffset: spacing.shadow.offset,
     shadowOpacity: spacing.shadow.opacity,
     shadowRadius: spacing.shadow.radius,
     elevation: spacing.shadow.elevation,
-  },
-  primaryButton: {
-    backgroundColor: colors.primary,
-  },
-  secondaryButton: {
-    backgroundColor: colors.surface,
-    borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
   },
   disabledButton: {
     opacity: 0.5,
@@ -73,12 +69,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     fontFamily: fonts.family.regular,
     ...textBase,
-  },
-  primaryButtonText: {
-    color: colors.text.inverse,
-  },
-  secondaryButtonText: {
-    color: colors.text.primary,
   },
   disabledButtonText: {
     opacity: 0.6,

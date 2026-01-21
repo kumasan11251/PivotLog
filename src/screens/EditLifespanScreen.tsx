@@ -12,12 +12,15 @@ import * as Haptics from 'expo-haptics';
 import type { EditLifespanScreenNavigationProp } from '../types/navigation';
 import { loadUserSettings, saveUserSettings } from '../utils/storage';
 import { syncWidgetData } from '../utils/widgetStorage';
-import { colors, fonts, spacing, textBase } from '../theme';
+import { getColors, fonts, spacing, textBase } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 import LifespanSlider from '../components/common/LifespanSlider';
 
 const EditLifespanScreen: React.FC = () => {
   const navigation = useNavigation<EditLifespanScreenNavigationProp>();
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [targetLifespan, setTargetLifespan] = useState<number>(80);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -94,7 +97,7 @@ const EditLifespanScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         <ScreenHeader
           title="目標寿命"
           leftAction={{
@@ -103,14 +106,14 @@ const EditLifespanScreen: React.FC = () => {
           }}
         />
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>読み込み中...</Text>
+          <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>読み込み中...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScreenHeader
         title="目標寿命"
         leftAction={{
@@ -121,7 +124,7 @@ const EditLifespanScreen: React.FC = () => {
           type: 'text',
           label: isSaving ? '保存中...' : '保存',
           onPress: handleSave,
-          color: isValid ? colors.primary : colors.text.secondary,
+          color: isValid ? themeColors.primary : themeColors.text.secondary,
         }}
       />
 
@@ -132,10 +135,10 @@ const EditLifespanScreen: React.FC = () => {
       >
         {/* 説明テキスト */}
         <View style={styles.descriptionContainer}>
-          <Text style={styles.descriptionText}>
+          <Text style={[styles.descriptionText, { color: themeColors.text.secondary }]}>
             目標寿命を設定すると、残りの時間が計算されます。
           </Text>
-          <Text style={styles.descriptionSubText}>
+          <Text style={[styles.descriptionSubText, { color: themeColors.primary }]}>
             現在の年齢: {currentAge}歳
           </Text>
         </View>
@@ -152,8 +155,14 @@ const EditLifespanScreen: React.FC = () => {
         </View>
 
         {/* モチベーションメッセージ */}
-        <View style={styles.motivationContainer}>
-          <Text style={styles.motivationText}>
+        <View style={[
+          styles.motivationContainer,
+          {
+            backgroundColor: themeColors.surface,
+            shadowColor: themeColors.shadow,
+          },
+        ]}>
+          <Text style={[styles.motivationText, { color: themeColors.text.primary }]}>
             この{targetLifespan - currentAge}年を、最高の時間にしよう
           </Text>
         </View>
@@ -165,7 +174,6 @@ const EditLifespanScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -180,7 +188,6 @@ const styles = StyleSheet.create({
   descriptionText: {
     fontSize: 15,
     fontFamily: fonts.family.regular,
-    color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 22,
     ...textBase,
@@ -188,7 +195,6 @@ const styles = StyleSheet.create({
   descriptionSubText: {
     fontSize: 14,
     fontFamily: fonts.family.bold,
-    color: colors.primary,
     textAlign: 'center',
     marginTop: spacing.sm,
     ...textBase,
@@ -199,10 +205,8 @@ const styles = StyleSheet.create({
   motivationContainer: {
     marginTop: spacing.xl,
     padding: spacing.lg,
-    backgroundColor: colors.surface,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -211,7 +215,6 @@ const styles = StyleSheet.create({
   motivationText: {
     fontSize: 16,
     fontFamily: fonts.family.regular,
-    color: colors.text.primary,
     textAlign: 'center',
     lineHeight: 24,
     ...textBase,
@@ -223,7 +226,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: fonts.size.body,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
   },

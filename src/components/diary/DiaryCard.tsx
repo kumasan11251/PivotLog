@@ -13,7 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { DiaryEntry, deleteDiaryEntry } from '../../utils/storage';
 import { DIARY_QUESTIONS } from '../../constants/diary';
 
@@ -69,6 +70,8 @@ export const getFilledQuestions = (
 };
 
 const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onPress, onDelete }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const dateParts = formatDateParts(entry.date);
   const filledQuestions = getFilledQuestions(entry);
 
@@ -234,44 +237,44 @@ const DiaryCard: React.FC<DiaryCardProps> = ({ entry, onPress, onDelete }) => {
     <View style={styles.swipeContainer}>
       {/* 削除ボタン（背景に配置） */}
       <TouchableOpacity
-        style={styles.deleteButton}
+        style={[styles.deleteButton, { backgroundColor: themeColors.error }]}
         onPress={handleDeletePress}
         activeOpacity={0.8}
       >
-        <Ionicons name="trash-outline" size={24} color={colors.text.inverse} />
-        <Text style={styles.deleteButtonText}>削除</Text>
+        <Ionicons name="trash-outline" size={24} color={themeColors.text.inverse} />
+        <Text style={[styles.deleteButtonText, { color: themeColors.text.inverse }]}>削除</Text>
       </TouchableOpacity>
 
       {/* カード本体（スワイプ対象） */}
       <Animated.View
         style={[
           styles.cardAnimatedWrapper,
-          { transform: [{ translateX: swipeAnim }] },
+          { backgroundColor: themeColors.background, transform: [{ translateX: swipeAnim }] },
         ]}
         {...panResponder.panHandlers}
       >
-        <TouchableOpacity style={styles.container} onPress={handleCardPress}>
+        <TouchableOpacity style={[styles.container, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={handleCardPress}>
           <View style={[styles.dateSection, dateSectionStyle]}>
-            <Text style={[styles.weekdayText, dateTextStyle]}>
+            <Text style={[styles.weekdayText, { color: themeColors.text.secondary }, dateTextStyle]}>
               {dateParts.weekday}
             </Text>
-            <Text style={[styles.dayText, dateTextStyle]}>{dateParts.day}</Text>
+            <Text style={[styles.dayText, { color: themeColors.text.primary }, dateTextStyle]}>{dateParts.day}</Text>
           </View>
           <View style={styles.contentWrapper}>
             <View style={styles.contentSection}>
               {filledQuestions.length > 0 ? (
                 filledQuestions.map((q, qIndex) => (
                   <View key={qIndex} style={styles.questionItem}>
-                    <Text style={styles.questionLabel}>{q.label}</Text>
-                    <Text style={styles.questionContent}>{q.content}</Text>
+                    <Text style={[styles.questionLabel, { color: themeColors.primary, backgroundColor: `${themeColors.primary}26` }]}>{q.label}</Text>
+                    <Text style={[styles.questionContent, { color: themeColors.text.primary }]}>{q.content}</Text>
                   </View>
                 ))
               ) : (
-                <Text style={styles.emptyContent}>内容がありません</Text>
+                <Text style={[styles.emptyContent, { color: themeColors.text.secondary }]}>内容がありません</Text>
               )}
             </View>
             <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
+              colors={isDark ? ['rgba(30,30,30,0)', 'rgba(30,30,30,1)'] : ['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
               style={styles.fadeOverlay}
             />
           </View>
@@ -292,28 +295,22 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: DELETE_BUTTON_WIDTH,
-    backgroundColor: colors.error,
     borderRadius: spacing.borderRadius.medium,
     justifyContent: 'center',
     alignItems: 'center',
   },
   deleteButtonText: {
-    color: colors.text.inverse,
     fontSize: 12,
     fontFamily: fonts.family.bold,
     marginTop: 4,
     ...textBase,
   },
-  cardAnimatedWrapper: {
-    backgroundColor: colors.background,
-  },
+  cardAnimatedWrapper: {},
   container: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: colors.surface,
     borderRadius: spacing.borderRadius.medium,
     borderWidth: spacing.borderWidth,
-    borderColor: colors.border,
     padding: spacing.sm,
     height: CARD_HEIGHT,
     overflow: 'hidden',
@@ -331,13 +328,11 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 20,
     fontWeight: fonts.weight.semibold,
-    color: colors.text.primary,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
   weekdayText: {
     fontSize: 10,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     marginBottom: 2,
     ...textBase,
@@ -369,9 +364,7 @@ const styles = StyleSheet.create({
   },
   questionLabel: {
     fontSize: 10,
-    color: colors.primary,
     fontFamily: fonts.family.bold,
-    backgroundColor: 'rgba(139, 157, 131, 0.15)',
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     borderRadius: 4,
@@ -382,14 +375,12 @@ const styles = StyleSheet.create({
   },
   questionContent: {
     fontSize: 13,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     lineHeight: 18,
     ...textBase,
   },
   emptyContent: {
     fontSize: 12,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     fontStyle: 'italic',
     ...textBase,

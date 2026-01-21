@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { colors, fonts, spacing, textBase } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -16,6 +17,8 @@ const CircleProgress: React.FC<CircleProgressProps> = ({
   targetLifespan,
   animatedStrokeDashoffset
 }) => {
+  const { isDark } = useTheme();
+  const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const radius = 90;
   const circumference = 2 * Math.PI * radius;
 
@@ -28,7 +31,7 @@ const CircleProgress: React.FC<CircleProgressProps> = ({
             cx="100"
             cy="100"
             r={radius}
-            stroke={colors.progress.background}
+            stroke={themeColors.progress.background}
             strokeWidth="12"
             fill="none"
           />
@@ -37,7 +40,7 @@ const CircleProgress: React.FC<CircleProgressProps> = ({
             cx="100"
             cy="100"
             r={radius}
-            stroke={colors.progress.bar}
+            stroke={themeColors.progress.bar}
             strokeWidth="12"
             fill="none"
             strokeDasharray={`${circumference}`}
@@ -47,10 +50,10 @@ const CircleProgress: React.FC<CircleProgressProps> = ({
           />
         </Svg>
         <View style={styles.circleProgressTextContainer}>
-          <Text style={styles.circleProgressText}>
-            {lifeProgress.toFixed(1)}<Text style={styles.percentSign}>%</Text>
+          <Text style={[styles.circleProgressText, { color: themeColors.text.primary }]}>
+            {lifeProgress.toFixed(1)}<Text style={[styles.percentSign, { color: themeColors.text.primary }]}>%</Text>
           </Text>
-          <Text style={styles.circleProgressSubText}>
+          <Text style={[styles.circleProgressSubText, { color: themeColors.text.secondary }]}>
             {targetLifespan}歳まで
           </Text>
         </View>
@@ -82,7 +85,6 @@ const styles = StyleSheet.create({
   circleProgressText: {
     fontSize: fonts.size.progressLarge,
     fontWeight: fonts.weight.light,
-    color: colors.text.primary,
     fontFamily: fonts.family.regular,
     marginBottom: spacing.xs,
     ...textBase,
@@ -90,11 +92,9 @@ const styles = StyleSheet.create({
   percentSign: {
     fontSize: 24,
     fontWeight: fonts.weight.light,
-    color: colors.text.primary,
   },
   circleProgressSubText: {
     fontSize: fonts.size.label,
-    color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     letterSpacing: 1,
     ...textBase,
