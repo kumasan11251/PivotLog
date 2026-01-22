@@ -34,6 +34,12 @@ yarn-error.*
 .env
 .env*.local
 
+# Firebase config (contains API keys)
+google-services.json
+android/app/google-services.json
+GoogleService-Info.plist
+ios/pivotlog/GoogleService-Info.plist
+
 # typescript
 *.tsbuildinfo
 
