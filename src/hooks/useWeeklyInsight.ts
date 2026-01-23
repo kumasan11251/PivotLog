@@ -231,6 +231,8 @@ export const useWeeklyInsight = (
     setInsight(null);
     setState('idle');
     setError(null);
+    setCurrentWeekEntryCount(0); // 新しい週の記録数はcheckCurrentWeekEntriesで再取得される
+    setIsCurrentWeekCached(false); // キャッシュ状態もリセット
   }, []);
 
   // 前の週に移動

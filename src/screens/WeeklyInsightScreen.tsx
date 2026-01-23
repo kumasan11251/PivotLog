@@ -140,8 +140,8 @@ const WeeklyInsightScreen: React.FC = () => {
       );
     }
 
-    // データ不足
-    if (state === 'insufficient_data') {
+    // データ不足（ただし記録数が増えて生成可能になった場合は生成画面を表示）
+    if (state === 'insufficient_data' && !canGenerateInsight) {
       return (
         <View style={styles.centerContainer}>
           <Ionicons name="calendar-outline" size={48} color={themeColors.text.secondary} />
