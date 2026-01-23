@@ -6,6 +6,7 @@ import { colors, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { DiaryEntry } from '../utils/storage';
 import { useDiaryList } from '../hooks/useDiaryList';
+import { useWeeklyInsight } from '../hooks/useWeeklyInsight';
 import ScreenHeader from './common/ScreenHeader';
 import {
   DiaryCard,
@@ -14,6 +15,7 @@ import {
   EmptyList,
   YearMonthPickerModal,
 } from './diary';
+import { WeeklyInsightBanner } from './insight';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -50,6 +52,14 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     removeDiaryFromCache,
   } = useDiaryList({ shouldRefresh });
 
+  // 週次インサイト
+  const {
+    insight,
+    state: insightState,
+    lastWeekEntryCount,
+    canGenerateInsight,
+  } = useWeeklyInsight();
+
   // ========================================
   // ナビゲーションハンドラー
   // ========================================
@@ -64,6 +74,11 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     },
     [navigation]
   );
+
+  const handleNavigateToWeeklyInsight = useCallback(() => {
+    // 週選択機能があるので常にナビゲート可能
+    navigation.navigate('WeeklyInsight', {});
+  }, [navigation]);
 
   // 日記削除ハンドラー
   const handleDeleteDiary = useCallback(
@@ -166,6 +181,16 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         onNextMonth={handleNextMonth}
         onViewModeChange={handleViewModeChange}
         onMonthPress={handleOpenYearMonthPicker}
+      />
+
+      {/* 週次インサイトバナー */}
+      <WeeklyInsightBanner
+        entryCount={lastWeekEntryCount}
+        state={insightState}
+        hasInsight={!!insight}
+        canGenerate={canGenerateInsight}
+        summary={insight?.summary}
+        onPress={handleNavigateToWeeklyInsight}
       />
 
       {viewMode === 'list' ? (

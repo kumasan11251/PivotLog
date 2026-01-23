@@ -248,6 +248,12 @@ export const deleteAllUserDataFromFirestore = async (): Promise<void> => {
       batch.delete(doc.ref);
     });
 
+    // すべての週次インサイトを削除
+    const insightsSnapshot = await userDoc.collection(COLLECTIONS.WEEKLY_INSIGHTS).get();
+    insightsSnapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+
     // バッチ処理を実行
     await batch.commit();
 
@@ -258,5 +264,135 @@ export const deleteAllUserDataFromFirestore = async (): Promise<void> => {
   } catch (error) {
     console.error('Firestoreデータの削除に失敗しました:', error);
     throw error;
+  }
+};
+
+// =============== 週次インサイト ===============
+
+/**
+ * 週次インサイトのデータ構造（Firestore用）
+ */
+export interface WeeklyInsightDocument {
+  weekKey: string; // YYYY-Www形式 (例: 2026-W04)
+  weekStartDate: string;
+  weekEndDate: string;
+  entryCount: number;
+  summary: string;
+  patterns: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+    frequency?: number;
+  }>;
+  question: string;
+  generatedAt: string;
+  modelVersion?: string;
+}
+
+/**
+ * 週次インサイトを保存
+ */
+export const saveWeeklyInsightToFirestore = async (
+  insight: WeeklyInsightDocument
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    await userDoc
+      .collection(COLLECTIONS.WEEKLY_INSIGHTS)
+      .doc(insight.weekKey)
+      .set({
+        ...insight,
+        updatedAt: new Date().toISOString(),
+      });
+  } catch (error) {
+    console.error('[Firestore] 週次インサイトの保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * 特定の週の週次インサイトを取得
+ */
+export const getWeeklyInsightFromFirestore = async (
+  weekKey: string
+): Promise<WeeklyInsightDocument | null> => {
+  try {
+    const userDoc = getUserDocRef();
+    const doc = await userDoc
+      .collection(COLLECTIONS.WEEKLY_INSIGHTS)
+      .doc(weekKey)
+      .get();
+
+    if (doc.exists()) {
+      const data = doc.data() as WeeklyInsightDocument;
+      return data;
+    }
+    return null;
+  } catch (error) {
+    console.error('[Firestore] 週次インサイトの取得に失敗しました:', error);
+    return null;
+  }
+};
+
+/**
+ * 特定の週の週次インサイトキャッシュを削除
+ */
+export const deleteWeeklyInsightFromFirestore = async (
+  weekKey: string
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    await userDoc
+      .collection(COLLECTIONS.WEEKLY_INSIGHTS)
+      .doc(weekKey)
+      .delete();
+  } catch (error) {
+    console.error('[Firestore] 週次インサイトの削除に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * 最新の週次インサイトを取得（複数件）
+ */
+export const getRecentWeeklyInsightsFromFirestore = async (
+  limit: number = 4
+): Promise<WeeklyInsightDocument[]> => {
+  try {
+    const userDoc = getUserDocRef();
+    const snapshot = await userDoc
+      .collection(COLLECTIONS.WEEKLY_INSIGHTS)
+      .orderBy('weekStartDate', 'desc')
+      .limit(limit)
+      .get();
+
+    return snapshot.docs.map((doc) => doc.data() as WeeklyInsightDocument);
+  } catch (error) {
+    console.error('週次インサイト一覧の取得に失敗しました:', error);
+    return [];
+  }
+};
+
+/**
+ * 指定期間内の日記を取得（週次インサイト生成用）
+ */
+export const getDiariesByDateRangeFromFirestore = async (
+  startDate: string,
+  endDate: string
+): Promise<DiaryEntry[]> => {
+  try {
+    const userDoc = getUserDocRef();
+    const snapshot = await userDoc
+      .collection(COLLECTIONS.DIARIES)
+      .where('date', '>=', startDate)
+      .where('date', '<=', endDate)
+      .orderBy('date', 'asc')
+      .get();
+
+    return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+  } catch (error) {
+    console.error('期間指定日記の取得に失敗しました:', error);
+    return [];
   }
 };

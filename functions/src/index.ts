@@ -335,3 +335,524 @@ export const generateReflection = onCall(
     }
   }
 );
+
+// ============================================================
+// 週次インサイト生成
+// ============================================================
+
+/**
+ * 週次インサイト用システムプロンプト（簡潔版）
+ */
+const WEEKLY_INSIGHT_SYSTEM_PROMPT = `あなたは「PivotLog」の週次レポートアナリストです。1週間の日記から時間の使い方のパターンを発見し、自己理解を深めるインサイトを提供します。
+
+【必須ルール】
+1. 日記の具体的な言葉を「」で引用する（各パターンに最低1つ）
+2. 2〜3個のパターンを抽出する
+3. 批判せず「気づき」として提示する
+4. 「〜ですね」「〜かもしれません」の柔らかい語尾を使う
+
+【分析観点】
+- 喜びの源泉：「良かったこと」の共通テーマ（人・活動・達成感など）
+- 後悔のパターン：繰り返される後悔、その裏にある「本当はこうしたかった」
+- 意図と行動：「明日大切にしたいこと」が翌日に反映されているか
+
+【出力形式の注意】
+- summary: 100-150文字。最も顕著な傾向を指摘し、温かく労う
+- patterns: 2〜3個。各patternのdescriptionは50-80文字、具体的引用を含める
+- question: 40-60文字。来週できる具体的なアクションを提案
+
+【パターンタイプ】
+positive_theme / growth_area / time_awareness / relationship / self_care / intention_action`;
+
+/**
+ * 週次インサイト生成リクエストの型
+ */
+interface GenerateWeeklyInsightRequest {
+  entries: Array<{
+    date: string;
+    goodTime: string;
+    wastedTime: string;
+    tomorrow: string;
+  }>;
+  currentAge: number;
+  remainingYears: number;
+  remainingDays: number;
+  weekStartDate: string;
+  weekEndDate: string;
+}
+
+/**
+ * 週次インサイトレスポンスの型
+ */
+interface WeeklyInsightResponse {
+  summary: string;
+  patterns: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+    frequency?: number;
+  }>;
+  question: string;
+  generatedAt: string;
+  modelVersion: string;
+}
+
+/**
+ * 週次インサイト用ユーザープロンプトを生成
+ */
+function generateWeeklyInsightUserPrompt(request: GenerateWeeklyInsightRequest): string {
+  const { entries, currentAge, remainingYears, remainingDays, weekStartDate, weekEndDate } = request;
+
+  // 日記エントリーを整形（より分析しやすい形式に）
+  const entriesText = entries
+    .map((entry, index) => {
+      const date = new Date(entry.date);
+      const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+      return `【${entry.date}（${dayOfWeek}）】Day ${index + 1}
+✨ 良かったこと: ${entry.goodTime || '（記入なし）'}
+💭 後悔していること: ${entry.wastedTime || '（記入なし）'}
+🌅 明日大切にしたいこと: ${entry.tomorrow || '（記入なし）'}`;
+    })
+    .join('\n\n');
+
+  // 分析のヒントを生成
+  const analysisHints = generateAnalysisHints(entries);
+
+  return `【ユーザー情報】
+${currentAge}歳。目標寿命まで残り約${remainingYears}年（${remainingDays.toLocaleString()}日）。
+1週間は人生の約${(100 / (remainingYears * 52)).toFixed(3)}%に相当。
+
+【分析期間】
+${weekStartDate} 〜 ${weekEndDate}（${entries.length}日分の記録）
+
+【この週の日記】
+${entriesText}
+
+【分析のヒント】
+${analysisHints}
+
+【依頼事項】
+1. 上記の日記を深く読み込み、ユーザー自身も気づいていないパターンを発見してください
+2. 「良かったこと」に共通する要素（人・活動・場所など）を探してください
+3. 「後悔」に繰り返し現れるテーマがあれば指摘してください
+4. 「明日大切にしたいこと」が実際の行動に反映されているか確認してください
+5. 必ず日記の具体的な言葉を引用してください
+6. 分析結果から自然に導かれる、来週への具体的な問いかけを1つ提案してください`;
+}
+
+/**
+ * 日記エントリーから分析のヒントを生成
+ */
+function generateAnalysisHints(entries: GenerateWeeklyInsightRequest['entries']): string {
+  const hints: string[] = [];
+
+  // 良かったことに登場する人物を抽出
+  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|上司|部下|先輩|後輩/g;
+  const allGoodTimes = entries.map(e => e.goodTime).join(' ');
+  const peopleMatches = allGoodTimes.match(peoplePattern);
+  if (peopleMatches && peopleMatches.length > 0) {
+    const uniquePeople = [...new Set(peopleMatches)];
+    hints.push(`・「良かったこと」に登場する人物: ${uniquePeople.join('、')}（${peopleMatches.length}回言及）`);
+  }
+
+  // 後悔のキーワードを抽出
+  const regretKeywords = /夜更かし|先延ばし|だらだら|無駄|スマホ|SNS|ゲーム|二度寝|寝坊|食べ過ぎ|飲み過ぎ/g;
+  const allRegrets = entries.map(e => e.wastedTime).join(' ');
+  const regretMatches = allRegrets.match(regretKeywords);
+  if (regretMatches && regretMatches.length > 0) {
+    const uniqueRegrets = [...new Set(regretMatches)];
+    hints.push(`・「後悔」に登場するキーワード: ${uniqueRegrets.join('、')}`);
+  }
+
+  // 意図と行動の連続性をチェック
+  for (let i = 0; i < entries.length - 1; i++) {
+    const tomorrow = entries[i].tomorrow;
+    const nextGoodTime = entries[i + 1]?.goodTime;
+    if (tomorrow && nextGoodTime && tomorrow.length > 5 && nextGoodTime.length > 5) {
+      hints.push(`・${entries[i].date}の「明日の意図」→ ${entries[i + 1].date}の「良かったこと」の関連性を確認してください`);
+      break; // 1つだけヒントとして出す
+    }
+  }
+
+  if (hints.length === 0) {
+    hints.push('・特定のパターンが見つけにくい場合は、ユーザーの言葉遣いや表現の傾向に注目してください');
+  }
+
+  return hints.join('\n');
+}
+
+/**
+ * 週次インサイトのAIレスポンスをパース
+ * 不完全なJSONでも可能な限りデータを抽出する
+ */
+function parseWeeklyInsightResponse(response: string): {
+  summary: string;
+  patterns: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+    frequency?: number;
+  }>;
+  question: string;
+} | null {
+  try {
+    const cleanedResponse = response
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+
+    // まず完全なJSONとしてパースを試みる
+    try {
+      const parsed = JSON.parse(cleanedResponse);
+      if (parsed && parsed.summary && Array.isArray(parsed.patterns)) {
+        return {
+          summary: parsed.summary,
+          patterns: parsed.patterns.map((p: Record<string, unknown>) => ({
+            type: String(p.type || 'positive_theme'),
+            title: String(p.title || ''),
+            description: String(p.description || ''),
+            examples: Array.isArray(p.examples) ? p.examples : undefined,
+            frequency: typeof p.frequency === 'number' ? p.frequency : undefined,
+          })),
+          question: parsed.question || '',
+        };
+      }
+    } catch {
+      // 完全なJSONパースに失敗した場合、部分的にデータを抽出
+      console.log('[parseWeeklyInsightResponse] Full JSON parse failed, attempting partial extraction...');
+    }
+
+    // 不完全なJSONからデータを部分的に抽出する
+    return extractPartialInsightData(cleanedResponse);
+  } catch (error) {
+    console.error('[parseWeeklyInsightResponse] Extraction failed:', error);
+    return null;
+  }
+}
+
+/**
+ * 不完全なJSONから部分的にデータを抽出
+ */
+function extractPartialInsightData(response: string): {
+  summary: string;
+  patterns: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+    frequency?: number;
+  }>;
+  question: string;
+} | null {
+  // summaryを抽出
+  const summaryMatch = response.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  const summary = summaryMatch ? summaryMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : '';
+
+  if (!summary) {
+    console.error('[extractPartialInsightData] No summary found');
+    return null;
+  }
+
+  // patternsを抽出（より堅牢な方法）
+  const patterns: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+    frequency?: number;
+  }> = [];
+
+  // 各パターンブロックを正規表現で抽出
+  const patternBlockRegex = /\{\s*"type"\s*:\s*"([^"]+)"\s*,\s*"title"\s*:\s*"((?:[^"\\]|\\.)*)"\s*,\s*"description"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let patternMatch;
+
+  while ((patternMatch = patternBlockRegex.exec(response)) !== null) {
+    const type = patternMatch[1];
+    const title = patternMatch[2].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+    const description = patternMatch[3].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+
+    // このパターンに対応するexamplesとfrequencyを抽出
+    const afterPattern = response.slice(patternMatch.index + patternMatch[0].length);
+
+    // examplesを抽出（次のパターンまたはpatternsの終わりまで）
+    const examples: Array<{ date: string; quote: string }> = [];
+    const exampleRegex = /"date"\s*:\s*"([^"]+)"\s*,\s*"quote"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+    const examplesSection = afterPattern.split(/\{\s*"type"/)[0]; // 次のパターンまで
+    let exampleMatch;
+
+    while ((exampleMatch = exampleRegex.exec(examplesSection)) !== null) {
+      examples.push({
+        date: exampleMatch[1],
+        quote: exampleMatch[2].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+      });
+    }
+
+    // frequencyを抽出
+    const frequencyMatch = examplesSection.match(/"frequency"\s*:\s*(\d+)/);
+    const frequency = frequencyMatch ? parseInt(frequencyMatch[1], 10) : undefined;
+
+    patterns.push({
+      type,
+      title,
+      description,
+      examples: examples.length > 0 ? examples : undefined,
+      frequency,
+    });
+  }
+
+  // questionを抽出（最後に出現するものを取得）
+  const questionMatches = response.match(/"question"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  let question = '';
+  if (questionMatches) {
+    question = questionMatches[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  }
+
+  // 最低限の検証
+  if (summary && patterns.length > 0) {
+    console.log(`[extractPartialInsightData] Extracted: summary=${summary.length}chars, patterns=${patterns.length}, question=${question ? 'yes' : 'no'}`);
+    return {
+      summary,
+      patterns,
+      question: question || '今週発見したパターンを、来週どう活かしたいですか？',
+    };
+  }
+
+  return null;
+}
+
+/**
+ * フォールバック用の週次インサイトを生成
+ */
+function generateFallbackWeeklyInsight(request: GenerateWeeklyInsightRequest): WeeklyInsightResponse {
+  const { entries, remainingYears } = request;
+
+  // remainingYearsを適切にフォーマット（小数点以下1桁）
+  const formattedYears = Math.round(remainingYears * 10) / 10;
+
+  // 日記から最初の具体的な言葉を探す
+  let firstQuote = '';
+  let quoteDate = '';
+  for (const entry of entries) {
+    if (entry.goodTime && entry.goodTime.length > 10) {
+      firstQuote = entry.goodTime.slice(0, 30) + (entry.goodTime.length > 30 ? '...' : '');
+      quoteDate = entry.date;
+      break;
+    }
+  }
+
+  const summary = firstQuote
+    ? `今週は${entries.length}日分の振り返りがありました。「${firstQuote}」など、日々の体験をしっかりと記録されていますね。こうして自分の時間と向き合う習慣は、残り約${formattedYears}年をより豊かにする大切な一歩です。`
+    : `今週は${entries.length}日分の記録がありました。毎日の振り返りを続けていることは、残り約${formattedYears}年をより意識的に過ごすための大切な習慣ですね。`;
+
+  // 複数のパターンを生成（フォールバックでも充実した内容に）
+  const fallbackPatterns: WeeklyInsightResponse['patterns'] = [
+    {
+      type: 'time_awareness',
+      title: '振り返りの習慣化',
+      description: `${entries.length}日間、自分の時間と向き合う時間を取れています。この「立ち止まって考える」習慣が、日々の選択を変えていきます。`,
+      examples: quoteDate && firstQuote ? [{ date: quoteDate, quote: firstQuote }] : undefined,
+      frequency: entries.length,
+    },
+  ];
+
+  // 後悔のパターンがあれば追加
+  const regretEntry = entries.find(e => e.wastedTime && e.wastedTime.length > 10);
+  if (regretEntry) {
+    fallbackPatterns.push({
+      type: 'growth_area',
+      title: '成長への気づき',
+      description: `「${regretEntry.wastedTime.slice(0, 20)}${regretEntry.wastedTime.length > 20 ? '...' : ''}」など、改善したい点にも目を向けられています。この自己認識が成長の第一歩です。`,
+      examples: [{ date: regretEntry.date, quote: regretEntry.wastedTime.slice(0, 50) }],
+      frequency: entries.filter(e => e.wastedTime && e.wastedTime.length > 5).length,
+    });
+  }
+
+  return {
+    summary,
+    patterns: fallbackPatterns,
+    question: '来週は「良かった」と思える時間を、どんな風に増やしてみたいですか？',
+    generatedAt: new Date().toISOString(),
+    modelVersion: 'fallback',
+  };
+}
+
+/**
+ * 週次インサイト生成エンドポイント
+ */
+export const generateWeeklyInsight = onCall(
+  {
+    secrets: [geminiApiKey],
+    region: 'asia-northeast1',
+    memory: '256MiB',
+    timeoutSeconds: 120, // 週次分析は時間がかかる可能性があるため長めに
+  },
+  async (request) => {
+    // 認証チェック
+    if (!request.auth) {
+      throw new HttpsError(
+        'unauthenticated',
+        '認証が必要です。ログインしてから再度お試しください。'
+      );
+    }
+
+    const data = request.data as GenerateWeeklyInsightRequest;
+
+    // 入力バリデーション
+    if (!data || typeof data !== 'object') {
+      throw new HttpsError('invalid-argument', '無効なリクエストデータです。');
+    }
+
+    const { entries, currentAge, remainingYears, remainingDays } = data;
+
+    // 必須フィールドのチェック
+    if (
+      !Array.isArray(entries) ||
+      entries.length === 0 ||
+      typeof currentAge !== 'number' ||
+      typeof remainingYears !== 'number' ||
+      typeof remainingDays !== 'number'
+    ) {
+      throw new HttpsError('invalid-argument', '必要な情報が不足しています。');
+    }
+
+    // 最低記録数のチェック（5日以上を推奨）
+    if (entries.length < 3) {
+      throw new HttpsError(
+        'failed-precondition',
+        '週次インサイトを生成するには、最低3日分の記録が必要です。'
+      );
+    }
+
+    const apiKey = geminiApiKey.value();
+
+    if (!apiKey) {
+      console.error('GEMINI_API_KEY is not configured');
+      return generateFallbackWeeklyInsight(data);
+    }
+
+    try {
+      const userPrompt = generateWeeklyInsightUserPrompt(data);
+      const combinedPrompt = `${WEEKLY_INSIGHT_SYSTEM_PROMPT}\n\n---\n\n${userPrompt}`;
+
+      console.log('[generateWeeklyInsight] Calling Gemini API...');
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: combinedPrompt }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7, // 安定した出力のために調整
+              maxOutputTokens: 8192, // 十分な出力枠を確保
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'object',
+                properties: {
+                  summary: {
+                    type: 'string',
+                    description: '週全体のサマリー（100-150文字）'
+                  },
+                  patterns: {
+                    type: 'array',
+                    description: '発見したパターン（2-3個）',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        type: {
+                          type: 'string',
+                          enum: ['positive_theme', 'growth_area', 'time_awareness', 'relationship', 'self_care', 'intention_action']
+                        },
+                        title: {
+                          type: 'string',
+                          description: 'パターンのタイトル（10-15文字）'
+                        },
+                        description: {
+                          type: 'string',
+                          description: 'パターンの説明（50-80文字）'
+                        },
+                        examples: {
+                          type: 'array',
+                          description: '引用例（1-2個）',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              date: { type: 'string' },
+                              quote: { type: 'string' },
+                            },
+                            required: ['date', 'quote'],
+                          },
+                        },
+                        frequency: {
+                          type: 'integer',
+                          description: '出現回数'
+                        },
+                      },
+                      required: ['type', 'title', 'description'],
+                    },
+                  },
+                  question: {
+                    type: 'string',
+                    description: '来週への問いかけ（40-60文字）'
+                  },
+                },
+                required: ['summary', 'patterns', 'question'],
+              },
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[generateWeeklyInsight] Gemini API error:', response.status, errorText);
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+
+      // レスポンスの詳細をログ出力（デバッグ用）
+      const finishReason = responseData.candidates?.[0]?.finishReason;
+      console.log('[generateWeeklyInsight] Finish reason:', finishReason);
+
+      const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        console.error('[generateWeeklyInsight] Empty response from Gemini. Full response:', JSON.stringify(responseData));
+        return generateFallbackWeeklyInsight(data);
+      }
+
+      console.log('[generateWeeklyInsight] Response length:', content.length, 'chars');
+
+      const parsed = parseWeeklyInsightResponse(content);
+
+      if (!parsed) {
+        console.error('[generateWeeklyInsight] Failed to parse response:', content.substring(0, 500) + '...');
+        return generateFallbackWeeklyInsight(data);
+      }
+
+      const result: WeeklyInsightResponse = {
+        summary: parsed.summary,
+        patterns: parsed.patterns,
+        question: parsed.question,
+        generatedAt: new Date().toISOString(),
+        modelVersion: 'gemini-2.5-flash',
+      };
+
+      console.log('[generateWeeklyInsight] Success');
+      return result;
+    } catch (error) {
+      console.error('[generateWeeklyInsight] Error:', error);
+      return generateFallbackWeeklyInsight(data);
+    }
+  }
+);

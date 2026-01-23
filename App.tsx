@@ -15,8 +15,10 @@ import LinkAccountScreen from './src/screens/LinkAccountScreen';
 import FeedbackScreen from './src/screens/FeedbackScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
+import WeeklyInsightScreen from './src/screens/WeeklyInsightScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { WeeklyInsightProvider } from './src/contexts/WeeklyInsightContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
@@ -102,6 +104,14 @@ function MainNavigator() {
       <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} />
+      <Stack.Screen
+        name="WeeklyInsight"
+        component={WeeklyInsightScreen}
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -155,9 +165,11 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
+          <WeeklyInsightProvider>
+            <NavigationContainer>
+              <RootNavigator />
+            </NavigationContainer>
+          </WeeklyInsightProvider>
         </AuthProvider>
         <ThemedStatusBar />
       </ThemeProvider>

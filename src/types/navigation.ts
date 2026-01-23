@@ -13,6 +13,7 @@ export type RootStackParamList = {
   LinkAccount: undefined;
   Feedback: undefined;
   WidgetSettings: undefined;
+  WeeklyInsight: { weekKey?: string } | undefined;
 };
 
 // 各画面のナビゲーションプロップの型定義
@@ -27,3 +28,4 @@ export type EditLifespanScreenNavigationProp = NativeStackNavigationProp<RootSta
 export type LinkAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LinkAccount'>;
 export type FeedbackScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Feedback'>;
 export type WidgetSettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WidgetSettings'>;
+export type WeeklyInsightScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WeeklyInsight'>;
