@@ -8,7 +8,6 @@ export { WeeklyInsightBanner } from './WeeklyInsightBanner';
 export { InsightPatternCard } from './InsightPatternCard';
 export { WeekSelector } from './WeekSelector';
 export { InsightHistoryList } from './InsightHistoryList';
-export { WeeklyTimeline } from './WeeklyTimeline';
 
 // 月次インサイト
 export { MonthlyInsightCard } from './MonthlyInsightCard';

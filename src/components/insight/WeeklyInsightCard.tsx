@@ -8,7 +8,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { InsightPatternCard } from './InsightPatternCard';
-import { WeeklyTimeline } from './WeeklyTimeline';
 import type { WeeklyInsightData } from '../../types/weeklyInsight';
 
 // サマリーの背景色
@@ -61,11 +60,6 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({ insight })
           </Text>
         </View>
       </View>
-
-      {/* 7日間タイムライン（インフォグラフィック） */}
-      {insight.timeline && insight.timeline.length > 0 && (
-        <WeeklyTimeline timeline={insight.timeline} />
-      )}
 
       {/* サマリー */}
       <View style={[styles.summaryContainer, { backgroundColor: summaryBgColor }]}>
