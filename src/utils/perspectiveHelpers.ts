@@ -12,10 +12,13 @@ const getDailySeed = (): number => {
 /**
  * シード値から疑似乱数を生成（決定論的）
  * 同じシードなら同じ結果を返す
+ * Mulberry32アルゴリズムを使用（高品質な32bit PRNG）
  */
 const seededRandom = (seed: number): number => {
-  const x = Math.sin(seed * 9999) * 10000;
-  return x - Math.floor(x);
+  let t = seed + 0x6D2B79F5;
+  t = Math.imul(t ^ t >>> 15, t | 1);
+  t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+  return ((t ^ t >>> 14) >>> 0) / 4294967296;
 };
 
 /**

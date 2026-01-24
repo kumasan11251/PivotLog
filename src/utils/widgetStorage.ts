@@ -1,14 +1,36 @@
 /**
  * ウィジェット用ストレージユーティリティ
  * React Native アプリからウィジェットデータを保存・読み込み
+ * @bacons/apple-targets の ExtensionStorage を使用
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, NativeModules } from 'react-native';
+import { Platform } from 'react-native';
 import type { WidgetData, WidgetSettings } from '../types/widget';
 import { DEFAULT_WIDGET_SETTINGS } from '../types/widget';
 import { loadUserSettings } from './storage';
 import { calculateLifeProgress, calculateCurrentAge, calculateTimeLeft } from './timeCalculations';
+
+// @bacons/apple-targets モジュールを動的にインポート
+let ExtensionStorage: {
+  new (groupId: string): {
+    set: (key: string, value: string | number | Record<string, string | number> | undefined) => void;
+    get: (key: string) => string | null;
+    remove: (key: string) => void;
+  };
+  reloadWidget: (name?: string) => void;
+} | null = null;
+
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const appleTargets = require('@bacons/apple-targets');
+  ExtensionStorage = appleTargets.ExtensionStorage;
+} catch (error) {
+  console.log('[widgetStorage] @bacons/apple-targets module not available');
+}
+
+// App Group ID
+const APP_GROUP_ID = 'group.com.kumasan11251.pivotlog.expowidgets';
 
 const WIDGET_SETTINGS_KEY = '@pivot_log_widget_settings';
 
@@ -78,8 +100,8 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
 
 /**
  * ウィジェットデータをネイティブ側に同期
+ * @bacons/apple-targets の ExtensionStorage を使用
  * iOS: App Groups UserDefaults
- * Android: SharedPreferences
  */
 export const syncWidgetData = async (): Promise<boolean> => {
   try {
@@ -89,18 +111,27 @@ export const syncWidgetData = async (): Promise<boolean> => {
       return false;
     }
 
-    // ネイティブモジュールが利用可能かチェック
-    const { WidgetBridge } = NativeModules;
+    // iOSのみサポート（@bacons/apple-targetsはiOS専用）
+    if (Platform.OS !== 'ios') {
+      console.log('ウィジェットはiOSのみサポートしています');
+      return false;
+    }
 
-    if (WidgetBridge && typeof WidgetBridge.updateWidgetData === 'function') {
-      await WidgetBridge.updateWidgetData(widgetData);
-      return true;
-    } else {
-      // ネイティブモジュールが未実装の場合はログのみ
-      console.log('WidgetBridge が利用できません（ネイティブ実装が必要）');
+    if (!ExtensionStorage) {
+      console.log('@bacons/apple-targets モジュールが利用できません');
       console.log('同期予定のデータ:', JSON.stringify(widgetData, null, 2));
       return false;
     }
+
+    const storage = new ExtensionStorage(APP_GROUP_ID);
+    const jsonData = JSON.stringify(widgetData);
+    storage.set('widgetData', jsonData);
+
+    // ウィジェットをリロード
+    ExtensionStorage.reloadWidget();
+
+    console.log('ウィジェットデータを同期しました');
+    return true;
   } catch (error) {
     console.error('ウィジェットデータの同期に失敗:', error);
     return false;
@@ -112,11 +143,12 @@ export const syncWidgetData = async (): Promise<boolean> => {
  */
 export const reloadWidgets = async (): Promise<void> => {
   try {
-    const { WidgetBridge } = NativeModules;
-
-    if (WidgetBridge && typeof WidgetBridge.reloadAllWidgets === 'function') {
-      await WidgetBridge.reloadAllWidgets();
+    if (Platform.OS === 'ios' && ExtensionStorage) {
+      ExtensionStorage.reloadWidget();
       console.log('ウィジェットをリロードしました');
+    } else {
+      // syncWidgetData を呼ぶことでウィジェットが自動的に更新される
+      await syncWidgetData();
     }
   } catch (error) {
     console.error('ウィジェットのリロードに失敗:', error);

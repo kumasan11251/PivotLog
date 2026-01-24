@@ -1290,6 +1290,8 @@ PODS:
     - SocketRocket
     - Yoga
   - EXStructuredHeaders (5.0.0)
+  - ExtensionStorage (1.0.0):
+    - ExpoModulesCore
   - EXUpdates (29.0.15):
     - boost
     - DoubleConversion
@@ -3907,6 +3909,7 @@ DEPENDENCIES:
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - EXStructuredHeaders (from `../node_modules/expo-structured-headers/ios`)
+  - "ExtensionStorage (from `../node_modules/@bacons/apple-targets/ios`)"
   - EXUpdates (from `../node_modules/expo-updates/ios`)
   - EXUpdatesInterface (from `../node_modules/expo-updates-interface/ios`)
   - fast_float (from `../node_modules/react-native/third-party-podspecs/fast_float.podspec`)
@@ -4059,6 +4062,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   EXStructuredHeaders:
     :path: "../node_modules/expo-structured-headers/ios"
+  ExtensionStorage:
+    :path: "../node_modules/@bacons/apple-targets/ios"
   EXUpdates:
     :path: "../node_modules/expo-updates/ios"
   EXUpdatesInterface:
@@ -4252,6 +4257,7 @@ SPEC CHECKSUMS:
   ExpoLinearGradient: a464898cb95153125e3b81894fd479bcb1c7dd27
   ExpoModulesCore: 4354077ec301f45d8dcb2d53bd1043f367ab8273
   EXStructuredHeaders: c951e77f2d936f88637421e9588c976da5827368
+  ExtensionStorage: 5796de20bf181317c376d693fedb64c6781a33ba
   EXUpdates: b720690a0f1962bbebc7ee4f54aa67ca9f28134d
   EXUpdatesInterface: 5adf50cb41e079c861da6d9b4b954c3db9a50734
   fast_float: b32c788ed9c6a8c584d114d0047beda9664e7cc6
@@ -4362,6 +4368,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: cc4a6600d61e4e9276e860d4d68eebb834a050ba
 
-PODFILE CHECKSUM: bb96bfe1255373b263ec294845d14b06517e6f47
+PODFILE CHECKSUM: 4af1d1b566cb7b89951783b9ad735565b1228ab7
 
 COCOAPODS: 1.16.2

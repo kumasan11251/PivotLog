@@ -131,6 +131,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   blockCurrentFill: {
+    position: 'absolute',
+    bottom: 0,
     opacity: 0.6,
     width: '100%',
   },

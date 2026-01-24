@@ -38,6 +38,12 @@ module.exports = {
       bundleIdentifier: 'com.kumasan11251.pivotlog',
       googleServicesFile: './GoogleService-Info.plist',
       usesAppleSignIn: true,
+      appleTeamId: '4823HQK9AB',
+      entitlements: {
+        'com.apple.security.application-groups': [
+          'group.com.kumasan11251.pivotlog.expowidgets',
+        ],
+      },
       infoPlist: {
         CFBundleDevelopmentRegion: 'ja',
         CFBundleLocalizations: ['ja', 'en'],
@@ -69,6 +75,7 @@ module.exports = {
           },
         },
       ],
+      '@bacons/apple-targets',
     ],
     extra: {
       geminiApiKey: env.GEMINI_API_KEY || '',
