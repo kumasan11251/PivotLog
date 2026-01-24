@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="@drawable/widget_background"
+    android:gravity="center">
+
+    <!-- 残り年数 -->
+    <TextView
+        android:id="@+id/remaining_years"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--年"
+        android:textSize="32sp"
+        android:textColor="#8B9D83"
+        android:textStyle="bold" />
+
+    <!-- 残り日数 -->
+    <TextView
+        android:id="@+id/remaining_days"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--日"
+        android:textSize="18sp"
+        android:textColor="#333333"
+        android:layout_marginBottom="8dp" />
+
+    <!-- プログレスバー -->
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:max="100"
+        android:progress="0"
+        android:progressTint="#8B9D83"
+        android:progressBackgroundTint="#E0E0E0"
+        android:layout_marginBottom="4dp" />
+
+    <!-- 進捗率 -->
+    <TextView
+        android:id="@+id/life_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--%"
+        android:textSize="11sp"
+        android:textColor="#999999" />
+
+    <!-- カスタムテキスト -->
+    <TextView
+        android:id="@+id/custom_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="10sp"
+        android:textColor="#666666"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:visibility="gone" />
+
+</LinearLayout>
