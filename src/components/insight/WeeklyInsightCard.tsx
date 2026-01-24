@@ -8,7 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { InsightPatternCard } from './InsightPatternCard';
+import { WeeklyTimeline } from './WeeklyTimeline';
 import type { WeeklyInsightData } from '../../types/weeklyInsight';
+
+// サマリーの背景色
+const SUMMARY_BG = {
+  light: '#F9F9F9',
+  dark: '#1A1A1A',
+} as const;
 
 interface WeeklyInsightCardProps {
   insight: WeeklyInsightData;
@@ -27,6 +34,7 @@ function formatDateRange(startDate: string, endDate: string): string {
 export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({ insight }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+  const summaryBgColor = isDark ? SUMMARY_BG.dark : SUMMARY_BG.light;
 
   return (
     <ScrollView
@@ -54,8 +62,13 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({ insight })
         </View>
       </View>
 
+      {/* 7日間タイムライン（インフォグラフィック） */}
+      {insight.timeline && insight.timeline.length > 0 && (
+        <WeeklyTimeline timeline={insight.timeline} />
+      )}
+
       {/* サマリー */}
-      <View style={[styles.summaryContainer, { backgroundColor: isDark ? '#1A1A1A' : '#F9F9F9' }]}>
+      <View style={[styles.summaryContainer, { backgroundColor: summaryBgColor }]}>
         <Text style={[styles.summaryText, { color: themeColors.text.primary }]}>
           {insight.summary}
         </Text>

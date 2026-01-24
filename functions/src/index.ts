@@ -382,6 +382,18 @@ interface GenerateWeeklyInsightRequest {
 }
 
 /**
+ * タイムライン用の日ごとハイライト
+ */
+interface DayHighlight {
+  date: string;
+  dayOfWeek: string;
+  hasEntry: boolean;
+  keyword?: string;
+  tone?: 'positive' | 'neutral' | 'growth';
+  isHighlight?: boolean;
+}
+
+/**
  * 週次インサイトレスポンスの型
  */
 interface WeeklyInsightResponse {
@@ -396,6 +408,7 @@ interface WeeklyInsightResponse {
   question: string;
   generatedAt: string;
   modelVersion: string;
+  timeline?: DayHighlight[];
 }
 
 /**
@@ -623,6 +636,135 @@ function extractPartialInsightData(response: string): {
 }
 
 /**
+ * 週の7日間を生成（月曜始まり）
+ */
+function generateWeekDays(weekStartDate: string): string[] {
+  const days: string[] = [];
+  const start = new Date(weekStartDate);
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + i);
+    days.push(day.toISOString().split('T')[0]);
+  }
+  return days;
+}
+
+/**
+ * テキストからキーワードを抽出（短い象徴的な言葉）
+ */
+function extractKeyword(text: string): { keyword: string; tone: 'positive' | 'neutral' | 'growth' } {
+  if (!text || text.trim() === '') {
+    return { keyword: '', tone: 'neutral' };
+  }
+
+  // ポジティブなキーワードパターン
+  const positivePatterns = [
+    { pattern: /家族|妻|夫|子ども|息子|娘|親|母|父/, keyword: '家族', tone: 'positive' as const },
+    { pattern: /友人|友達|仲間/, keyword: '友人', tone: 'positive' as const },
+    { pattern: /運動|ジム|ランニング|散歩|ウォーキング/, keyword: '運動', tone: 'positive' as const },
+    { pattern: /読書|本を/, keyword: '読書', tone: 'positive' as const },
+    { pattern: /料理|手作り/, keyword: '料理', tone: 'positive' as const },
+    { pattern: /達成|完了|終わった|できた/, keyword: '達成', tone: 'positive' as const },
+    { pattern: /楽しい|楽しかった|嬉しい|嬉しかった/, keyword: '喜び', tone: 'positive' as const },
+    { pattern: /休み|休息|リラックス|ゆっくり/, keyword: '休息', tone: 'positive' as const },
+    { pattern: /旅行|お出かけ|外出/, keyword: '外出', tone: 'positive' as const },
+    { pattern: /仕事|プロジェクト|業務/, keyword: '仕事', tone: 'positive' as const },
+    { pattern: /学び|勉強|学習/, keyword: '学び', tone: 'positive' as const },
+    { pattern: /趣味|好きな/, keyword: '趣味', tone: 'positive' as const },
+    { pattern: /感謝|ありがた/, keyword: '感謝', tone: 'positive' as const },
+    { pattern: /成長|進歩/, keyword: '成長', tone: 'positive' as const },
+    { pattern: /挑戦|チャレンジ/, keyword: '挑戦', tone: 'positive' as const },
+  ];
+
+  // 成長（改善）のキーワードパターン
+  const growthPatterns = [
+    { pattern: /反省|後悔/, keyword: '内省', tone: 'growth' as const },
+    { pattern: /夜更かし|睡眠/, keyword: '睡眠', tone: 'growth' as const },
+    { pattern: /だらだら|無駄/, keyword: '時間', tone: 'growth' as const },
+    { pattern: /スマホ|SNS/, keyword: 'デジタル', tone: 'growth' as const },
+    { pattern: /先延ばし/, keyword: '行動', tone: 'growth' as const },
+  ];
+
+  // ポジティブパターンを優先的にチェック
+  for (const { pattern, keyword, tone } of positivePatterns) {
+    if (pattern.test(text)) {
+      return { keyword, tone };
+    }
+  }
+
+  // 成長パターンをチェック
+  for (const { pattern, keyword, tone } of growthPatterns) {
+    if (pattern.test(text)) {
+      return { keyword, tone };
+    }
+  }
+
+  // マッチしない場合は最初の意味のある単語を抽出
+  const firstMeaningfulWord = text.match(/[一-龯ぁ-んァ-ン]{2,4}/);
+  if (firstMeaningfulWord) {
+    return { keyword: firstMeaningfulWord[0].slice(0, 4), tone: 'neutral' };
+  }
+
+  return { keyword: '記録', tone: 'neutral' };
+}
+
+/**
+ * 週次タイムラインデータを生成
+ */
+function generateWeeklyTimeline(
+  request: GenerateWeeklyInsightRequest,
+  patterns: WeeklyInsightResponse['patterns']
+): DayHighlight[] {
+  const { entries, weekStartDate } = request;
+  const weekDays = generateWeekDays(weekStartDate);
+  const dayOfWeekNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+  // エントリーをdateでマップ化
+  const entriesByDate = new Map(entries.map(e => [e.date, e]));
+
+  // パターンのexamplesからハイライト日を特定
+  const highlightDates = new Set<string>();
+  for (const pattern of patterns) {
+    if (pattern.examples) {
+      for (const example of pattern.examples) {
+        highlightDates.add(example.date);
+      }
+    }
+  }
+
+  // 各日のハイライトを生成
+  const timeline: DayHighlight[] = weekDays.map(date => {
+    const entry = entriesByDate.get(date);
+    const dayDate = new Date(date);
+    const dayOfWeek = dayOfWeekNames[dayDate.getDay()];
+    const hasEntry = !!entry;
+
+    if (!hasEntry) {
+      return {
+        date,
+        dayOfWeek,
+        hasEntry: false,
+      };
+    }
+
+    // キーワードを抽出（良かったことを優先、なければ後悔から）
+    const primaryText = entry.goodTime || entry.wastedTime || entry.tomorrow || '';
+    const { keyword, tone } = extractKeyword(primaryText);
+
+    return {
+      date,
+      dayOfWeek,
+      hasEntry: true,
+      keyword,
+      tone,
+      isHighlight: highlightDates.has(date),
+    };
+  });
+
+  return timeline;
+}
+
+/**
  * フォールバック用の週次インサイトを生成
  */
 function generateFallbackWeeklyInsight(request: GenerateWeeklyInsightRequest): WeeklyInsightResponse {
@@ -669,12 +811,16 @@ function generateFallbackWeeklyInsight(request: GenerateWeeklyInsightRequest): W
     });
   }
 
+  // タイムラインを生成
+  const timeline = generateWeeklyTimeline(request, fallbackPatterns);
+
   return {
     summary,
     patterns: fallbackPatterns,
     question: '来週は「良かった」と思える時間を、どんな風に増やしてみたいですか？',
     generatedAt: new Date().toISOString(),
     modelVersion: 'fallback',
+    timeline,
   };
 }
 
@@ -840,12 +986,16 @@ export const generateWeeklyInsight = onCall(
         return generateFallbackWeeklyInsight(data);
       }
 
+      // タイムラインを生成
+      const timeline = generateWeeklyTimeline(data, parsed.patterns);
+
       const result: WeeklyInsightResponse = {
         summary: parsed.summary,
         patterns: parsed.patterns,
         question: parsed.question,
         generatedAt: new Date().toISOString(),
         modelVersion: 'gemini-2.5-flash',
+        timeline,
       };
 
       console.log('[generateWeeklyInsight] Success');

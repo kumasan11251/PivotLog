@@ -3,6 +3,24 @@
  */
 
 /**
+ * タイムライン用の日ごとのハイライト情報
+ */
+export interface DayHighlight {
+  /** 日付 (YYYY-MM-DD) */
+  date: string;
+  /** 曜日 (月〜日) */
+  dayOfWeek: string;
+  /** 記録があるか */
+  hasEntry: boolean;
+  /** AIが選んだその日のキーワード（2-4文字程度） */
+  keyword?: string;
+  /** キーワードの感情トーン */
+  tone?: 'positive' | 'neutral' | 'growth';
+  /** 週のハイライト日かどうか */
+  isHighlight?: boolean;
+}
+
+/**
  * 週次インサイトのデータ構造
  */
 export interface WeeklyInsightData {
@@ -22,6 +40,8 @@ export interface WeeklyInsightData {
   generatedAt: string;
   /** 使用したモデルバージョン */
   modelVersion?: string;
+  /** タイムライン用の日ごとハイライト（7日分） */
+  timeline?: DayHighlight[];
 }
 
 /**
