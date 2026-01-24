@@ -856,3 +856,501 @@ export const generateWeeklyInsight = onCall(
     }
   }
 );
+
+// ============================================================
+// 月次インサイト生成
+// ============================================================
+
+/**
+ * 月次インサイト用システムプロンプト
+ */
+const MONTHLY_INSIGHT_SYSTEM_PROMPT = `あなたは「PivotLog」の月次レポートアナリストです。1ヶ月の日記から長期的なパターンを発見し、ユーザーの自己理解を深めるインサイトを提供します。
+
+【必須ルール】
+1. 日記の具体的な言葉を「」で引用する（各テーマに最低1つ）
+2. 2〜3個の月間テーマを抽出する
+3. 月の前半と後半の変化に注目する
+4. 批判せず「気づき」として提示する
+5. 「〜ですね」「〜かもしれません」の柔らかい語尾を使う
+
+【分析の視点 - 週次との違い】
+週次インサイトが「その週の傾向」を見るのに対し、月次インサイトでは：
+- 週をまたいで繰り返し現れるパターン
+- 月の始めと終わりでの意識・行動の変化
+- 特に印象的だった日（ハイライト）
+- 1ヶ月を通じて成長した点、来月への課題
+
+【ハイライト選出基準】
+- achievement: 達成感を感じた日
+- connection: 人との繋がりを感じた日
+- discovery: 新しい気づきがあった日
+- turning_point: 何かが変わるきっかけになった日
+
+【テーマタイプ】
+- recurring_joy: 繰り返し現れる喜び
+- persistent_challenge: 継続的な課題
+- evolving_priority: 変化する優先順位
+- relationship_pattern: 人間関係のパターン
+- self_discovery: 自己発見
+- time_investment: 時間の投資先
+- value_alignment: 価値観との整合性
+
+【出力形式の注意】
+- summary: 150-200文字。月全体を俯瞰し、温かく労う
+- highlights: 2〜4個。特に印象的だった日
+- themes: 2〜3個。月を通じたテーマ
+- growth: 成長した点と来月の課題
+- question: 50-70文字。来月に向けた具体的な問いかけ`;
+
+/**
+ * 月次インサイト生成リクエストの型
+ */
+interface GenerateMonthlyInsightRequest {
+  entries: Array<{
+    date: string;
+    goodTime: string;
+    wastedTime: string;
+    tomorrow: string;
+  }>;
+  currentAge: number;
+  remainingYears: number;
+  remainingDays: number;
+  monthStartDate: string;
+  monthEndDate: string;
+  yearMonth: string;
+}
+
+/**
+ * 月次インサイトレスポンスの型
+ */
+interface MonthlyInsightResponse {
+  summary: string;
+  highlights: Array<{
+    date: string;
+    type: 'achievement' | 'connection' | 'discovery' | 'turning_point';
+    title: string;
+    description: string;
+    quote?: string;
+  }>;
+  themes: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+  }>;
+  growth: {
+    improvements: string[];
+    challenges: string[];
+    transformation?: string;
+  };
+  question: string;
+  generatedAt: string;
+  modelVersion: string;
+}
+
+/**
+ * 月次インサイト用ユーザープロンプトを生成
+ */
+function generateMonthlyInsightUserPrompt(request: GenerateMonthlyInsightRequest): string {
+  const { entries, currentAge, remainingYears, remainingDays, monthStartDate, monthEndDate, yearMonth } = request;
+
+  // 月の名前を取得
+  const [year, month] = yearMonth.split('-').map(Number);
+  const monthName = `${year}年${month}月`;
+
+  // 日記エントリーを週ごとにグループ化
+  const weeklyGroups: { week: number; entries: typeof entries }[] = [];
+  let currentWeek = 1;
+  let currentWeekEntries: typeof entries = [];
+
+  entries.forEach((entry, index) => {
+    currentWeekEntries.push(entry);
+    // 7日ごと、または最後のエントリーで週を区切る
+    if ((index + 1) % 7 === 0 || index === entries.length - 1) {
+      weeklyGroups.push({ week: currentWeek, entries: currentWeekEntries });
+      currentWeek++;
+      currentWeekEntries = [];
+    }
+  });
+
+  // 週ごとのサマリーを生成
+  const weeklyText = weeklyGroups.map(group => {
+    const weekEntries = group.entries
+      .map(entry => {
+        const date = new Date(entry.date);
+        const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+        return `  ${entry.date}（${dayOfWeek}）: ✨${entry.goodTime || '(なし)'} / 💭${entry.wastedTime || '(なし)'}`;
+      })
+      .join('\n');
+    return `【第${group.week}週】\n${weekEntries}`;
+  }).join('\n\n');
+
+  // 分析のヒントを生成
+  const analysisHints = generateMonthlyAnalysisHints(entries);
+
+  return `【ユーザー情報】
+${currentAge}歳。目標寿命まで残り約${remainingYears}年（${remainingDays.toLocaleString()}日）。
+1ヶ月は人生の約${(100 / (remainingYears * 12)).toFixed(2)}%に相当。
+
+【分析期間】
+${monthName}（${monthStartDate} 〜 ${monthEndDate}）
+記録日数: ${entries.length}日分
+
+【この月の日記（週別）】
+${weeklyText}
+
+【分析のヒント】
+${analysisHints}
+
+【依頼事項】
+1. 1ヶ月を俯瞰して、週をまたいで現れるパターンを発見してください
+2. 特に印象的だった日（ハイライト）を2〜4日選んでください
+3. 月の前半と後半で意識や行動に変化があったか確認してください
+4. 成長した点と、来月に向けた課題を整理してください
+5. 必ず日記の具体的な言葉を引用してください
+6. 来月に向けた具体的な問いかけを1つ提案してください`;
+}
+
+/**
+ * 月次分析のヒントを生成
+ */
+function generateMonthlyAnalysisHints(entries: GenerateMonthlyInsightRequest['entries']): string {
+  const hints: string[] = [];
+
+  // 良かったことの頻出キーワードを抽出
+  const allGoodTimes = entries.map(e => e.goodTime).join(' ');
+  const positiveKeywords = /達成|完了|できた|楽しかった|嬉しかった|充実|満足|成功|進んだ|続けられた/g;
+  const positiveMatches = allGoodTimes.match(positiveKeywords);
+  if (positiveMatches && positiveMatches.length > 0) {
+    const uniquePositive = [...new Set(positiveMatches)];
+    hints.push(`・「良かったこと」の頻出キーワード: ${uniquePositive.slice(0, 5).join('、')}`);
+  }
+
+  // 後悔の頻出キーワードを抽出
+  const allRegrets = entries.map(e => e.wastedTime).join(' ');
+  const negativeKeywords = /夜更かし|先延ばし|だらだら|無駄|スマホ|SNS|ゲーム|二度寝|寝坊|食べ過ぎ|飲み過ぎ|集中できなかった|怠けた/g;
+  const negativeMatches = allRegrets.match(negativeKeywords);
+  if (negativeMatches && negativeMatches.length > 0) {
+    const uniqueNegative = [...new Set(negativeMatches)];
+    const negativeCount = negativeMatches.length;
+    hints.push(`・「後悔」の頻出キーワード: ${uniqueNegative.slice(0, 5).join('、')}（計${negativeCount}回）`);
+  }
+
+  // 人物への言及をカウント
+  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|上司|部下|先輩|後輩|家族/g;
+  const allText = entries.map(e => `${e.goodTime} ${e.wastedTime} ${e.tomorrow}`).join(' ');
+  const peopleMatches = allText.match(peoplePattern);
+  if (peopleMatches && peopleMatches.length > 0) {
+    const uniquePeople = [...new Set(peopleMatches)];
+    hints.push(`・登場する人物: ${uniquePeople.join('、')}（${peopleMatches.length}回言及）`);
+  }
+
+  // 月の前半と後半の傾向比較
+  const halfPoint = Math.floor(entries.length / 2);
+  const firstHalf = entries.slice(0, halfPoint);
+  const secondHalf = entries.slice(halfPoint);
+  const firstHalfGoodCount = firstHalf.filter(e => e.goodTime && e.goodTime.length > 10).length;
+  const secondHalfGoodCount = secondHalf.filter(e => e.goodTime && e.goodTime.length > 10).length;
+  if (Math.abs(firstHalfGoodCount - secondHalfGoodCount) >= 2) {
+    const trend = firstHalfGoodCount < secondHalfGoodCount ? '後半に向けて充実度が上がっている' : '前半のほうが充実していた';
+    hints.push(`・月の前半/後半の傾向: ${trend}可能性`);
+  }
+
+  if (hints.length === 0) {
+    hints.push('・特定のパターンが見つけにくい場合は、ユーザーの言葉遣いの変化に注目してください');
+  }
+
+  return hints.join('\n');
+}
+
+/**
+ * 月次インサイトのAIレスポンスをパース
+ */
+function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse | null {
+  try {
+    const cleanedResponse = response
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+
+    const parsed = JSON.parse(cleanedResponse);
+
+    if (parsed && parsed.summary && Array.isArray(parsed.highlights) && Array.isArray(parsed.themes)) {
+      return {
+        summary: parsed.summary,
+        highlights: parsed.highlights.map((h: Record<string, unknown>) => ({
+          date: String(h.date || ''),
+          type: String(h.type || 'achievement') as MonthlyInsightResponse['highlights'][0]['type'],
+          title: String(h.title || ''),
+          description: String(h.description || ''),
+          quote: h.quote ? String(h.quote) : undefined,
+        })),
+        themes: parsed.themes.map((t: Record<string, unknown>) => ({
+          type: String(t.type || 'recurring_joy'),
+          title: String(t.title || ''),
+          description: String(t.description || ''),
+          examples: Array.isArray(t.examples) ? t.examples : undefined,
+        })),
+        growth: {
+          improvements: Array.isArray(parsed.growth?.improvements) ? parsed.growth.improvements : [],
+          challenges: Array.isArray(parsed.growth?.challenges) ? parsed.growth.challenges : [],
+          transformation: parsed.growth?.transformation ? String(parsed.growth.transformation) : undefined,
+        },
+        question: parsed.question || '',
+        generatedAt: new Date().toISOString(),
+        modelVersion: 'gemini-2.5-flash',
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('[parseMonthlyInsightResponse] Parse failed:', error);
+    return null;
+  }
+}
+
+/**
+ * フォールバック用の月次インサイトを生成
+ */
+function generateFallbackMonthlyInsight(request: GenerateMonthlyInsightRequest): MonthlyInsightResponse {
+  const { entries, remainingYears, yearMonth } = request;
+  const [year, month] = yearMonth.split('-').map(Number);
+  const monthName = `${year}年${month}月`;
+
+  // 最も長い「良かったこと」を見つける
+  let bestEntry = entries[0];
+  entries.forEach(entry => {
+    if (entry.goodTime && entry.goodTime.length > (bestEntry?.goodTime?.length || 0)) {
+      bestEntry = entry;
+    }
+  });
+
+  const formattedYears = Math.round(remainingYears * 10) / 10;
+
+  const summary = bestEntry?.goodTime
+    ? `${monthName}は${entries.length}日分の振り返りがありました。「${bestEntry.goodTime.slice(0, 30)}${bestEntry.goodTime.length > 30 ? '...' : ''}」など、日々の体験をしっかりと記録されていますね。こうして自分の時間と向き合う習慣は、残り約${formattedYears}年をより豊かにする大切な一歩です。`
+    : `${monthName}は${entries.length}日分の記録がありました。毎日の振り返りを続けていることは、残り約${formattedYears}年をより意識的に過ごすための大切な習慣ですね。`;
+
+  return {
+    summary,
+    highlights: bestEntry ? [{
+      date: bestEntry.date,
+      type: 'achievement',
+      title: '振り返りの継続',
+      description: `この日の記録が印象的でした。日々の振り返りを${entries.length}日間続けられたことは素晴らしいです。`,
+      quote: bestEntry.goodTime?.slice(0, 50),
+    }] : [],
+    themes: [{
+      type: 'time_awareness',
+      title: '振り返りの習慣化',
+      description: `${entries.length}日間、自分の時間と向き合う時間を取れています。この「立ち止まって考える」習慣が、日々の選択を変えていきます。`,
+    }],
+    growth: {
+      improvements: ['日々の振り返りを継続できている'],
+      challenges: ['より具体的な記録を心がける'],
+    },
+    question: '来月は「良かった」と思える日を、どんな風に増やしてみたいですか？',
+    generatedAt: new Date().toISOString(),
+    modelVersion: 'fallback',
+  };
+}
+
+/**
+ * 月次インサイト生成エンドポイント
+ */
+export const generateMonthlyInsight = onCall(
+  {
+    secrets: [geminiApiKey],
+    region: 'asia-northeast1',
+    memory: '512MiB',
+    timeoutSeconds: 180, // 月次分析は時間がかかる可能性があるため長めに
+  },
+  async (request) => {
+    // 認証チェック
+    if (!request.auth) {
+      throw new HttpsError(
+        'unauthenticated',
+        '認証が必要です。ログインしてから再度お試しください。'
+      );
+    }
+
+    const data = request.data as GenerateMonthlyInsightRequest;
+
+    // 入力バリデーション
+    if (!data || typeof data !== 'object') {
+      throw new HttpsError('invalid-argument', '無効なリクエストデータです。');
+    }
+
+    const { entries, currentAge, remainingYears, remainingDays, yearMonth } = data;
+
+    // 必須フィールドのチェック
+    if (
+      !Array.isArray(entries) ||
+      entries.length === 0 ||
+      typeof currentAge !== 'number' ||
+      typeof remainingYears !== 'number' ||
+      typeof remainingDays !== 'number' ||
+      typeof yearMonth !== 'string'
+    ) {
+      throw new HttpsError('invalid-argument', '必要な情報が不足しています。');
+    }
+
+    // 最低記録数のチェック（10日以上を推奨）
+    if (entries.length < 10) {
+      throw new HttpsError(
+        'failed-precondition',
+        '月次インサイトを生成するには、最低10日分の記録が必要です。'
+      );
+    }
+
+    const apiKey = geminiApiKey.value();
+
+    if (!apiKey) {
+      console.error('GEMINI_API_KEY is not configured');
+      return generateFallbackMonthlyInsight(data);
+    }
+
+    try {
+      const userPrompt = generateMonthlyInsightUserPrompt(data);
+      const combinedPrompt = `${MONTHLY_INSIGHT_SYSTEM_PROMPT}\n\n---\n\n${userPrompt}`;
+
+      console.log('[generateMonthlyInsight] Calling Gemini API...');
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: combinedPrompt }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 8192,
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'object',
+                properties: {
+                  summary: {
+                    type: 'string',
+                    description: '月全体のサマリー（150-200文字）'
+                  },
+                  highlights: {
+                    type: 'array',
+                    description: '特に印象的だった日（2-4個）',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        date: { type: 'string', description: '日付（YYYY-MM-DD）' },
+                        type: {
+                          type: 'string',
+                          enum: ['achievement', 'connection', 'discovery', 'turning_point']
+                        },
+                        title: { type: 'string', description: 'ハイライトのタイトル（10-20文字）' },
+                        description: { type: 'string', description: '説明（30-50文字）' },
+                        quote: { type: 'string', description: '日記からの引用（オプション）' },
+                      },
+                      required: ['date', 'type', 'title', 'description'],
+                    },
+                  },
+                  themes: {
+                    type: 'array',
+                    description: '月間テーマ（2-3個）',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        type: {
+                          type: 'string',
+                          enum: ['recurring_joy', 'persistent_challenge', 'evolving_priority', 'relationship_pattern', 'self_discovery', 'time_investment', 'value_alignment']
+                        },
+                        title: { type: 'string', description: 'テーマのタイトル（10-20文字）' },
+                        description: { type: 'string', description: 'テーマの説明（50-100文字）' },
+                        examples: {
+                          type: 'array',
+                          description: '関連する引用例',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              date: { type: 'string' },
+                              quote: { type: 'string' },
+                            },
+                            required: ['date', 'quote'],
+                          },
+                        },
+                      },
+                      required: ['type', 'title', 'description'],
+                    },
+                  },
+                  growth: {
+                    type: 'object',
+                    description: '成長と課題',
+                    properties: {
+                      improvements: {
+                        type: 'array',
+                        description: '成長した点（1-3個）',
+                        items: { type: 'string' },
+                      },
+                      challenges: {
+                        type: 'array',
+                        description: '来月の課題（1-3個）',
+                        items: { type: 'string' },
+                      },
+                      transformation: {
+                        type: 'string',
+                        description: '月初と月末の変化（オプション）',
+                      },
+                    },
+                    required: ['improvements', 'challenges'],
+                  },
+                  question: {
+                    type: 'string',
+                    description: '来月への問いかけ（50-70文字）'
+                  },
+                },
+                required: ['summary', 'highlights', 'themes', 'growth', 'question'],
+              },
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[generateMonthlyInsight] Gemini API error:', response.status, errorText);
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+
+      const finishReason = responseData.candidates?.[0]?.finishReason;
+      console.log('[generateMonthlyInsight] Finish reason:', finishReason);
+
+      const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        console.error('[generateMonthlyInsight] Empty response from Gemini');
+        return generateFallbackMonthlyInsight(data);
+      }
+
+      console.log('[generateMonthlyInsight] Response length:', content.length, 'chars');
+
+      const parsed = parseMonthlyInsightResponse(content);
+
+      if (!parsed) {
+        console.error('[generateMonthlyInsight] Failed to parse response');
+        return generateFallbackMonthlyInsight(data);
+      }
+
+      console.log('[generateMonthlyInsight] Success');
+      return parsed;
+    } catch (error) {
+      console.error('[generateMonthlyInsight] Error:', error);
+      return generateFallbackMonthlyInsight(data);
+    }
+  }
+);

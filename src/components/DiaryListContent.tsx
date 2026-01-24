@@ -7,6 +7,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { DiaryEntry } from '../utils/storage';
 import { useDiaryList } from '../hooks/useDiaryList';
 import { useWeeklyInsight } from '../hooks/useWeeklyInsight';
+import { useMonthlyInsight } from '../hooks/useMonthlyInsight';
 import ScreenHeader from './common/ScreenHeader';
 import {
   DiaryCard,
@@ -15,7 +16,7 @@ import {
   EmptyList,
   YearMonthPickerModal,
 } from './diary';
-import { WeeklyInsightBanner } from './insight';
+import { WeeklyInsightBanner, MonthlyInsightBanner } from './insight';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -60,6 +61,14 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
     canGenerateInsight,
   } = useWeeklyInsight();
 
+  // 月次インサイト
+  const {
+    insight: monthlyInsight,
+    state: monthlyInsightState,
+    currentMonthEntryCount,
+    canGenerateInsight: canGenerateMonthlyInsight,
+  } = useMonthlyInsight();
+
   // ========================================
   // ナビゲーションハンドラー
   // ========================================
@@ -78,6 +87,11 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const handleNavigateToWeeklyInsight = useCallback(() => {
     // 週選択機能があるので常にナビゲート可能
     navigation.navigate('WeeklyInsight', {});
+  }, [navigation]);
+
+  const handleNavigateToMonthlyInsight = useCallback(() => {
+    // 月選択機能があるので常にナビゲート可能
+    navigation.navigate('MonthlyInsight', {});
   }, [navigation]);
 
   // 日記削除ハンドラー
@@ -191,6 +205,16 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         canGenerate={canGenerateInsight}
         summary={insight?.summary}
         onPress={handleNavigateToWeeklyInsight}
+      />
+
+      {/* 月次インサイトバナー */}
+      <MonthlyInsightBanner
+        entryCount={currentMonthEntryCount}
+        state={monthlyInsightState}
+        hasInsight={!!monthlyInsight}
+        canGenerate={canGenerateMonthlyInsight}
+        summary={monthlyInsight?.summary}
+        onPress={handleNavigateToMonthlyInsight}
       />
 
       {viewMode === 'list' ? (

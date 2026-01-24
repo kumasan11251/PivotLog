@@ -396,3 +396,121 @@ export const getDiariesByDateRangeFromFirestore = async (
     return [];
   }
 };
+
+// =============== 月次インサイト ===============
+
+/**
+ * 月次インサイトのデータ構造（Firestore用）
+ */
+export interface MonthlyInsightDocument {
+  monthKey: string; // YYYY-MM形式 (例: 2026-01)
+  monthStartDate: string;
+  monthEndDate: string;
+  entryCount: number;
+  summary: string;
+  highlights: Array<{
+    date: string;
+    type: 'achievement' | 'connection' | 'discovery' | 'turning_point';
+    title: string;
+    description: string;
+    quote?: string;
+  }>;
+  themes: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+  }>;
+  growth: {
+    improvements: string[];
+    challenges: string[];
+    transformation?: string;
+  };
+  question: string;
+  generatedAt: string;
+  modelVersion?: string;
+}
+
+/**
+ * 月次インサイトを保存
+ */
+export const saveMonthlyInsightToFirestore = async (
+  insight: MonthlyInsightDocument
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    await userDoc
+      .collection(COLLECTIONS.MONTHLY_INSIGHTS)
+      .doc(insight.monthKey)
+      .set({
+        ...insight,
+        updatedAt: new Date().toISOString(),
+      });
+  } catch (error) {
+    console.error('[Firestore] 月次インサイトの保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * 特定の月の月次インサイトを取得
+ */
+export const getMonthlyInsightFromFirestore = async (
+  monthKey: string
+): Promise<MonthlyInsightDocument | null> => {
+  try {
+    const userDoc = getUserDocRef();
+    const doc = await userDoc
+      .collection(COLLECTIONS.MONTHLY_INSIGHTS)
+      .doc(monthKey)
+      .get();
+
+    if (doc.exists()) {
+      const data = doc.data() as MonthlyInsightDocument;
+      return data;
+    }
+    return null;
+  } catch (error) {
+    console.error('[Firestore] 月次インサイトの取得に失敗しました:', error);
+    return null;
+  }
+};
+
+/**
+ * 特定の月の月次インサイトキャッシュを削除
+ */
+export const deleteMonthlyInsightFromFirestore = async (
+  monthKey: string
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    await userDoc
+      .collection(COLLECTIONS.MONTHLY_INSIGHTS)
+      .doc(monthKey)
+      .delete();
+  } catch (error) {
+    console.error('[Firestore] 月次インサイトの削除に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * 最新の月次インサイトを取得（複数件）
+ */
+export const getRecentMonthlyInsightsFromFirestore = async (
+  limit: number = 6
+): Promise<MonthlyInsightDocument[]> => {
+  try {
+    const userDoc = getUserDocRef();
+    const snapshot = await userDoc
+      .collection(COLLECTIONS.MONTHLY_INSIGHTS)
+      .orderBy('monthStartDate', 'desc')
+      .limit(limit)
+      .get();
+
+    return snapshot.docs.map((doc) => doc.data() as MonthlyInsightDocument);
+  } catch (error) {
+    console.error('月次インサイト一覧の取得に失敗しました:', error);
+    return [];
+  }
+};

@@ -14,6 +14,7 @@ export type RootStackParamList = {
   Feedback: undefined;
   WidgetSettings: undefined;
   WeeklyInsight: { weekKey?: string } | undefined;
+  MonthlyInsight: { monthKey?: string } | undefined;
 };
 
 // 各画面のナビゲーションプロップの型定義
@@ -29,3 +30,4 @@ export type LinkAccountScreenNavigationProp = NativeStackNavigationProp<RootStac
 export type FeedbackScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Feedback'>;
 export type WidgetSettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WidgetSettings'>;
 export type WeeklyInsightScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WeeklyInsight'>;
+export type MonthlyInsightScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MonthlyInsight'>;

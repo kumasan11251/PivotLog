@@ -123,3 +123,80 @@ export async function generateWeeklyInsightViaCloudFunctions(
     throw error;
   }
 }
+
+/**
+ * 月次インサイト生成リクエストの型
+ */
+export interface GenerateMonthlyInsightRequest {
+  entries: Array<{
+    date: string;
+    goodTime: string;
+    wastedTime: string;
+    tomorrow: string;
+  }>;
+  currentAge: number;
+  remainingYears: number;
+  remainingDays: number;
+  monthStartDate: string;
+  monthEndDate: string;
+  yearMonth: string;
+}
+
+/**
+ * 月次インサイト生成レスポンスの型
+ */
+export interface MonthlyInsightResponse {
+  summary: string;
+  highlights: Array<{
+    date: string;
+    type: 'achievement' | 'connection' | 'discovery' | 'turning_point';
+    title: string;
+    description: string;
+    quote?: string;
+  }>;
+  themes: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+  }>;
+  growth: {
+    improvements: string[];
+    challenges: string[];
+    transformation?: string;
+  };
+  question: string;
+  generatedAt: string;
+  modelVersion: string;
+}
+
+/**
+ * Cloud Functions経由で月次インサイトを生成
+ *
+ * @param request - 月次インサイト生成リクエスト
+ * @returns 月次インサイトレスポンス
+ * @throws エラー時は例外をスロー
+ */
+export async function generateMonthlyInsightViaCloudFunctions(
+  request: GenerateMonthlyInsightRequest
+): Promise<MonthlyInsightResponse> {
+  try {
+    // 東京リージョンのFunctionを呼び出す
+    const generateMonthlyInsight = functions()
+      .app.functions('asia-northeast1')
+      .httpsCallable('generateMonthlyInsight');
+
+    const result = await generateMonthlyInsight(request);
+    return result.data as MonthlyInsightResponse;
+  } catch (error: unknown) {
+    console.error('[CloudFunctions] generateMonthlyInsight error:', error);
+
+    // Firebase Functions エラーの詳細を取得
+    if (error && typeof error === 'object' && 'code' in error) {
+      const functionsError = error as { code: string; message: string };
+      throw new Error(`Cloud Functions error: ${functionsError.code} - ${functionsError.message}`);
+    }
+
+    throw error;
+  }
+}

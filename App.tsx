@@ -16,9 +16,11 @@ import FeedbackScreen from './src/screens/FeedbackScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
 import WeeklyInsightScreen from './src/screens/WeeklyInsightScreen';
+import MonthlyInsightScreen from './src/screens/MonthlyInsightScreen';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { WeeklyInsightProvider } from './src/contexts/WeeklyInsightContext';
+import { MonthlyInsightProvider } from './src/contexts/MonthlyInsightContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
@@ -112,6 +114,14 @@ function MainNavigator() {
           animation: 'slide_from_bottom',
         }}
       />
+      <Stack.Screen
+        name="MonthlyInsight"
+        component={MonthlyInsightScreen}
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -166,9 +176,11 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <WeeklyInsightProvider>
-            <NavigationContainer>
-              <RootNavigator />
-            </NavigationContainer>
+            <MonthlyInsightProvider>
+              <NavigationContainer>
+                <RootNavigator />
+              </NavigationContainer>
+            </MonthlyInsightProvider>
           </WeeklyInsightProvider>
         </AuthProvider>
         <ThemedStatusBar />
