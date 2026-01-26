@@ -14,7 +14,7 @@ interface AIReflectionCardProps {
 
 /**
  * AIリフレクションカード
- * 日記に対するAIからの気づきと問いかけを表示
+ * 日記に対するPivotLogからの気づきと問いかけを表示
  */
 const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
   reflection,
@@ -47,7 +47,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
       {/* ヘッダー */}
       <View style={styles.header}>
         <Text style={styles.headerIcon}>✨</Text>
-        <Text style={[styles.headerText, { color: themeColors.primary }]}>AIからの気づき</Text>
+        <Text style={[styles.headerText, { color: themeColors.primary }]}>PivotLogからの気づき</Text>
       </View>
 
       {/* メッセージ本文 */}

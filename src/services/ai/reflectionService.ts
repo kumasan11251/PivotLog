@@ -1,6 +1,6 @@
 /**
  * AIリフレクションサービス
- * 日記に対するAIからの気づきを生成
+ * 日記に対するPivotLogからの気づきを生成
  */
 
 import type { AIReflectionData } from '../../types/aiReflection';
@@ -213,86 +213,145 @@ const generateGeminiReflection = async (
   console.log('[Gemini] API Key exists:', !!apiKey);
   console.log('[Gemini] API Key length:', apiKey?.length);
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: combinedPrompt }],
+  // リトライ機能付きでリクエストを送信
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'object',
-            properties: {
-              content: {
-                type: 'string',
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: combinedPrompt }],
               },
-              question: {
-                type: 'string',
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2048,
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'object',
+                properties: {
+                  content: {
+                    type: 'string',
+                    description: '共感メッセージ（100-180文字）',
+                  },
+                  question: {
+                    type: 'string',
+                    description: '問いかけ（40-80文字）',
+                  },
+                },
+                required: ['content', 'question'],
               },
             },
-            required: ['content', 'question'],
-          },
-        },
-      }),
+            // Safety settingsを緩和して、日常的な日記内容がブロックされないようにする
+            safetySettings: [
+              {
+                category: 'HARM_CATEGORY_HARASSMENT',
+                threshold: 'BLOCK_ONLY_HIGH',
+              },
+              {
+                category: 'HARM_CATEGORY_HATE_SPEECH',
+                threshold: 'BLOCK_ONLY_HIGH',
+              },
+              {
+                category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                threshold: 'BLOCK_ONLY_HIGH',
+              },
+              {
+                category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                threshold: 'BLOCK_ONLY_HIGH',
+              },
+            ],
+          }),
+        }
+      );
+
+      console.log(`[Gemini] Response status (attempt ${attempt}):`, response.status);
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error(`[Gemini] Error response (attempt ${attempt}):`, error);
+        throw new Error(`Gemini API error: ${response.status} - ${error}`);
+      }
+
+      const data = await response.json();
+      console.log('[Gemini] Response data:', JSON.stringify(data, null, 2));
+
+      // finishReasonをチェック
+      const candidate = data.candidates?.[0];
+      const finishReason = candidate?.finishReason;
+
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn(`[Gemini] Unexpected finishReason: ${finishReason}`);
+        if (finishReason === 'SAFETY' || finishReason === 'MAX_TOKENS') {
+          throw new Error(`Generation stopped: ${finishReason}`);
+        }
+      }
+
+      const content = candidate?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        console.error(`[Gemini] Empty content (attempt ${attempt}). Full response:`, data);
+        throw new Error('Gemini API returned empty response');
+      }
+
+      console.log('[Gemini] Full content received:', content);
+      console.log('[Gemini] Content length:', content.length);
+
+      const parsed = parseAIResponse(content);
+      console.log('[Gemini] Parsed result:', parsed);
+
+      if (!parsed) {
+        console.log('[Gemini] Failed to parse response, using raw content');
+        // パース失敗時は、AIの生テキストをそのまま使用してみる
+        const displayContent = content
+          .replace(/```json\s*/gi, '')
+          .replace(/```\s*/gi, '')
+          .replace(/^\s*\{\s*"content"\s*:\s*"/i, '')
+          .replace(/"\s*,\s*"question"[\s\S]*/i, '')
+          .slice(0, 200);
+
+        return {
+          content: displayContent || content.slice(0, 200),
+          question: '今日の日記を振り返って、何か気づいたことはありますか？',
+          generatedAt: new Date().toISOString(),
+          modelVersion: 'gemini-2.0-flash-raw',
+        };
+      }
+
+      // 回答が途中で切れていないかチェック
+      if (parsed.content.length < 30 || parsed.question.length < 10) {
+        console.warn('[Gemini] Response seems too short, retrying...');
+        console.warn('  content length:', parsed.content.length);
+        console.warn('  question length:', parsed.question.length);
+        throw new Error('Response too short');
+      }
+
+      return {
+        ...parsed,
+        modelVersion: 'gemini-2.0-flash',
+      };
+    } catch (retryError) {
+      lastError = retryError instanceof Error ? retryError : new Error(String(retryError));
+      console.error(`[Gemini] Attempt ${attempt} failed:`, lastError.message);
+
+      // 最後の試行でなければ少し待ってリトライ
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
     }
-  );
-
-  console.log('[Gemini] Response status:', response.status);
-
-  if (!response.ok) {
-    const error = await response.text();
-    console.error('[Gemini] Error response:', error);
-    throw new Error(`Gemini API error: ${response.status} - ${error}`);
   }
 
-  const data = await response.json();
-  console.log('[Gemini] Response data:', JSON.stringify(data, null, 2));
-
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!content) {
-    console.error('[Gemini] Empty content. Full response:', data);
-    throw new Error('Gemini API returned empty response');
-  }
-
-  console.log('[Gemini] Full content received:', content);
-  console.log('[Gemini] Content length:', content.length);
-
-  const parsed = parseAIResponse(content);
-  console.log('[Gemini] Parsed result:', parsed);
-  if (!parsed) {
-    console.log('[Gemini] Failed to parse response, using raw content');
-    // パース失敗時は、AIの生テキストをそのまま使用してみる
-    // JSONっぽい部分を取り除いて表示
-    const displayContent = content
-      .replace(/```json\s*/gi, '')
-      .replace(/```\s*/gi, '')
-      .replace(/^\s*\{\s*"content"\s*:\s*"/i, '')
-      .replace(/"\s*,\s*"question"[\s\S]*/i, '')
-      .slice(0, 200);
-
-    return {
-      content: displayContent || content.slice(0, 200),
-      question: '今日の日記を振り返って、何か気づいたことはありますか？',
-      generatedAt: new Date().toISOString(),
-      modelVersion: 'gemini-2.5-flash-raw',
-    };
-  }
-
-  return {
-    ...parsed,
-    modelVersion: 'gemini-2.5-flash',
-  };
+  // すべてのリトライが失敗した場合
+  throw lastError || new Error('All retries failed');
 };
 
 /**
@@ -302,7 +361,7 @@ const generateGeminiReflection = async (
 const generateCloudFunctionsReflection = async (
   params: ReflectionPromptParams
 ): Promise<AIReflectionData> => {
-  console.log('[Cloud Functions] Calling generateReflection...');
+  console.log('[Cloud Functions] Calling generateReflection');
 
   const response = await generateReflectionViaCloudFunctions({
     goodTime: params.goodTime,

@@ -49,15 +49,28 @@ const DiaryEntryScreen: React.FC = () => {
     handleDateChange,
   } = useDiaryEntry();
 
+  // Refs
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollContentRef = useRef<View>(null);
+
   // AIリフレクション機能
   const {
     reflectionState: aiReflectionState,
     reflection: aiReflection,
     fadeAnim: reflectionFadeAnim,
-    getReflection: handleGetAIReflection,
+    getReflection,
     loadSavedReflection,
     resetReflection: _resetReflection, // 将来使用予定
   } = useAIReflection({ dateString, formState });
+
+  // AIリフレクション取得ボタンのハンドラ
+  // キーボードを閉じてからリフレクションを取得する
+  const handleGetAIReflection = useCallback(() => {
+    // キーボードを閉じる
+    Keyboard.dismiss();
+    // リフレクションを取得
+    getReflection();
+  }, [getReflection]);
 
   // 日記が入力されているかどうか
   const hasDiaryContent = formState.goodTime.trim() || formState.wastedTime.trim() || formState.tomorrow.trim();
@@ -68,8 +81,6 @@ const DiaryEntryScreen: React.FC = () => {
   }, [dateString, loadSavedReflection]);
 
   // Refs
-  const scrollViewRef = useRef<ScrollView>(null);
-  const scrollContentRef = useRef<View>(null);
   const goodTimeRef = useRef<DiaryInputFieldRef>(null);
   const wastedTimeRef = useRef<DiaryInputFieldRef>(null);
   const tomorrowRef = useRef<DiaryInputFieldRef>(null);
@@ -230,24 +241,26 @@ const DiaryEntryScreen: React.FC = () => {
               ))}
 
               {/* AIリフレクションセクション */}
-              {aiReflectionState === 'loading' && (
-                <AIReflectionLoading />
-              )}
+              <View>
+                {aiReflectionState === 'loading' && (
+                  <AIReflectionLoading />
+                )}
 
-              {aiReflectionState === 'loaded' && aiReflection && (
-                <AIReflectionCard
-                  reflection={aiReflection}
-                  fadeAnim={reflectionFadeAnim}
-                />
-              )}
+                {aiReflectionState === 'loaded' && aiReflection && (
+                  <AIReflectionCard
+                    reflection={aiReflection}
+                    fadeAnim={reflectionFadeAnim}
+                  />
+                )}
 
-              {(aiReflectionState === 'idle' || aiReflectionState === 'loaded') && (
-                <AIReflectionButton
-                  onPress={handleGetAIReflection}
-                  disabled={!hasDiaryContent}
-                  hasReflection={aiReflectionState === 'loaded'}
-                />
-              )}
+                {(aiReflectionState === 'idle' || aiReflectionState === 'loaded') && (
+                  <AIReflectionButton
+                    onPress={handleGetAIReflection}
+                    disabled={!hasDiaryContent}
+                    hasReflection={aiReflectionState === 'loaded'}
+                  />
+                )}
+              </View>
 
               {/* 下部の余白 */}
               <View style={styles.bottomSpacer} />

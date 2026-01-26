@@ -7,6 +7,11 @@
 import functions from '@react-native-firebase/functions';
 
 /**
+ * サポートするAIモデルの型
+ */
+export type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
+
+/**
  * AIリフレクション生成リクエストの型
  */
 export interface GenerateReflectionRequest {

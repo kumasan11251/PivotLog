@@ -37,6 +37,9 @@ export interface PerspectiveMessage {
  * - {remainingDays}: 残り日数
  * - {remainingWeeks}: 残り週数
  * - {remainingWeekends}: 残り週末数
+ * - {remainingMonths}: 残り月数（remainingYears × 12）
+ * - {remainingTravels}: 残り旅行回数（remainingYears × 2）
+ * - {remainingSeasons}: 残り季節回数（remainingYears × 4）
  * - {remainingSprings}: 残りの春の回数
  * - {remainingSummers}: 残りの夏の回数
  * - {remainingAutumns}: 残りの秋の回数
@@ -170,7 +173,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'books',
     category: 'comparison',
-    template: '月1冊読むなら、あと{remainingYears}冊の本と出会える',
+    template: '月1冊読むなら、あと{remainingMonths}冊の本と出会える',
     subtext: 'どの本を選ぶか、それも人生の選択',
     emoji: '📚',
   },
@@ -184,14 +187,14 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'travels',
     category: 'comparison',
-    template: '年2回旅行するなら、あと{remainingYears}回×2の旅',
+    template: '年2回旅行するなら、あと{remainingTravels}回の旅',
     subtext: '行きたい場所、先延ばしにしていませんか',
     emoji: '✈️',
   },
   {
     id: 'full-moons',
     category: 'comparison',
-    template: 'あと約{remainingYears}回×12の満月',
+    template: 'あと約{remainingMonths}回の満月',
     subtext: '月を見上げる時間を持とう',
     emoji: '🌕',
   },
@@ -219,7 +222,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'seasons-total',
     category: 'comparison',
-    template: 'あと{remainingYears}回×4の季節の移ろい',
+    template: 'あと{remainingSeasons}回の季節の移ろい',
     subtext: '同じ季節は二度とない',
     emoji: '🍃',
   },

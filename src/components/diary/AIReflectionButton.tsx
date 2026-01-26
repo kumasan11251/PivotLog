@@ -11,7 +11,7 @@ interface AIReflectionButtonProps {
 
 /**
  * AIリフレクション取得ボタン
- * 日記入力後にAIからの気づきを受け取るためのボタン
+ * 日記入力後にPivotLogからの気づきを受け取るためのボタン
  */
 const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   onPress,
@@ -23,8 +23,8 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
 
   // 既にリフレクションがある場合は「もう一度受け取る」表示
   const buttonText = hasReflection
-    ? 'AIの気づきをもう一度受け取る'
-    : 'AIからの気づきを受け取る';
+    ? 'もう一度気づきを受け取る'
+    : 'PivotLogからの気づきを受け取る';
 
   const buttonBackgroundColor = disabled
     ? themeColors.border
@@ -64,7 +64,7 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
 
       {disabled && (
         <Text style={[styles.hintText, { color: themeColors.text.secondary }]}>
-          日記を入力するとAIの気づきを受け取れます
+          日記を入力すると気づきを受け取れます
         </Text>
       )}
     </View>

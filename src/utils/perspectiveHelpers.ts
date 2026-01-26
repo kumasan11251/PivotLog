@@ -113,10 +113,13 @@ export const formatPerspectiveMessage = (
 
   // 派生値を計算
   const remainingWeekends = Math.floor(remainingWeeks); // 週末は週数と同じ
-  const remainingSprings = remainingYears;
-  const remainingSummers = remainingYears;
-  const remainingAutumns = remainingYears;
-  const remainingWinters = remainingYears;
+  const remainingSprings = Math.floor(remainingYears);
+  const remainingSummers = Math.floor(remainingYears);
+  const remainingAutumns = Math.floor(remainingYears);
+  const remainingWinters = Math.floor(remainingYears);
+  const remainingMonths = Math.floor(remainingYears * 12); // 残り月数
+  const remainingTravels = Math.floor(remainingYears * 2); // 年2回旅行
+  const remainingSeasons = Math.floor(remainingYears * 4); // 年4回の季節
 
   // プレースホルダーを置換
   let mainText = message.template
@@ -128,6 +131,9 @@ export const formatPerspectiveMessage = (
     .replace(/{remainingSummers}/g, String(remainingSummers))
     .replace(/{remainingAutumns}/g, String(remainingAutumns))
     .replace(/{remainingWinters}/g, String(remainingWinters))
+    .replace(/{remainingMonths}/g, String(remainingMonths).replace(/\B(?=(\d{3})+(?!\d))/g, ','))
+    .replace(/{remainingTravels}/g, String(remainingTravels).replace(/\B(?=(\d{3})+(?!\d))/g, ','))
+    .replace(/{remainingSeasons}/g, String(remainingSeasons).replace(/\B(?=(\d{3})+(?!\d))/g, ','))
     .replace(/{currentAge}/g, String(Math.floor(currentAge)))
     .replace(/{progressPercent}/g, progressPercent.toFixed(1));
 

@@ -138,29 +138,103 @@ ${focusHint}
  */
 export const parseAIResponse = (response: string): AIReflectionData | null => {
   try {
+    console.log('[parseAIResponse] Input length:', response.length);
+
     // Markdownコードブロックを除去（```json や ``` を取り除く）
     let cleanedResponse = response
       .replace(/```json\s*/gi, '')   // ```json を除去
       .replace(/```\s*/gi, '')       // ``` を除去
       .trim();
 
+    console.log('[parseAIResponse] Cleaned response:', cleanedResponse.slice(0, 200) + '...');
+
     // 方法1: 完全なJSONとしてパース
     try {
       const parsed = JSON.parse(cleanedResponse);
-      if (parsed && parsed.content) {
+      if (parsed && parsed.content && typeof parsed.content === 'string') {
+        console.log('[parseAIResponse] JSON.parse succeeded');
+        console.log('[parseAIResponse] content length:', parsed.content.length);
+        console.log('[parseAIResponse] question length:', (parsed.question || '').length);
         return {
           content: parsed.content,
           question: parsed.question || '',
           generatedAt: new Date().toISOString(),
         };
       }
-    } catch {
+    } catch (jsonError) {
+      console.log('[parseAIResponse] JSON.parse failed:', jsonError);
       // パース失敗時は正規表現で抽出を試みる
     }
 
-    // 方法2: 正規表現でcontentとquestionを抽出
-    const contentMatch = cleanedResponse.match(/"content"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
-    const questionMatch = cleanedResponse.match(/"question"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+    // 方法2: より柔軟な正規表現でcontentとquestionを抽出
+    // 日本語の引用符「」や改行を含むケースに対応
+    // content の抽出（複数行対応）
+    let contentMatch = cleanedResponse.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+
+    // contentが見つからない場合、より緩い正規表現を試す
+    if (!contentMatch) {
+      // JSONの構造を利用して content の値を抽出
+      const contentStartIndex = cleanedResponse.indexOf('"content"');
+      if (contentStartIndex !== -1) {
+        const colonIndex = cleanedResponse.indexOf(':', contentStartIndex);
+        if (colonIndex !== -1) {
+          const quoteStart = cleanedResponse.indexOf('"', colonIndex);
+          if (quoteStart !== -1) {
+            // エスケープされた引用符を考慮しながら終了位置を探す
+            let quoteEnd = quoteStart + 1;
+            let escaped = false;
+            while (quoteEnd < cleanedResponse.length) {
+              const char = cleanedResponse[quoteEnd];
+              if (escaped) {
+                escaped = false;
+              } else if (char === '\\') {
+                escaped = true;
+              } else if (char === '"') {
+                break;
+              }
+              quoteEnd++;
+            }
+            if (quoteEnd < cleanedResponse.length) {
+              const extractedContent = cleanedResponse.slice(quoteStart + 1, quoteEnd);
+              contentMatch = [null, extractedContent] as unknown as RegExpMatchArray;
+            }
+          }
+        }
+      }
+    }
+
+    // question の抽出
+    let questionMatch = cleanedResponse.match(/"question"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+
+    // questionが見つからない場合、より緩い正規表現を試す
+    if (!questionMatch) {
+      const questionStartIndex = cleanedResponse.indexOf('"question"');
+      if (questionStartIndex !== -1) {
+        const colonIndex = cleanedResponse.indexOf(':', questionStartIndex);
+        if (colonIndex !== -1) {
+          const quoteStart = cleanedResponse.indexOf('"', colonIndex);
+          if (quoteStart !== -1) {
+            let quoteEnd = quoteStart + 1;
+            let escaped = false;
+            while (quoteEnd < cleanedResponse.length) {
+              const char = cleanedResponse[quoteEnd];
+              if (escaped) {
+                escaped = false;
+              } else if (char === '\\') {
+                escaped = true;
+              } else if (char === '"') {
+                break;
+              }
+              quoteEnd++;
+            }
+            if (quoteEnd < cleanedResponse.length) {
+              const extractedQuestion = cleanedResponse.slice(quoteStart + 1, quoteEnd);
+              questionMatch = [null, extractedQuestion] as unknown as RegExpMatchArray;
+            }
+          }
+        }
+      }
+    }
 
     if (contentMatch && contentMatch[1]) {
       // エスケープされた文字を復元
@@ -176,6 +250,10 @@ export const parseAIResponse = (response: string): AIReflectionData | null => {
             .replace(/\\\\/g, '\\')
         : '';
 
+      console.log('[parseAIResponse] Regex extraction succeeded');
+      console.log('[parseAIResponse] content length:', content.length);
+      console.log('[parseAIResponse] question length:', question.length);
+
       return {
         content,
         question,
@@ -183,8 +261,10 @@ export const parseAIResponse = (response: string): AIReflectionData | null => {
       };
     }
 
+    console.log('[parseAIResponse] All parsing methods failed');
     return null;
-  } catch {
+  } catch (error) {
+    console.error('[parseAIResponse] Unexpected error:', error);
     return null;
   }
 };

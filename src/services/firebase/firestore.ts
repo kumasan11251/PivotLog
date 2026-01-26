@@ -24,7 +24,7 @@ export interface DiaryEntry {
   tomorrow: string; // 明日はどう過ごしますか
   createdAt: string; // 作成日時 ISO 8601
   updatedAt: string; // 更新日時 ISO 8601
-  aiReflection?: AIReflectionData; // AIからの気づき（オプショナル）
+  aiReflection?: AIReflectionData; // PivotLogからの気づき（オプショナル）
 }
 
 export interface HomeDisplaySettings {
