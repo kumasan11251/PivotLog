@@ -51,3 +51,17 @@ export type {
   GenerateReflectionRequest,
   ReflectionResponse,
 } from './functions';
+
+// AI利用状況管理サービス
+export {
+  getAIReflectionUsage,
+  getMonthlyUsageCount,
+  getDiaryReflectionRecord,
+  checkAIReflectionLimit,
+  recordAIReflectionUsage,
+  resetAIReflectionUsage,
+  resetMonthlyUsage,
+  resetReflectionHistory,
+  deleteDiaryReflectionHistory,
+  getCurrentYearMonth,
+} from './aiUsage';

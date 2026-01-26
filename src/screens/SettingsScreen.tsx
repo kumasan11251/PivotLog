@@ -22,6 +22,7 @@ import { deleteAllUserData } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
+import DevDebugPanel from '../components/common/DevDebugPanel';
 
 // 1日の開始時刻の選択肢（0時〜12時）
 const DAY_START_HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => i);
@@ -86,6 +87,7 @@ const SettingsScreen: React.FC = () => {
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDebugSection, setShowDebugSection] = useState(false);
+  const [showDevDebugPanel, setShowDevDebugPanel] = useState(false);
   const user = getCurrentUser();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const themeColors = getColors(isDark);
@@ -468,6 +470,24 @@ const SettingsScreen: React.FC = () => {
                   <Text style={styles.debugItemText}>初期設定を再表示</Text>
                   <Ionicons name="chevron-forward" size={16} color={themeColors.text.secondary} />
                 </TouchableOpacity>
+
+                {/* サブスクリプション・利用状況デバッグ */}
+                {__DEV__ && (
+                  <TouchableOpacity
+                    style={[styles.debugItem, styles.debugItemLast]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowDevDebugPanel(true);
+                    }}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="bug-outline" size={18} color="#9C27B0" />
+                    <Text style={[styles.debugItemText, { color: '#9C27B0' }]}>
+                      課金・利用状況デバッグ
+                    </Text>
+                    <Ionicons name="chevron-forward" size={16} color={themeColors.text.secondary} />
+                  </TouchableOpacity>
+                )}
               </Animated.View>
             )}
           </View>
@@ -713,6 +733,14 @@ const SettingsScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* 開発用デバッグパネル */}
+      {__DEV__ && (
+        <DevDebugPanel
+          visible={showDevDebugPanel}
+          onClose={() => setShowDevDebugPanel(false)}
+        />
+      )}
     </SafeAreaView>
   );
 };

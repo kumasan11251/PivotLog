@@ -30,6 +30,8 @@ export interface GenerateReflectionRequest {
   remainingYears: number;
   /** 残り日数 */
   remainingDays: number;
+  /** 日記の日付（YYYY-MM-DD形式）- 利用制限チェック用 */
+  diaryDate?: string;
 }
 
 /**
@@ -359,7 +361,7 @@ const generateGeminiReflection = async (
  * 本番環境で使用（APIキーはサーバーサイドで安全に管理）
  */
 const generateCloudFunctionsReflection = async (
-  params: ReflectionPromptParams
+  params: ReflectionPromptParams & { diaryDate?: string }
 ): Promise<AIReflectionData> => {
   console.log('[Cloud Functions] Calling generateReflection');
 
@@ -370,6 +372,7 @@ const generateCloudFunctionsReflection = async (
     currentAge: params.currentAge,
     remainingYears: params.remainingYears,
     remainingDays: params.remainingDays,
+    diaryDate: params.diaryDate,
   });
 
   return {
@@ -385,7 +388,7 @@ const generateCloudFunctionsReflection = async (
  */
 const generateByProvider = async (
   provider: AIProvider,
-  params: ReflectionPromptParams,
+  params: ReflectionPromptParams & { diaryDate?: string },
   apiKey?: string
 ): Promise<AIReflectionData> => {
   switch (provider) {
@@ -424,13 +427,14 @@ export const generateReflection = async (
   // デバッグ: 使用するプロバイダーをログ出力
   console.log('[AI Reflection] Provider:', config.provider);
 
-  const params: ReflectionPromptParams = {
+  const params: ReflectionPromptParams & { diaryDate?: string } = {
     goodTime: request.goodTime,
     wastedTime: request.wastedTime,
     tomorrow: request.tomorrow,
     currentAge: request.currentAge,
     remainingYears: request.remainingYears,
     remainingDays: request.remainingDays,
+    diaryDate: request.diaryDate,
   };
 
   try {
@@ -454,6 +458,13 @@ export const generateReflection = async (
     return result;
   } catch (error) {
     console.error('AI reflection generation failed:', error);
+    // 利用制限エラーの場合はそのままスロー
+    const errorObj = error as { code?: string; message?: string };
+    if (errorObj.message?.includes('利用上限') ||
+        errorObj.message?.includes('再生成') ||
+        errorObj.message?.includes('3回まで')) {
+      throw error;
+    }
     // エラー時はフォールバックを返す
     return generateFallbackReflection(params);
   }

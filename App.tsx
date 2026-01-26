@@ -21,6 +21,7 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { WeeklyInsightProvider } from './src/contexts/WeeklyInsightContext';
 import { MonthlyInsightProvider } from './src/contexts/MonthlyInsightContext';
+import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
@@ -175,13 +176,15 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <WeeklyInsightProvider>
-            <MonthlyInsightProvider>
-              <NavigationContainer>
-                <RootNavigator />
-              </NavigationContainer>
-            </MonthlyInsightProvider>
-          </WeeklyInsightProvider>
+          <SubscriptionProvider>
+            <WeeklyInsightProvider>
+              <MonthlyInsightProvider>
+                <NavigationContainer>
+                  <RootNavigator />
+                </NavigationContainer>
+              </MonthlyInsightProvider>
+            </WeeklyInsightProvider>
+          </SubscriptionProvider>
         </AuthProvider>
         <ThemedStatusBar />
       </ThemeProvider>

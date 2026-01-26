@@ -21,6 +21,8 @@ export interface GenerateReflectionRequest {
   currentAge: number;
   remainingYears: number;
   remainingDays: number;
+  /** 日記の日付（YYYY-MM-DD形式）- 利用制限チェック用 */
+  diaryDate?: string;
 }
 
 /**

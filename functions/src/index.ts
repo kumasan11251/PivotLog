@@ -6,9 +6,248 @@
 
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { defineSecret } from 'firebase-functions/params';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { initializeApp, getApps } from 'firebase-admin/app';
+
+// Firebase Admin SDKを初期化（まだ初期化されていない場合のみ）
+if (getApps().length === 0) {
+  initializeApp();
+}
+
+// Firestoreインスタンス
+const db = getFirestore();
 
 // Gemini APIキーをシークレットとして定義
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
+
+// ============================================================
+// 利用制限の設定
+// ============================================================
+
+/**
+ * サブスクリプションティア
+ */
+type SubscriptionTier = 'free' | 'premium';
+
+/**
+ * AI機能の利用制限設定
+ */
+const AI_USAGE_LIMITS = {
+  /** 無料ユーザーの月間リフレクション生成上限 */
+  freeMonthlyReflectionLimit: 5,
+  /** プレミアムユーザーの同一日記再生成上限 */
+  premiumDiaryRegenerateLimit: 3,
+} as const;
+
+/**
+ * 利用制限エラーコード
+ */
+type UsageLimitErrorCode =
+  | 'MONTHLY_LIMIT_REACHED'
+  | 'REGENERATE_NOT_ALLOWED'
+  | 'DIARY_REGENERATE_LIMIT';
+
+/**
+ * 現在の年月を取得（YYYY-MM形式）
+ */
+function getCurrentYearMonth(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+}
+
+/**
+ * ユーザーのサブスクリプションティアを取得
+ */
+async function getUserSubscriptionTier(userId: string): Promise<SubscriptionTier> {
+  try {
+    const subscriptionDoc = await db
+      .collection('users')
+      .doc(userId)
+      .collection('subscription')
+      .doc('status')
+      .get();
+
+    if (subscriptionDoc.exists) {
+      const data = subscriptionDoc.data();
+      if (data?.tier === 'premium') {
+        // 有効期限のチェック（必要に応じて）
+        // if (data.expiresAt && new Date(data.expiresAt) > new Date()) {
+        //   return 'premium';
+        // }
+        return 'premium';
+      }
+    }
+    return 'free';
+  } catch (error) {
+    console.error('[getUserSubscriptionTier] Error:', error);
+    return 'free';
+  }
+}
+
+// 注: getAIReflectionUsage は getAIReflectionUsageWithDiary に統合されました
+
+/**
+ * AIリフレクションの利用状況を取得（日記日付付き）
+ */
+async function getAIReflectionUsageWithDiary(
+  userId: string,
+  diaryDate: string
+): Promise<{
+  monthlyCount: number;
+  diaryRegenCount: number;
+  hasExistingReflection: boolean;
+}> {
+  try {
+    const usageDoc = await db
+      .collection('users')
+      .doc(userId)
+      .collection('usage')
+      .doc('aiReflection')
+      .get();
+
+    const currentMonth = getCurrentYearMonth();
+
+    if (!usageDoc.exists) {
+      return {
+        monthlyCount: 0,
+        diaryRegenCount: 0,
+        hasExistingReflection: false,
+      };
+    }
+
+    const data = usageDoc.data();
+    const monthlyCount = data?.monthlyUsage?.[currentMonth]?.count || 0;
+    const diaryRecord = data?.reflectionHistory?.[diaryDate];
+    const diaryRegenCount = diaryRecord?.regenerateCount || 0;
+
+    return {
+      monthlyCount,
+      diaryRegenCount,
+      hasExistingReflection: diaryRegenCount > 0,
+    };
+  } catch (error) {
+    console.error('[getAIReflectionUsageWithDiary] Error:', error);
+    return {
+      monthlyCount: 0,
+      diaryRegenCount: 0,
+      hasExistingReflection: false,
+    };
+  }
+}
+
+/**
+ * AIリフレクション生成後に利用状況を更新
+ */
+async function recordAIReflectionUsage(
+  userId: string,
+  diaryDate: string,
+  isRegenerate: boolean
+): Promise<void> {
+  try {
+    const currentMonth = getCurrentYearMonth();
+    const now = new Date().toISOString();
+    const usageRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('usage')
+      .doc('aiReflection');
+
+    // 現在の状態を取得
+    const usageDoc = await usageRef.get();
+    const currentData = usageDoc.data() || {};
+    const currentMonthlyCount = currentData?.monthlyUsage?.[currentMonth]?.count || 0;
+    const existingDiaryRecord = currentData?.reflectionHistory?.[diaryDate];
+
+    // 更新データを構築
+    await usageRef.set({
+      monthlyUsage: {
+        ...currentData?.monthlyUsage,
+        [currentMonth]: {
+          count: currentMonthlyCount + 1,
+          lastGeneratedAt: now,
+        },
+      },
+      reflectionHistory: {
+        ...currentData?.reflectionHistory,
+        [diaryDate]: {
+          generatedAt: isRegenerate && existingDiaryRecord
+            ? existingDiaryRecord.generatedAt
+            : now,
+          regenerateCount: isRegenerate && existingDiaryRecord
+            ? existingDiaryRecord.regenerateCount + 1
+            : 1,
+          lastRegeneratedAt: isRegenerate ? now : FieldValue.delete(),
+        },
+      },
+      updatedAt: now,
+    }, { merge: true });
+
+    console.log(`[recordAIReflectionUsage] Updated usage for user ${userId}, diary ${diaryDate}`);
+  } catch (error) {
+    console.error('[recordAIReflectionUsage] Error:', error);
+    // 利用状況の更新失敗は致命的ではないので、エラーをスローしない
+  }
+}
+
+/**
+ * 利用制限をチェック
+ */
+async function checkUsageLimit(
+  userId: string,
+  diaryDate: string,
+  tier: SubscriptionTier
+): Promise<{ allowed: boolean; errorCode?: UsageLimitErrorCode; details?: Record<string, unknown> }> {
+  const usage = await getAIReflectionUsageWithDiary(userId, diaryDate);
+
+  // regenerateCountは「総生成回数」を表す（初回=1, 再生成1回目=2, ...)
+  // 再生成回数 = regenerateCount - 1
+  const actualRegenerations = usage.diaryRegenCount > 0 ? usage.diaryRegenCount - 1 : 0;
+
+  if (tier === 'free') {
+    // 無料ユーザー: 月間制限チェック
+    if (usage.monthlyCount >= AI_USAGE_LIMITS.freeMonthlyReflectionLimit) {
+      return {
+        allowed: false,
+        errorCode: 'MONTHLY_LIMIT_REACHED',
+        details: {
+          limit: AI_USAGE_LIMITS.freeMonthlyReflectionLimit,
+          used: usage.monthlyCount,
+          remaining: 0,
+        },
+      };
+    }
+
+    // 無料ユーザー: 再生成不可（既に1回以上生成している場合）
+    if (usage.hasExistingReflection) {
+      return {
+        allowed: false,
+        errorCode: 'REGENERATE_NOT_ALLOWED',
+        details: {
+          tier: 'free',
+          message: '無料プランでは同じ日記の再生成はできません',
+        },
+      };
+    }
+  } else {
+    // プレミアムユーザー: 同一日記の再生成上限（実際の再生成回数でチェック）
+    if (usage.hasExistingReflection &&
+        actualRegenerations >= AI_USAGE_LIMITS.premiumDiaryRegenerateLimit) {
+      return {
+        allowed: false,
+        errorCode: 'DIARY_REGENERATE_LIMIT',
+        details: {
+          limit: AI_USAGE_LIMITS.premiumDiaryRegenerateLimit,
+          used: actualRegenerations,
+          remaining: 0,
+        },
+      };
+    }
+  }
+
+  return { allowed: true };
+}
 
 /**
  * システムプロンプト
@@ -84,6 +323,10 @@ interface GenerateReflectionRequest {
   remainingDays: number;
   /** 使用するAIモデル（デフォルト: gemini-2.5-pro） */
   model?: GeminiModel;
+  /** 日記の日付（YYYY-MM-DD形式）- 利用制限チェック用 */
+  diaryDate?: string;
+  /** 利用制限チェックをスキップするか（開発用） */
+  skipUsageCheck?: boolean;
 }
 
 /**
@@ -339,6 +582,46 @@ export const generateReflection = onCall(
       );
     }
 
+    const userId = request.auth.uid;
+    const diaryDate = data.diaryDate || new Date().toISOString().split('T')[0];
+
+    // ============================================================
+    // 利用制限チェック
+    // ============================================================
+    if (!data.skipUsageCheck) {
+      // ユーザーのサブスクリプションティアを取得
+      const tier = await getUserSubscriptionTier(userId);
+      console.log(`[generateReflection] User ${userId} tier: ${tier}`);
+
+      // 利用制限をチェック
+      const limitCheck = await checkUsageLimit(userId, diaryDate, tier);
+
+      if (!limitCheck.allowed) {
+        console.log(`[generateReflection] Usage limit reached: ${limitCheck.errorCode}`, limitCheck.details);
+
+        // エラーコードに応じたエラーメッセージを設定
+        let errorMessage = '利用制限に達しました。';
+        switch (limitCheck.errorCode) {
+          case 'MONTHLY_LIMIT_REACHED':
+            errorMessage = '今月のAIリフレクション利用上限に達しました。プレミアムプランで無制限にご利用いただけます。';
+            break;
+          case 'REGENERATE_NOT_ALLOWED':
+            errorMessage = '無料プランでは同じ日記の再生成はできません。プレミアムプランにアップグレードすると再生成が可能になります。';
+            break;
+          case 'DIARY_REGENERATE_LIMIT':
+            errorMessage = 'この日記のAIリフレクションは3回まで生成できます。';
+            break;
+        }
+
+        throw new HttpsError('resource-exhausted', errorMessage, {
+          code: limitCheck.errorCode,
+          ...limitCheck.details,
+        });
+      }
+    } else {
+      console.log('[generateReflection] Skipping usage check (development mode)');
+    }
+
     const apiKey = geminiApiKey.value();
 
     if (!apiKey) {
@@ -471,6 +754,12 @@ export const generateReflection = onCall(
             generatedAt: new Date().toISOString(),
             modelVersion: selectedModel,
           };
+
+          // 生成成功時に利用状況を記録
+          if (!data.skipUsageCheck) {
+            const usage = await getAIReflectionUsageWithDiary(userId, diaryDate);
+            await recordAIReflectionUsage(userId, diaryDate, usage.hasExistingReflection);
+          }
 
           console.log('[generateReflection] Success');
           return result;

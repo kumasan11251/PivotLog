@@ -7,6 +7,16 @@ interface AIReflectionButtonProps {
   onPress: () => void;
   disabled?: boolean;
   hasReflection?: boolean;
+  /** 今月の残り回数（無制限の場合はnull） */
+  remainingThisMonth?: number | null;
+  /** プレミアムユーザーかどうか */
+  isPremium?: boolean;
+  /** 再生成可能かどうか */
+  canRegenerate?: boolean;
+  /** この日記の再生成残り回数 */
+  remainingRegenerations?: number | null;
+  /** 利用制限に達しているかどうか */
+  isLimitReached?: boolean;
 }
 
 /**
@@ -17,22 +27,66 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   onPress,
   disabled = false,
   hasReflection = false,
+  remainingThisMonth,
+  isPremium = false,
+  canRegenerate = true,
+  remainingRegenerations,
+  isLimitReached = false,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
 
-  // 既にリフレクションがある場合は「もう一度受け取る」表示
-  const buttonText = hasReflection
-    ? 'もう一度気づきを受け取る'
-    : 'PivotLogからの気づきを受け取る';
+  // ボタンの無効状態を決定
+  const isButtonDisabled = disabled || isLimitReached || (hasReflection && !canRegenerate);
 
-  const buttonBackgroundColor = disabled
+  // 既にリフレクションがある場合は「もう一度受け取る」表示
+  const buttonText = useMemo(() => {
+    if (isLimitReached && !hasReflection) {
+      return '今月の利用上限に達しました';
+    }
+    if (hasReflection) {
+      if (!canRegenerate) {
+        return isPremium
+          ? '再生成の上限に達しました'
+          : '再生成はプレミアム機能です';
+      }
+      return 'もう一度気づきを受け取る';
+    }
+    return 'PivotLogからの気づきを受け取る';
+  }, [hasReflection, canRegenerate, isPremium, isLimitReached]);
+
+  const buttonBackgroundColor = isButtonDisabled
     ? themeColors.border
     : hasReflection
     ? 'transparent'
     : `${themeColors.primary}20`;
 
-  const buttonBorderColor = disabled ? themeColors.border : themeColors.primary;
+  const buttonBorderColor = isButtonDisabled ? themeColors.border : themeColors.primary;
+
+  // ヒントテキストを決定
+  const hintText = useMemo(() => {
+    if (disabled && !isLimitReached) {
+      return '日記を入力すると気づきを受け取れます';
+    }
+
+    // 残り回数の表示（無料ユーザーのみ）
+    if (!isPremium && remainingThisMonth !== null && remainingThisMonth !== undefined) {
+      if (remainingThisMonth <= 0) {
+        return 'プレミアムプランで無制限に利用できます ✨';
+      }
+      return `今月の残り: ${remainingThisMonth}回`;
+    }
+
+    // プレミアムユーザーの再生成残り回数
+    if (isPremium && hasReflection && remainingRegenerations !== null && remainingRegenerations !== undefined) {
+      if (remainingRegenerations <= 0) {
+        return 'この日記の再生成上限に達しました';
+      }
+      return `この日記の残り再生成: ${remainingRegenerations}回`;
+    }
+
+    return null;
+  }, [disabled, isPremium, remainingThisMonth, hasReflection, remainingRegenerations, isLimitReached]);
 
   return (
     <View style={styles.container}>
@@ -46,7 +100,7 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
           hasReflection && styles.buttonSecondary,
         ]}
         onPress={onPress}
-        disabled={disabled}
+        disabled={isButtonDisabled}
         activeOpacity={0.7}
       >
         <Text style={styles.icon}>✨</Text>
@@ -54,7 +108,7 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
           style={[
             styles.buttonText,
             { color: themeColors.primary },
-            disabled && { color: themeColors.text.secondary },
+            isButtonDisabled && { color: themeColors.text.secondary },
             hasReflection && styles.buttonTextSecondary,
           ]}
         >
@@ -62,9 +116,9 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {disabled && (
+      {hintText && (
         <Text style={[styles.hintText, { color: themeColors.text.secondary }]}>
-          日記を入力すると気づきを受け取れます
+          {hintText}
         </Text>
       )}
     </View>

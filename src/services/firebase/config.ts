@@ -24,6 +24,8 @@ export const COLLECTIONS = {
   DIARIES: 'diaries',
   WEEKLY_INSIGHTS: 'weeklyInsights',
   MONTHLY_INSIGHTS: 'monthlyInsights',
+  USAGE: 'usage',
+  SUBSCRIPTION: 'subscription',
 } as const;
 
 export default firebase;

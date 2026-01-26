@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors, spacing } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 import {
   EncouragementHeader,
@@ -25,11 +26,13 @@ import {
 } from '../components/diary';
 import { useDiaryEntry, DiaryFieldKey } from '../hooks/useDiaryEntry';
 import { useAIReflection } from '../hooks/useAIReflection';
+import { useAIReflectionLimit } from '../hooks/useAIReflectionLimit';
 import { DIARY_QUESTIONS } from '../constants/diary';
 
 const DiaryEntryScreen: React.FC = () => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
+  const { isPremium } = useSubscription();
 
   const {
     formState,
@@ -63,14 +66,28 @@ const DiaryEntryScreen: React.FC = () => {
     resetReflection: _resetReflection, // 将来使用予定
   } = useAIReflection({ dateString, formState });
 
+  // ローカルにリフレクションがあるかどうか
+  const hasLocalReflection = aiReflectionState === 'loaded' && aiReflection !== null;
+
+  // AIリフレクション利用制限
+  const {
+    remainingThisMonth,
+    canRegenerate,
+    remainingRegenerations,
+    canGenerate,
+    refreshUsage,
+  } = useAIReflectionLimit({ diaryDate: dateString, hasLocalReflection });
+
   // AIリフレクション取得ボタンのハンドラ
   // キーボードを閉じてからリフレクションを取得する
-  const handleGetAIReflection = useCallback(() => {
+  const handleGetAIReflection = useCallback(async () => {
     // キーボードを閉じる
     Keyboard.dismiss();
     // リフレクションを取得
-    getReflection();
-  }, [getReflection]);
+    await getReflection();
+    // 利用状況を更新
+    refreshUsage();
+  }, [getReflection, refreshUsage]);
 
   // 日記が入力されているかどうか
   const hasDiaryContent = formState.goodTime.trim() || formState.wastedTime.trim() || formState.tomorrow.trim();
@@ -253,11 +270,16 @@ const DiaryEntryScreen: React.FC = () => {
                   />
                 )}
 
-                {(aiReflectionState === 'idle' || aiReflectionState === 'loaded') && (
+                {(aiReflectionState === 'idle' || aiReflectionState === 'loaded' || aiReflectionState === 'limit_reached') && (
                   <AIReflectionButton
                     onPress={handleGetAIReflection}
                     disabled={!hasDiaryContent}
-                    hasReflection={aiReflectionState === 'loaded'}
+                    hasReflection={aiReflectionState === 'loaded' || aiReflectionState === 'limit_reached'}
+                    remainingThisMonth={remainingThisMonth}
+                    isPremium={isPremium}
+                    canRegenerate={canRegenerate}
+                    remainingRegenerations={remainingRegenerations}
+                    isLimitReached={!canGenerate && aiReflectionState !== 'loaded'}
                   />
                 )}
               </View>

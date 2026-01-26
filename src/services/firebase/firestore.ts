@@ -191,11 +191,40 @@ export const getDiaryByDateFromFirestore = async (
 
 /**
  * 日記を削除
+ * 日記のドキュメントを削除し、関連するAIリフレクションの生成履歴も削除する
  */
 export const deleteDiaryEntryFromFirestore = async (id: string): Promise<void> => {
   try {
     const userDoc = getUserDocRef();
     await userDoc.collection(COLLECTIONS.DIARIES).doc(id).delete();
+    console.log(`[Firestore] 日記 ${id} を削除しました`);
+
+    // AIリフレクションの生成履歴も削除（月間利用回数は維持）
+    // idは日付形式（YYYY-MM-DD）なので、そのまま使用
+    try {
+      const usageRef = userDoc.collection(COLLECTIONS.USAGE).doc('aiReflection');
+      const usageDoc = await usageRef.get();
+
+      if (usageDoc.exists) {
+        const data = usageDoc.data();
+        if (data?.reflectionHistory && data.reflectionHistory[id]) {
+          // reflectionHistoryから該当日付のエントリを削除
+          const updatedReflectionHistory = { ...data.reflectionHistory };
+          delete updatedReflectionHistory[id];
+
+          await usageRef.update({
+            reflectionHistory: updatedReflectionHistory,
+            updatedAt: new Date().toISOString(),
+          });
+          console.log(`[Firestore] 日記 ${id} の生成履歴を削除しました`);
+        } else {
+          console.log(`[Firestore] 日記 ${id} の生成履歴は存在しませんでした`);
+        }
+      }
+    } catch (usageError) {
+      // 生成履歴の削除に失敗しても日記削除は成功として扱う
+      console.error('[Firestore] 生成履歴の削除に失敗:', usageError);
+    }
   } catch (error) {
     console.error('日記の削除に失敗しました:', error);
     throw error;
