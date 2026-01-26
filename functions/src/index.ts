@@ -791,28 +791,108 @@ export const generateReflection = onCall(
 // ============================================================
 
 /**
- * 週次インサイト用システムプロンプト（簡潔版）
+ * 週次インサイト用システムプロンプト
+ *
+ * PivotLogのコンセプト「人生の有限性を意識する」に基づき、
+ * 1週間の日記から「この週のストーリー」を紡ぎ、来週への希望を持たせる
  */
-const WEEKLY_INSIGHT_SYSTEM_PROMPT = `あなたは「PivotLog」の週次レポートアナリストです。1週間の日記から時間の使い方のパターンを発見し、自己理解を深めるインサイトを提供します。
+const WEEKLY_INSIGHT_SYSTEM_PROMPT = `あなたは「PivotLog」の週間リフレクションパートナーです。
 
-【必須ルール】
-1. 日記の具体的な言葉を「」で引用する（各パターンに最低1つ）
-2. 2〜3個のパターンを抽出する
-3. 批判せず「気づき」として提示する
-4. 「〜ですね」「〜かもしれません」の柔らかい語尾を使う
+【PivotLogとは】
+人生の有限性を意識するライフログアプリ。ユーザーは目標寿命を設定し、残り時間を可視化しながら、毎日3つの問いに答えています：
+- ✨ 今日、時間を使えてよかったこと
+- 💭 今日、時間の使い方で後悔していること
+- 🌅 明日、大切にしたいこと
 
-【分析観点】
-- 喜びの源泉：「良かったこと」の共通テーマ（人・活動・達成感など）
-- 後悔のパターン：繰り返される後悔、その裏にある「本当はこうしたかった」
-- 意図と行動：「明日大切にしたいこと」が翌日に反映されているか
+【あなたの役割】
+1週間分の日記を読み、ユーザーが「この1週間をどう過ごしたか」を物語として紡ぎ、次への希望を灯す存在です。分析レポートではなく、「友人が1週間の話を聞いて、温かいフィードバックをくれる」ようなトーンで。
 
-【出力形式の注意】
-- summary: 100-150文字。最も顕著な傾向を指摘し、温かく労う
-- patterns: 2〜3個。各patternのdescriptionは50-80文字、具体的引用を含める
-- question: 40-60文字。来週できる具体的なアクションを提案
+【重要：時制について】
+ユーザーは「その週が終わった後」にインサイトを見ます。「今週」「来週」という言葉は使わず、具体的な期間（例：「1/20〜1/26の1週間」）や「この週」「次の週」という表現を使ってください。
 
-【パターンタイプ】
-positive_theme / growth_area / time_awareness / relationship / self_care / intention_action`;
+【週間インサイトの3つの目的】
+1. 承認：「この1週間、あなたはこんな素敵な時間を過ごしましたね」
+2. 発見：「自分では気づいていなかったけど、こんな傾向がありますよ」
+3. 希望：「次の週はこうしてみませんか？」
+
+【summaryの書き方 - 最重要】
+summaryは「この週のハイライト」です。150-220文字で、以下を必ず含めてください：
+1. 対象期間を明記する（例：「1/20〜1/26の1週間」）
+2. この週で最も印象的だった出来事を「」で引用する（2つ以上推奨）
+3. その出来事が持つ意味を言語化する（なぜ良かったのか、何を大切にしていたのか）
+4. 温かい一言で締める（「素敵な時間でしたね」「お疲れさまでした」など）
+
+＜良いsummaryの例＞
+「1/20〜1/26の1週間は、「子どもと公園で遊べた」「久しぶりに友人とランチできた」など、大切な人との時間を積み重ねられた週でしたね。忙しい日々の中でも『誰かと一緒にいる時間』を意識的に選び取れていることが、日記の言葉から伝わってきます。こうした時間の積み重ねが、人生を豊かにしていくのだと思います。」
+
+＜避けるべきsummary＞
+- 「今週は5日分の記録がありました」（事実の羅列）
+- 「今週もお疲れ様でした」（「今週」という時制が不適切）
+- 「ポジティブな傾向が見られます」（分析的すぎる）
+- 「良かったですね」（具体性がない）
+
+【patternsの書き方】
+パターンは「ユーザー自身も気づいていなかった発見」を提供します。各パターンは80-120文字で、必ず引用例（examples）を1-2個含めてください。表面的な傾向ではなく、深い洞察を。
+
+＜良いパターンの例＞
+- type: positive_theme
+  title: 「誰かのために」が喜びの源泉
+  description: 「同僚の仕事を手伝った」「子どもに絵本を読んだ」など、自分のためより誰かのための時間に喜びを感じているようです。この「与える喜び」があなたの幸福の大きな要素かもしれませんね。
+  examples: [{ date: "2024-01-22", quote: "同僚の仕事を手伝った" }]
+
+- type: intention_action
+  title: 朝の決意が夜の満足に
+  description: 「早起きしたい」と書いた翌日は「朝の時間を有効活用できた」と記録されています。言葉にした意図を行動に移す力を持っていますね。この「言葉→行動」のサイクルを意識的に使うと、さらに充実した日々になりそうです。
+  examples: [{ date: "2024-01-23", quote: "朝の時間を有効活用できた" }]
+
+- type: growth_area
+  title: 「だらだら」の裏にある本音
+  description: 「スマホを見すぎた」という後悔が3回登場しています。でもその裏には「もっと本を読みたい」「もっと家族と話したい」という願いがあるのかもしれません。「スマホの代わりに何をしたいか」を考えると、ヒントが見つかりそうです。
+  examples: [{ date: "2024-01-21", quote: "スマホを見すぎた" }]
+
+＜避けるべきパターン＞
+- 「良かったことを書いています」（当たり前すぎる）
+- 「後悔が多いです」（批判的）
+- 「時間を大切にしています」（抽象的）
+- examples が空のパターン（具体性がない）
+
+【questionの書き方】
+次の週に向けた具体的なアクションを提案します。60-100文字で、背景と提案を含めてください。「考えてみてください」ではなく「やってみませんか」。
+
+＜良いquestionの例＞
+- 「この週に会えた友人に、『また会いたい』とLINEしてみませんか？ちょっとした一言が、次の楽しい時間につながります。」
+- 「『早起きしたい』が3回登場しました。次の週は1日だけ、30分だけ早く起きてみては？小さな成功体験が自信になります。」
+- 「『子どもとの時間が良かった』と書かれた日が2回。次の週末も、同じような時間を作れそうですか？」
+
+＜避けるべきquestion＞
+- 「人生について考えてみてください」（大きすぎる）
+- 「時間を大切にしましょう」（抽象的）
+- 「来週も頑張りましょう」（具体性がない）
+- 「どうでしたか？」（行動に繋がらない）
+
+【残り時間への言及】
+たまに（毎回ではなく）残り時間に言及すると、PivotLogのコンセプトが活きます：
+- 「残り約○○年の中で、こういう週末をあと何百回過ごせるでしょうか。この週の時間は、かけがえのない1回でしたね。」
+- 「1週間は人生の約0.0○%。小さいようで、この週のあなたの選択はちゃんと積み重なっています。」
+
+【トーン】
+- 温かく、親しみを込めて
+- 「〜ですね」「〜かもしれませんね」「〜はいかがですか？」
+- 友達が話を聞いてくれているような安心感
+- 批判・説教は絶対にしない
+
+【絶対に避けること】
+- 「今週」「来週」という時制表現（代わりに「この週」「次の週」「1/20〜1/26」を使う）
+- 「分析します」「レポートします」などの硬い表現
+- ユーザーの日記にない情報を勝手に推測する
+- 「〜すべきです」「〜しなければなりません」などの指示
+- 抽象的な哲学的問い
+- examplesのないpattern
+
+【出力形式】
+- summary: 150-220文字。対象期間を明記し、この週のハイライトと温かい締め
+- patterns: 2〜3個。各80-120文字、深い洞察、引用例（examples）必須
+- question: 60-100文字。背景説明 + 具体的なアクション提案`;
 
 /**
  * 週次インサイト生成リクエストの型
@@ -854,7 +934,7 @@ interface WeeklyInsightResponse {
 function generateWeeklyInsightUserPrompt(request: GenerateWeeklyInsightRequest): string {
   const { entries, currentAge, remainingYears, remainingDays, weekStartDate, weekEndDate } = request;
 
-  // 日記エントリーを整形（より分析しやすい形式に）
+  // 日記エントリーを整形
   const entriesText = entries
     .map((entry, index) => {
       const date = new Date(entry.date);
@@ -866,70 +946,156 @@ function generateWeeklyInsightUserPrompt(request: GenerateWeeklyInsightRequest):
     })
     .join('\n\n');
 
-  // 分析のヒントを生成
+  // 深い分析のためのヒントを生成
   const analysisHints = generateAnalysisHints(entries);
 
-  return `【ユーザー情報】
-${currentAge}歳。目標寿命まで残り約${remainingYears}年（${remainingDays.toLocaleString()}日）。
-1週間は人生の約${(100 / (remainingYears * 52)).toFixed(3)}%に相当。
+  // 意図→行動の連続性を分析
+  const intentionAnalysis = analyzeIntentionToAction(entries);
 
-【分析期間】
-${weekStartDate} 〜 ${weekEndDate}（${entries.length}日分の記録）
+  return `【このユーザーについて】
+${currentAge}歳。人生の目標を${currentAge + Math.round(remainingYears)}歳に設定。
+残り約${Math.round(remainingYears)}年（${remainingDays.toLocaleString()}日）。
+今週の1週間は、残りの人生の約${(100 / (remainingYears * 52)).toFixed(3)}%にあたります。
 
-【この週の日記】
+【今週の期間】
+${weekStartDate.replace(/-/g, '/')} 〜 ${weekEndDate.replace(/-/g, '/')}
+記録日数: ${entries.length}日分
+
+【今週の日記】
 ${entriesText}
 
-【分析のヒント】
+【深い分析のためのヒント】
 ${analysisHints}
 
-【依頼事項】
-1. 上記の日記を深く読み込み、ユーザー自身も気づいていないパターンを発見してください
-2. 「良かったこと」に共通する要素（人・活動・場所など）を探してください
-3. 「後悔」に繰り返し現れるテーマがあれば指摘してください
-4. 「明日大切にしたいこと」が実際の行動に反映されているか確認してください
-5. 必ず日記の具体的な言葉を引用してください
-6. 分析結果から自然に導かれる、来週への具体的な問いかけを1つ提案してください`;
+${intentionAnalysis}
+
+【あなたへのお願い】
+この日記を「友人の1週間の話を聞く」つもりで読んでください。
+
+1. summaryでは：
+   - 対象期間（${weekStartDate.replace(/-/g, '/')}〜${weekEndDate.replace(/-/g, '/')}）を文頭に明記してください
+   - この週で最も心に残る出来事を「」で引用してください（2つ以上推奨）
+   - その出来事がなぜ大切だったのか、言葉にしてあげてください
+   - 「素敵な時間でしたね」「お疲れさまでした」など温かい言葉で締めてください
+   - ※「今週」「来週」ではなく「この週」「次の週」と表現してください
+
+2. patternsでは：
+   - ユーザー自身が気づいていなさそうな「発見」を提供してください
+   - 日記の言葉を必ず引用してください（examples必須）
+   - 「〜かもしれませんね」という柔らかいトーンで
+   - 各パターン80-120文字でしっかり説明してください
+
+3. questionでは：
+   - 「次の週、これをやってみませんか？」という具体的な提案をしてください
+   - 日記に登場した人・場所・活動を使ってください
+   - なぜその提案をするのか、背景も一言添えてください
+   - ※「来週」ではなく「次の週」と表現してください`;
 }
 
 /**
- * 日記エントリーから分析のヒントを生成
+ * 日記エントリーから深い分析のヒントを生成
  */
 function generateAnalysisHints(entries: GenerateWeeklyInsightRequest['entries']): string {
   const hints: string[] = [];
 
   // 良かったことに登場する人物を抽出
-  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|上司|部下|先輩|後輩/g;
+  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|上司|部下|先輩|後輩|彼|彼女|パートナー|家族/g;
   const allGoodTimes = entries.map(e => e.goodTime).join(' ');
   const peopleMatches = allGoodTimes.match(peoplePattern);
   if (peopleMatches && peopleMatches.length > 0) {
     const uniquePeople = [...new Set(peopleMatches)];
-    hints.push(`・「良かったこと」に登場する人物: ${uniquePeople.join('、')}（${peopleMatches.length}回言及）`);
+    hints.push(`【人間関係】「良かったこと」に登場する人物: ${uniquePeople.join('、')}（${peopleMatches.length}回言及）→ 人との時間が幸福の源泉かも`);
   }
 
-  // 後悔のキーワードを抽出
-  const regretKeywords = /夜更かし|先延ばし|だらだら|無駄|スマホ|SNS|ゲーム|二度寝|寝坊|食べ過ぎ|飲み過ぎ/g;
+  // 良かったことに登場する活動・場所を抽出
+  const activityPattern = /運動|散歩|ランニング|ジム|読書|映画|音楽|料理|掃除|仕事|勉強|カフェ|レストラン|公園|旅行|買い物/g;
+  const activityMatches = allGoodTimes.match(activityPattern);
+  if (activityMatches && activityMatches.length > 0) {
+    const uniqueActivities = [...new Set(activityMatches)];
+    hints.push(`【活動】喜びを感じた活動: ${uniqueActivities.join('、')}`);
+  }
+
+  // 後悔のキーワードを抽出（より詳細に）
+  const regretKeywords = /夜更かし|先延ばし|だらだら|無駄|スマホ|SNS|ゲーム|二度寝|寝坊|食べ過ぎ|飲み過ぎ|Netflix|YouTube|動画|怒|イライラ|集中できな/g;
   const allRegrets = entries.map(e => e.wastedTime).join(' ');
   const regretMatches = allRegrets.match(regretKeywords);
   if (regretMatches && regretMatches.length > 0) {
     const uniqueRegrets = [...new Set(regretMatches)];
-    hints.push(`・「後悔」に登場するキーワード: ${uniqueRegrets.join('、')}`);
+    const regretCount = regretMatches.length;
+    hints.push(`【後悔パターン】${uniqueRegrets.join('、')}（計${regretCount}回）→ この裏にある「本当はこうしたかった」を探ってください`);
   }
 
-  // 意図と行動の連続性をチェック
-  for (let i = 0; i < entries.length - 1; i++) {
-    const tomorrow = entries[i].tomorrow;
-    const nextGoodTime = entries[i + 1]?.goodTime;
-    if (tomorrow && nextGoodTime && tomorrow.length > 5 && nextGoodTime.length > 5) {
-      hints.push(`・${entries[i].date}の「明日の意図」→ ${entries[i + 1].date}の「良かったこと」の関連性を確認してください`);
-      break; // 1つだけヒントとして出す
-    }
+  // 達成感に関連するキーワード
+  const achievementPattern = /できた|終わった|達成|完了|成功|うまくいった|褒められた|感謝された/g;
+  const achievementMatches = allGoodTimes.match(achievementPattern);
+  if (achievementMatches && achievementMatches.length > 0) {
+    hints.push(`【達成感】達成・完了に関する言及が${achievementMatches.length}回 → 「やり遂げる」ことに喜びを感じるタイプかも`);
+  }
+
+  // 感情表現を抽出
+  const emotionPattern = /嬉しい|楽しい|幸せ|安心|ホッと|リラックス|充実|満足|ワクワク/g;
+  const allText = entries.map(e => `${e.goodTime} ${e.tomorrow}`).join(' ');
+  const emotionMatches = allText.match(emotionPattern);
+  if (emotionMatches && emotionMatches.length > 0) {
+    const uniqueEmotions = [...new Set(emotionMatches)];
+    hints.push(`【感情】よく使われる感情表現: ${uniqueEmotions.join('、')}`);
   }
 
   if (hints.length === 0) {
-    hints.push('・特定のパターンが見つけにくい場合は、ユーザーの言葉遣いや表現の傾向に注目してください');
+    hints.push('特定のパターンが見つけにくい場合は、ユーザーの言葉遣いや表現の傾向、文章の長さの変化に注目してください');
   }
 
   return hints.join('\n');
+}
+
+/**
+ * 「明日大切にしたいこと」→ 翌日の「良かったこと」の連続性を分析
+ */
+function analyzeIntentionToAction(entries: GenerateWeeklyInsightRequest['entries']): string {
+  const analyses: string[] = [];
+  let successCount = 0;
+  let totalChecked = 0;
+
+  for (let i = 0; i < entries.length - 1; i++) {
+    const tomorrow = entries[i].tomorrow;
+    const nextGoodTime = entries[i + 1]?.goodTime;
+
+    if (tomorrow && tomorrow.length > 3 && nextGoodTime && nextGoodTime.length > 3) {
+      totalChecked++;
+
+      // 簡易的な類似性チェック（共通するキーワードがあるか）
+      const tomorrowWords = tomorrow.split(/[\s、。,．・]/);
+      const goodTimeWords = nextGoodTime.split(/[\s、。,．・]/);
+      const commonWords = tomorrowWords.filter(w => w.length > 1 && goodTimeWords.some(g => g.includes(w) || w.includes(g)));
+
+      if (commonWords.length > 0) {
+        successCount++;
+        if (analyses.length < 2) {
+          analyses.push(`  - ${entries[i].date}: 「${tomorrow.slice(0, 20)}...」→ 翌日「${nextGoodTime.slice(0, 20)}...」（実現の可能性あり）`);
+        }
+      }
+    }
+  }
+
+  if (totalChecked === 0) {
+    return '';
+  }
+
+  const successRate = Math.round((successCount / totalChecked) * 100);
+  let summary = `【意図→行動の分析】\n`;
+  summary += `「明日大切にしたいこと」が翌日に反映されていそうな日: ${successCount}/${totalChecked}日（${successRate}%）\n`;
+
+  if (successRate >= 50) {
+    summary += `→ 意図を行動に移す力が高いです。これを活かしたquestionを考えてください。\n`;
+  } else if (successRate > 0) {
+    summary += `→ 意図と行動のギャップに注目。patternsで「intention_action」タイプを検討してください。\n`;
+  }
+
+  if (analyses.length > 0) {
+    summary += analyses.join('\n');
+  }
+
+  return summary;
 }
 
 /**
@@ -1074,55 +1240,90 @@ function extractPartialInsightData(response: string): {
 
 /**
  * フォールバック用の週次インサイトを生成
+ * AIが利用できない場合でも、ユーザーに価値を提供する
  */
 function generateFallbackWeeklyInsight(request: GenerateWeeklyInsightRequest): WeeklyInsightResponse {
-  const { entries, remainingYears } = request;
+  const { entries, remainingYears, weekStartDate, weekEndDate } = request;
 
   // remainingYearsを適切にフォーマット（小数点以下1桁）
   const formattedYears = Math.round(remainingYears * 10) / 10;
 
-  // 日記から最初の具体的な言葉を探す
-  let firstQuote = '';
-  let quoteDate = '';
+  // 日記から最も内容の充実したエントリーを探す
+  let bestGoodEntry: { date: string; content: string } | null = null;
+  let bestRegretEntry: { date: string; content: string } | null = null;
+
   for (const entry of entries) {
-    if (entry.goodTime && entry.goodTime.length > 10) {
-      firstQuote = entry.goodTime.slice(0, 30) + (entry.goodTime.length > 30 ? '...' : '');
-      quoteDate = entry.date;
-      break;
+    if (entry.goodTime && entry.goodTime.length > (bestGoodEntry?.content.length || 0)) {
+      bestGoodEntry = { date: entry.date, content: entry.goodTime };
+    }
+    if (entry.wastedTime && entry.wastedTime.length > (bestRegretEntry?.content.length || 0)) {
+      bestRegretEntry = { date: entry.date, content: entry.wastedTime };
     }
   }
 
-  const summary = firstQuote
-    ? `今週は${entries.length}日分の振り返りがありました。「${firstQuote}」など、日々の体験をしっかりと記録されていますね。こうして自分の時間と向き合う習慣は、残り約${formattedYears}年をより豊かにする大切な一歩です。`
-    : `今週は${entries.length}日分の記録がありました。毎日の振り返りを続けていることは、残り約${formattedYears}年をより意識的に過ごすための大切な習慣ですね。`;
+  // 人物が登場しているか確認
+  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|家族/g;
+  const allGoodTimes = entries.map(e => e.goodTime).join(' ');
+  const peopleMatches = allGoodTimes.match(peoplePattern);
+  const hasPeopleTheme = peopleMatches && peopleMatches.length > 0;
 
-  // 複数のパターンを生成（フォールバックでも充実した内容に）
-  const fallbackPatterns: WeeklyInsightResponse['patterns'] = [
-    {
-      type: 'time_awareness',
-      title: '振り返りの習慣化',
-      description: `${entries.length}日間、自分の時間と向き合う時間を取れています。この「立ち止まって考える」習慣が、日々の選択を変えていきます。`,
-      examples: quoteDate && firstQuote ? [{ date: quoteDate, quote: firstQuote }] : undefined,
-      frequency: entries.length,
-    },
-  ];
+  // サマリーを生成（時制に注意：「今週」「来週」は使わない）
+  let summary: string;
+  if (bestGoodEntry) {
+    const quote = bestGoodEntry.content.slice(0, 25) + (bestGoodEntry.content.length > 25 ? '...' : '');
+    summary = `${weekStartDate.replace(/-/g, '/')}〜${weekEndDate.replace(/-/g, '/')}の1週間、${entries.length}日分の振り返りお疲れさまでした。「${quote}」など、${hasPeopleTheme ? '大切な人との時間' : '充実した時間'}を過ごせた週でしたね。残り約${formattedYears}年の中で、こうした時間を積み重ねていけますように。`;
+  } else {
+    summary = `${weekStartDate.replace(/-/g, '/')}〜${weekEndDate.replace(/-/g, '/')}の1週間、${entries.length}日分の振り返りお疲れさまでした。毎日自分の時間と向き合うことは、残り約${formattedYears}年をより豊かにするための大切な習慣です。次の週もこの調子で続けていきましょう。`;
+  }
 
-  // 後悔のパターンがあれば追加
-  const regretEntry = entries.find(e => e.wastedTime && e.wastedTime.length > 10);
-  if (regretEntry) {
+  // パターンを生成
+  const fallbackPatterns: WeeklyInsightResponse['patterns'] = [];
+
+  // パターン1: 振り返りの習慣
+  fallbackPatterns.push({
+    type: 'time_awareness',
+    title: '振り返りの習慣化',
+    description: `この週は${entries.length}日間、自分の時間と向き合えました。この「立ち止まって考える」習慣が、日々の選択を少しずつ変えていきます。継続することで、より充実した時間の使い方が見えてくるはずです。`,
+    examples: bestGoodEntry ? [{ date: bestGoodEntry.date, quote: bestGoodEntry.content.slice(0, 40) }] : [{ date: entries[0]?.date || '', quote: '振り返りを続けている' }],
+    frequency: entries.length,
+  });
+
+  // パターン2: 人との時間（該当する場合）
+  if (hasPeopleTheme && peopleMatches) {
+    const uniquePeople = [...new Set(peopleMatches)];
+    fallbackPatterns.push({
+      type: 'relationship',
+      title: '人との時間を大切に',
+      description: `「良かったこと」に${uniquePeople.join('、')}が登場しています。人との繋がりがあなたの幸せの源泉かもしれませんね。こうした時間を意識的に増やすと、より充実した日々になりそうです。`,
+      examples: bestGoodEntry ? [{ date: bestGoodEntry.date, quote: bestGoodEntry.content.slice(0, 40) }] : undefined,
+      frequency: peopleMatches.length,
+    });
+  }
+
+  // パターン3: 成長への気づき（後悔がある場合）
+  if (bestRegretEntry && bestRegretEntry.content.length > 5) {
     fallbackPatterns.push({
       type: 'growth_area',
       title: '成長への気づき',
-      description: `「${regretEntry.wastedTime.slice(0, 20)}${regretEntry.wastedTime.length > 20 ? '...' : ''}」など、改善したい点にも目を向けられています。この自己認識が成長の第一歩です。`,
-      examples: [{ date: regretEntry.date, quote: regretEntry.wastedTime.slice(0, 50) }],
-      frequency: entries.filter(e => e.wastedTime && e.wastedTime.length > 5).length,
+      description: `「${bestRegretEntry.content.slice(0, 20)}${bestRegretEntry.content.length > 20 ? '...' : ''}」など、改善したい点にも目を向けられています。後悔を言葉にできること自体が、変化への第一歩です。`,
+      examples: [{ date: bestRegretEntry.date, quote: bestRegretEntry.content.slice(0, 40) }],
     });
+  }
+
+  // 問いかけを生成（時制に注意：「来週」は使わない）
+  let question: string;
+  if (hasPeopleTheme) {
+    question = 'この週に会えた人に、次の週も連絡してみませんか？ちょっとしたLINEでも、繋がりは深まります。';
+  } else if (bestGoodEntry) {
+    question = `この週「良かった」と感じたことを、次の週ももう一度やってみませんか？同じ喜びを再現できるかもしれません。`;
+  } else {
+    question = '次の週は「これができて良かった」と思える時間を、1つ意識的に作ってみませんか？';
   }
 
   return {
     summary,
     patterns: fallbackPatterns,
-    question: '来週は「良かった」と思える時間を、どんな風に増やしてみたいですか？',
+    question,
     generatedAt: new Date().toISOString(),
     modelVersion: 'fallback',
   };
@@ -1189,7 +1390,7 @@ export const generateWeeklyInsight = onCall(
       console.log('[generateWeeklyInsight] Calling Gemini API...');
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -1202,7 +1403,7 @@ export const generateWeeklyInsight = onCall(
               },
             ],
             generationConfig: {
-              temperature: 0.7, // 安定した出力のために調整
+              temperature: 0.8, // 創造性と安定性のバランス
               maxOutputTokens: 8192, // 十分な出力枠を確保
               responseMimeType: 'application/json',
               responseSchema: {
@@ -1210,11 +1411,11 @@ export const generateWeeklyInsight = onCall(
                 properties: {
                   summary: {
                     type: 'string',
-                    description: '週全体のサマリー（100-150文字）'
+                    description: 'この週のハイライトと温かい締め（150-220文字）。対象期間を明記し、日記の言葉を「」で2つ以上引用する'
                   },
                   patterns: {
                     type: 'array',
-                    description: '発見したパターン（2-3個）',
+                    description: '発見したパターン（2-3個）。深い洞察とexamples必須',
                     items: {
                       type: 'object',
                       properties: {
@@ -1224,15 +1425,15 @@ export const generateWeeklyInsight = onCall(
                         },
                         title: {
                           type: 'string',
-                          description: 'パターンのタイトル（10-15文字）'
+                          description: 'パターンのタイトル（8-15文字）'
                         },
                         description: {
                           type: 'string',
-                          description: 'パターンの説明（50-80文字）'
+                          description: 'パターンの説明（80-120文字）。日記の言葉を「」で引用し、深い洞察を提供'
                         },
                         examples: {
                           type: 'array',
-                          description: '引用例（1-2個）',
+                          description: '引用例（1-2個、必須）',
                           items: {
                             type: 'object',
                             properties: {
@@ -1247,12 +1448,12 @@ export const generateWeeklyInsight = onCall(
                           description: '出現回数'
                         },
                       },
-                      required: ['type', 'title', 'description'],
+                      required: ['type', 'title', 'description', 'examples'],
                     },
                   },
                   question: {
                     type: 'string',
-                    description: '来週への問いかけ（40-60文字）'
+                    description: '次の週への具体的なアクション提案（60-100文字）。背景説明 + 「〜してみませんか？」の形式で'
                   },
                 },
                 required: ['summary', 'patterns', 'question'],
@@ -1295,7 +1496,7 @@ export const generateWeeklyInsight = onCall(
         patterns: parsed.patterns,
         question: parsed.question,
         generatedAt: new Date().toISOString(),
-        modelVersion: 'gemini-2.5-flash',
+        modelVersion: 'gemini-2.5-pro',
       };
 
       console.log('[generateWeeklyInsight] Success');
@@ -1548,7 +1749,7 @@ function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse |
         },
         question: parsed.question || '',
         generatedAt: new Date().toISOString(),
-        modelVersion: 'gemini-2.5-flash',
+        modelVersion: 'gemini-2.5-pro',
       };
     }
 
@@ -1667,7 +1868,7 @@ export const generateMonthlyInsight = onCall(
       console.log('[generateMonthlyInsight] Calling Gemini API...');
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
