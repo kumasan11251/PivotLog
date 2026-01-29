@@ -150,10 +150,48 @@ export interface GenerateMonthlyInsightRequest {
 }
 
 /**
- * 月次インサイト生成レスポンスの型
+ * ストーリーラインのムード型
+ */
+type StorylineMood = 'busy' | 'peaceful' | 'challenging' | 'growing' | 'joyful' | 'reflective';
+
+/**
+ * 月次インサイト生成レスポンスの型（新構造・3時期・パーセンテージなし）
  */
 export interface MonthlyInsightResponse {
-  summary: string;
+  // 新セクション
+  lifeContextSummary: string;
+  storyline: {
+    beginning: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: StorylineMood;
+    };
+    middle: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: StorylineMood;
+    };
+    end: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: StorylineMood;
+    };
+  };
+  valueDiscovery: {
+    primaryValue: {
+      name: string;
+      evidence: string[];
+      insight: string;
+    };
+    secondaryValues: Array<{
+      name: string;
+      briefEvidence: string;
+    }>;
+    hiddenInsight: string;
+  };
   highlights: Array<{
     date: string;
     type: 'achievement' | 'connection' | 'discovery' | 'turning_point';
@@ -161,12 +199,7 @@ export interface MonthlyInsightResponse {
     description: string;
     quote?: string;
   }>;
-  themes: Array<{
-    type: string;
-    title: string;
-    description: string;
-    examples?: Array<{ date: string; quote: string }>;
-  }>;
+  letterToFutureSelf: string;
   growth: {
     improvements: string[];
     challenges: string[];
@@ -175,6 +208,14 @@ export interface MonthlyInsightResponse {
   question: string;
   generatedAt: string;
   modelVersion: string;
+  // 後方互換性
+  summary?: string;
+  themes?: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+  }>;
 }
 
 /**

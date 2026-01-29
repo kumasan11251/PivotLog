@@ -128,16 +128,19 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
             monthStartDate: cached.monthStartDate,
             monthEndDate: cached.monthEndDate,
             entryCount: cached.entryCount,
-            summary: cached.summary,
+            // 新セクション
+            lifeContextSummary: cached.lifeContextSummary,
+            storyline: cached.storyline,
+            valueDiscovery: cached.valueDiscovery,
             highlights: cached.highlights,
-            themes: cached.themes.map(t => ({
-              ...t,
-              type: t.type as MonthlyInsightData['themes'][0]['type'],
-            })),
+            letterToFutureSelf: cached.letterToFutureSelf,
             growth: cached.growth,
             question: cached.question,
             generatedAt: cached.generatedAt,
             modelVersion: cached.modelVersion,
+            // 後方互換性
+            summary: cached.summary || cached.lifeContextSummary,
+            themes: cached.themes,
           };
           insightCacheRef.current.set(monthKey, insight);
           updateTask(monthKey, { status: 'completed', completedAt: Date.now() });
@@ -195,16 +198,19 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
           monthStartDate: monthInfo.startDate,
           monthEndDate: monthInfo.endDate,
           entryCount: entries.length,
-          summary: response.summary,
+          // 新セクション
+          lifeContextSummary: response.lifeContextSummary,
+          storyline: response.storyline,
+          valueDiscovery: response.valueDiscovery,
           highlights: response.highlights,
-          themes: response.themes.map(t => ({
-            ...t,
-            type: t.type as MonthlyInsightData['themes'][0]['type'],
-          })),
+          letterToFutureSelf: response.letterToFutureSelf,
           growth: response.growth,
           question: response.question,
           generatedAt: response.generatedAt,
           modelVersion: response.modelVersion,
+          // 後方互換性
+          summary: response.summary || response.lifeContextSummary,
+          themes: response.themes,
         };
 
         // Firestoreに保存
@@ -261,16 +267,19 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
         monthStartDate: firestoreData.monthStartDate,
         monthEndDate: firestoreData.monthEndDate,
         entryCount: firestoreData.entryCount,
-        summary: firestoreData.summary,
+        // 新セクション
+        lifeContextSummary: firestoreData.lifeContextSummary,
+        storyline: firestoreData.storyline,
+        valueDiscovery: firestoreData.valueDiscovery,
         highlights: firestoreData.highlights,
-        themes: firestoreData.themes.map(t => ({
-          ...t,
-          type: t.type as MonthlyInsightData['themes'][0]['type'],
-        })),
+        letterToFutureSelf: firestoreData.letterToFutureSelf,
         growth: firestoreData.growth,
         question: firestoreData.question,
         generatedAt: firestoreData.generatedAt,
         modelVersion: firestoreData.modelVersion,
+        // 後方互換性
+        summary: firestoreData.summary || firestoreData.lifeContextSummary,
+        themes: firestoreData.themes,
       };
       insightCacheRef.current.set(monthKey, insight);
       return insight;

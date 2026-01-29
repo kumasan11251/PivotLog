@@ -265,16 +265,19 @@ export const useMonthlyInsight = (
             monthStartDate: cachedInsight.monthStartDate,
             monthEndDate: cachedInsight.monthEndDate,
             entryCount: cachedInsight.entryCount,
-            summary: cachedInsight.summary,
+            // 新セクション
+            lifeContextSummary: cachedInsight.lifeContextSummary,
+            storyline: cachedInsight.storyline,
+            valueDiscovery: cachedInsight.valueDiscovery,
             highlights: cachedInsight.highlights,
-            themes: cachedInsight.themes.map(t => ({
-              ...t,
-              type: t.type as MonthlyInsightData['themes'][0]['type'],
-            })),
+            letterToFutureSelf: cachedInsight.letterToFutureSelf,
             growth: cachedInsight.growth,
             question: cachedInsight.question,
             generatedAt: cachedInsight.generatedAt,
             modelVersion: cachedInsight.modelVersion,
+            // 後方互換性
+            summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
+            themes: cachedInsight.themes,
           });
           setIsCurrentMonthCached(true);
           setState('loaded');
@@ -335,16 +338,19 @@ export const useMonthlyInsight = (
             monthStartDate: cachedInsight.monthStartDate,
             monthEndDate: cachedInsight.monthEndDate,
             entryCount: cachedInsight.entryCount,
-            summary: cachedInsight.summary,
+            // 新セクション
+            lifeContextSummary: cachedInsight.lifeContextSummary,
+            storyline: cachedInsight.storyline,
+            valueDiscovery: cachedInsight.valueDiscovery,
             highlights: cachedInsight.highlights,
-            themes: cachedInsight.themes.map(t => ({
-              ...t,
-              type: t.type as MonthlyInsightData['themes'][0]['type'],
-            })),
+            letterToFutureSelf: cachedInsight.letterToFutureSelf,
             growth: cachedInsight.growth,
             question: cachedInsight.question,
             generatedAt: cachedInsight.generatedAt,
             modelVersion: cachedInsight.modelVersion,
+            // 後方互換性
+            summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
+            themes: cachedInsight.themes,
           });
           setIsCurrentMonthCached(true);
           setState('loaded');
@@ -400,16 +406,19 @@ export const useMonthlyInsight = (
             monthStartDate: cachedInsight.monthStartDate,
             monthEndDate: cachedInsight.monthEndDate,
             entryCount: cachedInsight.entryCount,
-            summary: cachedInsight.summary,
+            // 新セクション
+            lifeContextSummary: cachedInsight.lifeContextSummary,
+            storyline: cachedInsight.storyline,
+            valueDiscovery: cachedInsight.valueDiscovery,
             highlights: cachedInsight.highlights,
-            themes: cachedInsight.themes.map(t => ({
-              ...t,
-              type: t.type as MonthlyInsightData['themes'][0]['type'],
-            })),
+            letterToFutureSelf: cachedInsight.letterToFutureSelf,
             growth: cachedInsight.growth,
             question: cachedInsight.question,
             generatedAt: cachedInsight.generatedAt,
             modelVersion: cachedInsight.modelVersion,
+            // 後方互換性
+            summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
+            themes: cachedInsight.themes,
           });
           setState('loaded');
         }
@@ -490,16 +499,19 @@ export const useMonthlyInsight = (
         monthStartDate: currentMonthInfo.startDate,
         monthEndDate: currentMonthInfo.endDate,
         entryCount: entries.length,
-        summary: response.summary,
+        // 新セクション
+        lifeContextSummary: response.lifeContextSummary,
+        storyline: response.storyline,
+        valueDiscovery: response.valueDiscovery,
         highlights: response.highlights,
-        themes: response.themes.map(t => ({
-          ...t,
-          type: t.type as MonthlyInsightData['themes'][0]['type'],
-        })),
+        letterToFutureSelf: response.letterToFutureSelf,
         growth: response.growth,
         question: response.question,
         generatedAt: response.generatedAt,
         modelVersion: response.modelVersion,
+        // 後方互換性
+        summary: response.summary || response.lifeContextSummary,
+        themes: response.themes,
       };
 
       // Firestoreに保存（上書き）

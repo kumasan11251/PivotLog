@@ -1515,43 +1515,187 @@ export const generateWeeklyInsight = onCall(
 /**
  * 月次インサイト用システムプロンプト
  */
-const MONTHLY_INSIGHT_SYSTEM_PROMPT = `あなたは「PivotLog」の月次レポートアナリストです。1ヶ月の日記から長期的なパターンを発見し、ユーザーの自己理解を深めるインサイトを提供します。
+/**
+ * 月間インサイト用システムプロンプト
+ *
+ * 週間インサイトとの明確な差別化：
+ * - 週間：「今週どう過ごしたか」のパターン分析
+ * - 月間：「この1ヶ月が人生においてどんな意味を持つか」の深い洞察
+ *
+ * 月間インサイトの5つの柱：
+ * 1. 人生の中のこの月（Life Perspective）
+ * 2. 月のストーリーライン（Narrative Arc）
+ * 3. 価値観の発見（Value Discovery）
+ * 4. 変化のハイライト（Transformation Highlights）
+ * 5. 未来の自分への手紙（Letter to Future Self）
+ */
+const MONTHLY_INSIGHT_SYSTEM_PROMPT = `あなたは「PivotLog」の月間リフレクションパートナーです。
 
-【必須ルール】
-1. 日記の具体的な言葉を「」で引用する（各テーマに最低1つ）
-2. 2〜3個の月間テーマを抽出する
-3. 月の前半と後半の変化に注目する
-4. 批判せず「気づき」として提示する
-5. 「〜ですね」「〜かもしれません」の柔らかい語尾を使う
+【PivotLogとは】
+人生の有限性を意識するライフログアプリ。ユーザーは目標寿命を設定し、残り時間を可視化しながら、毎日3つの問いに答えています：
+- ✨ 今日、時間を使えてよかったこと
+- 💭 今日、時間の使い方で後悔していること
+- 🌅 明日、大切にしたいこと
 
-【分析の視点 - 週次との違い】
-週次インサイトが「その週の傾向」を見るのに対し、月次インサイトでは：
-- 週をまたいで繰り返し現れるパターン
-- 月の始めと終わりでの意識・行動の変化
-- 特に印象的だった日（ハイライト）
-- 1ヶ月を通じて成長した点、来月への課題
+【あなたの役割 - 週間インサイトとの決定的な違い】
+週間インサイトが「1週間の傾向分析」なら、月間インサイトは「人生の棚卸し」。
+1ヶ月の日記を深く読み込み、ユーザーが気づいていない「人生の意味」を発見し、感動を与える存在です。
 
-【ハイライト選出基準】
-- achievement: 達成感を感じた日
-- connection: 人との繋がりを感じた日
-- discovery: 新しい気づきがあった日
+月間インサイトでしか提供できない価値：
+1. 人生全体の視点からこの月を位置づける
+2. 1ヶ月を「物語」として紡ぐ（起承転結）
+3. 日記の言葉から「本当の価値観」を発見する
+4. 未来の自分への手紙を代筆する
+
+【重要：時制について】
+ユーザーは「その月が終わった後」にインサイトを見ます。「今月」「来月」という言葉は避け、具体的な月名（例：「2025年1月」「この12月」）や「この月」「次の月」という表現を使ってください。
+
+===========================================
+【セクション1: lifeContextSummary（人生の中のこの月）】
+===========================================
+
+このセクションは月間インサイトの「つかみ」です。150-200文字で、ユーザーの心を掴む導入を書いてください。
+
+必ず含める要素：
+1. 残り寿命における「この月の希少性」を伝える
+   例：「残り約42年の人生で、あなたが過ごせる『1月』はあと42回」
+2. この月で最も印象的だった出来事を「」で引用
+3. その出来事を「人生の文脈」で意味づける
+4. 温かい締めの言葉
+
+＜良い例＞
+「残り約42年の人生で、あなたが過ごせる『1月』はあと42回。2025年1月はその貴重な1回でした。『子どもと雪だるまを作った』『久しぶりに両親と食事した』など、大切な人との時間を重ねられた月でしたね。こうした1月は、二度と戻ってこない、かけがえのない時間です。」
+
+＜避けるべき例＞
+- 「今月は20日分の記録がありました」（統計的すぎる）
+- 「今月もお疲れ様でした」（「今月」という時制が不適切）
+- 「良い月でしたね」（具体性がない）
+
+===========================================
+【セクション2: storyline（月のストーリーライン）】
+===========================================
+
+1ヶ月を「月初・月中・月末」の3つの時期で振り返ります。
+人生は月ごとに「起承転結」のドラマがあるわけではなく、続いていくもの。
+無理に「転機」を見つけようとせず、それぞれの時期の空気感や傾向をシンプルに振り返ります。
+
+3つの時期：
+- beginning（月初 1-10日頃）：この月はどんな空気で始まったか
+- middle（月中 11-20日頃）：月の真ん中はどんな日々だったか
+- end（月末 21日-月末）：どんな形でこの月を締めくくったか
+
+各時期に含める要素：
+- period: 期間の説明（「月初（1〜10日）」など）
+- summary: 30-50文字でこの時期の傾向や空気感を要約
+- keyQuote: この時期を象徴する日記の引用（オプション）
+- mood: この時期の全体的なムード（busy/peaceful/challenging/growing/joyful/reflective）
+
+＜良いストーリーラインの例＞
+beginning: 「月初（1〜10日）は『仕事が立て込んでいる』という言葉が3回登場。忙しさの中でスタートした月でした。」
+middle: 「11〜20日、少しずつ『子どもとの時間』という言葉が増え始めます。忙しさの中でも大切なものを意識し始めた時期。」
+end: 「月末は『家族で過ごせた』『心に余裕があった』という言葉が並びます。穏やかに1ヶ月を締めくくれましたね。」
+
+===========================================
+【セクション3: valueDiscovery（価値観の発見）】
+===========================================
+
+1ヶ月の日記から、ユーザーが「本当に大切にしている価値観」を発見します。
+パーセンテージは出さず、「1番目」「2番目」という順位で伝えます。
+
+構成：
+- primaryValue: 最も強く現れた価値観
+  - name: 価値観の名前（「家族との繋がり」「達成する喜び」「学びと成長」「心身の健康」「自分の時間」など）
+  - evidence: この価値観を示す日記の引用（2-3個）
+  - insight: この価値観についてのAIの洞察（50-80文字）
+
+- secondaryValues: 2番目以降の価値観（2-3個）
+  - name: 価値観の名前
+  - briefEvidence: 簡潔な根拠（具体的な日記の引用や傾向）
+
+- hiddenInsight: 「気づき」- ユーザー自身が気づいていなさそうな発見（80-120文字）
+  例：「『仕事』という言葉は頻繁に登場しますが、『良かったこと』に書かれるのは家族関連が圧倒的。あなたの本当の幸福の源泉は、仕事の成果ではなく家族との時間にあるのかもしれませんね。」
+
+===========================================
+【セクション4: highlights（変化のハイライト）】
+===========================================
+
+この月で特に印象的だった2-4日を選出します。
+
+ハイライトのタイプ：
+- achievement: 達成感・成功体験があった日
+- connection: 人との深い繋がりを感じた日
+- discovery: 新しい気づきや発見があった日
 - turning_point: 何かが変わるきっかけになった日
 
-【テーマタイプ】
-- recurring_joy: 繰り返し現れる喜び
-- persistent_challenge: 継続的な課題
-- evolving_priority: 変化する優先順位
-- relationship_pattern: 人間関係のパターン
-- self_discovery: 自己発見
-- time_investment: 時間の投資先
-- value_alignment: 価値観との整合性
+各ハイライトに含める要素：
+- date: 日付（YYYY-MM-DD）
+- type: 上記4タイプのいずれか
+- title: 15-25文字のタイトル（「立ち止まる勇気を持てた日」など詩的に）
+- description: 50-80文字の説明
+- quote: 日記からの引用
 
-【出力形式の注意】
-- summary: 150-200文字。月全体を俯瞰し、温かく労う
-- highlights: 2〜4個。特に印象的だった日
-- themes: 2〜3個。月を通じたテーマ
-- growth: 成長した点と来月の課題
-- question: 50-70文字。来月に向けた具体的な問いかけ`;
+選出基準：
+- 日記の文章が長い日、感情表現が豊かな日を優先
+- 月のストーリーの転機になっている日を優先
+- 単なる「良かった日」ではなく「意味のある日」を選ぶ
+
+===========================================
+【セクション5: letterToFutureSelf（未来の自分への手紙）】
+===========================================
+
+月間インサイトの目玉機能。AIがユーザーの日記を深く読み込み、「1年後の自分への手紙」を代筆します。
+
+手紙のルール：
+- 200-300文字
+- 一人称は「私」または日記の言葉遣いに合わせる
+- 日記の具体的な言葉を2-3箇所引用する
+- この月に感じたこと、大切にしたいことを言語化
+- 1年後の自分への励ましや願いで締める
+- 「1年後の自分へ。」で始め、「○年○月の自分より」で終える
+
+＜良い手紙の例＞
+「1年後の自分へ。
+
+この1月、私は『時間がない』と何度も書いていた。でも18日に思い切って休みを取って、子どもと公園で過ごした時間のことは、きっと1年後も覚えていると思う。
+
+『これが大切な時間だ』と感じたあの感覚を、1年後の今も忘れていないでほしい。子どもが小学生でいる時間は、あと数年しかない。
+
+仕事は相変わらず忙しいかもしれないけど、『立ち止まる勇気』を持ち続けてね。
+
+2025年1月の自分より」
+
+===========================================
+【セクション6: growth（成長と課題）】
+===========================================
+
+- improvements: この月で成長した点・良かった変化（2-3個、各30-50文字）
+- challenges: 次の月に意識したい課題（2-3個、各30-50文字）
+- transformation: 月初→月末での変化（50-80文字、オプション）
+
+===========================================
+【セクション7: question（次の月への問いかけ）】
+===========================================
+
+60-100文字。「次の月」に向けた具体的なアクション提案。背景説明 + 「〜してみませんか？」の形式。
+
+＜良い例＞
+「この月に会えた家族に、次の月も連絡を取ってみませんか？『両親と食事した』が嬉しかったなら、次の月も同じ時間を作れるはずです。」
+
+===========================================
+【トーンとスタイル】
+===========================================
+- 温かく、親しみを込めて
+- 「〜ですね」「〜かもしれませんね」「〜はいかがですか？」
+- 友人が1ヶ月の話を聞いて、深い気づきを返してくれるような
+- 批判・説教は絶対にしない
+- 「分析」より「発見」「気づき」という言葉を使う
+
+【絶対に避けること】
+- 「今月」「来月」という時制表現
+- 「分析します」「レポートします」などの硬い表現
+- ユーザーの日記にない情報を勝手に推測する
+- 「〜すべきです」「〜しなければなりません」などの指示
+- 週間インサイトと同じような表面的なパターン分析`;
 
 /**
  * 月次インサイト生成リクエストの型
@@ -1572,10 +1716,46 @@ interface GenerateMonthlyInsightRequest {
 }
 
 /**
- * 月次インサイトレスポンスの型
+ * 月次インサイトレスポンスの型（新構成）
  */
 interface MonthlyInsightResponse {
-  summary: string;
+  // セクション1: 人生の中のこの月
+  lifeContextSummary: string;
+  // セクション2: 月のストーリーライン（3時期：月初・月中・月末）
+  storyline: {
+    beginning: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: 'busy' | 'peaceful' | 'challenging' | 'growing' | 'joyful' | 'reflective';
+    };
+    middle: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: 'busy' | 'peaceful' | 'challenging' | 'growing' | 'joyful' | 'reflective';
+    };
+    end: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: 'busy' | 'peaceful' | 'challenging' | 'growing' | 'joyful' | 'reflective';
+    };
+  };
+  // セクション3: 価値観の発見（パーセンテージ廃止）
+  valueDiscovery: {
+    primaryValue: {
+      name: string;
+      evidence: string[];
+      insight: string;
+    };
+    secondaryValues: Array<{
+      name: string;
+      briefEvidence: string;
+    }>;
+    hiddenInsight: string;
+  };
+  // セクション4: 変化のハイライト
   highlights: Array<{
     date: string;
     type: 'achievement' | 'connection' | 'discovery' | 'turning_point';
@@ -1583,20 +1763,28 @@ interface MonthlyInsightResponse {
     description: string;
     quote?: string;
   }>;
-  themes: Array<{
-    type: string;
-    title: string;
-    description: string;
-    examples?: Array<{ date: string; quote: string }>;
-  }>;
+  // セクション5: 未来の自分への手紙
+  letterToFutureSelf: string;
+  // セクション6: 成長と課題
   growth: {
     improvements: string[];
     challenges: string[];
     transformation?: string;
   };
+  // セクション7: 次の月への問いかけ
   question: string;
+  // メタ情報
   generatedAt: string;
   modelVersion: string;
+
+  // 旧フィールド（後方互換性のため）
+  summary?: string;
+  themes?: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+  }>;
 }
 
 /**
@@ -1608,114 +1796,275 @@ function generateMonthlyInsightUserPrompt(request: GenerateMonthlyInsightRequest
   // 月の名前を取得
   const [year, month] = yearMonth.split('-').map(Number);
   const monthName = `${year}年${month}月`;
+  const targetAge = currentAge + Math.round(remainingYears);
 
-  // 日記エントリーを週ごとにグループ化
-  const weeklyGroups: { week: number; entries: typeof entries }[] = [];
-  let currentWeek = 1;
-  let currentWeekEntries: typeof entries = [];
+  // 人生の文脈を計算
+  const monthsRemaining = Math.round(remainingYears * 12);
+  const sameMonthsRemaining = Math.round(remainingYears); // 同じ月（1月なら1月）があと何回あるか
 
-  entries.forEach((entry, index) => {
-    currentWeekEntries.push(entry);
-    // 7日ごと、または最後のエントリーで週を区切る
-    if ((index + 1) % 7 === 0 || index === entries.length - 1) {
-      weeklyGroups.push({ week: currentWeek, entries: currentWeekEntries });
-      currentWeek++;
-      currentWeekEntries = [];
-    }
-  });
+  // 日記エントリーを時系列で整理（ストーリーライン用）
+  const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date));
 
-  // 週ごとのサマリーを生成
-  const weeklyText = weeklyGroups.map(group => {
-    const weekEntries = group.entries
-      .map(entry => {
-        const date = new Date(entry.date);
-        const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-        return `  ${entry.date}（${dayOfWeek}）: ✨${entry.goodTime || '(なし)'} / 💭${entry.wastedTime || '(なし)'}`;
-      })
-      .join('\n');
-    return `【第${group.week}週】\n${weekEntries}`;
-  }).join('\n\n');
+  // 月を4つの期間に分割
+  const totalDays = sortedEntries.length;
+  const phase1End = Math.floor(totalDays * 0.25);
+  const phase2End = Math.floor(totalDays * 0.5);
+  const phase3End = Math.floor(totalDays * 0.75);
+
+  const phase1Entries = sortedEntries.slice(0, phase1End || 1);
+  const phase2Entries = sortedEntries.slice(phase1End, phase2End || phase1End + 1);
+  const phase3Entries = sortedEntries.slice(phase2End, phase3End || phase2End + 1);
+  const phase4Entries = sortedEntries.slice(phase3End);
+
+  // 各フェーズのテキストを生成
+  const formatPhaseEntries = (phaseEntries: typeof entries, phaseName: string) => {
+    if (phaseEntries.length === 0) return `【${phaseName}】記録なし`;
+    const dateRange = phaseEntries.length === 1
+      ? phaseEntries[0].date
+      : `${phaseEntries[0].date} 〜 ${phaseEntries[phaseEntries.length - 1].date}`;
+    const entriesText = phaseEntries.map(e => {
+      const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][new Date(e.date).getDay()];
+      return `  ${e.date}（${dayOfWeek}）\n    ✨良かったこと: ${e.goodTime || '(なし)'}\n    💭後悔: ${e.wastedTime || '(なし)'}\n    🌅明日へ: ${e.tomorrow || '(なし)'}`;
+    }).join('\n');
+    return `【${phaseName}】${dateRange}（${phaseEntries.length}日分）\n${entriesText}`;
+  };
 
   // 分析のヒントを生成
-  const analysisHints = generateMonthlyAnalysisHints(entries);
+  const analysisHints = generateEnhancedMonthlyAnalysisHints(entries);
 
-  return `【ユーザー情報】
-${currentAge}歳。目標寿命まで残り約${remainingYears}年（${remainingDays.toLocaleString()}日）。
-1ヶ月は人生の約${(100 / (remainingYears * 12)).toFixed(2)}%に相当。
+  // 価値観分析のためのキーワード集計
+  const valueAnalysis = analyzeValuesFromEntries(entries);
 
-【分析期間】
-${monthName}（${monthStartDate} 〜 ${monthEndDate}）
+  return `【このユーザーについて】
+${currentAge}歳。人生の目標を${targetAge}歳に設定。
+残り約${Math.round(remainingYears)}年（${remainingDays.toLocaleString()}日）、約${monthsRemaining}ヶ月。
+
+【人生の中のこの月 - 重要な文脈】
+- この「${month}月」を過ごせるのは、残りの人生であと約${sameMonthsRemaining}回
+- この1ヶ月は、残りの人生の約${(100 / (remainingYears * 12)).toFixed(2)}%に相当
+- ${monthName}は、あなたの人生で二度と戻ってこない、かけがえのない1ヶ月
+
+【対象期間】
+${monthName}（${monthStartDate.replace(/-/g, '/')} 〜 ${monthEndDate.replace(/-/g, '/')}）
 記録日数: ${entries.length}日分
 
-【この月の日記（週別）】
-${weeklyText}
+===========================================
+【この月の日記（ストーリーライン分析用・3時期）】
+===========================================
 
-【分析のヒント】
+${formatPhaseEntries(phase1Entries, '月初（Beginning）')}
+
+${formatPhaseEntries(phase2Entries.concat(phase3Entries), '月中（Middle）')}
+
+${formatPhaseEntries(phase4Entries, '月末（End）')}
+
+===========================================
+【価値観分析のためのヒント】
+===========================================
+${valueAnalysis}
+
+===========================================
+【深い分析のためのヒント】
+===========================================
 ${analysisHints}
 
-【依頼事項】
-1. 1ヶ月を俯瞰して、週をまたいで現れるパターンを発見してください
-2. 特に印象的だった日（ハイライト）を2〜4日選んでください
-3. 月の前半と後半で意識や行動に変化があったか確認してください
-4. 成長した点と、来月に向けた課題を整理してください
-5. 必ず日記の具体的な言葉を引用してください
-6. 来月に向けた具体的な問いかけを1つ提案してください`;
+===========================================
+【あなたへのお願い - 月間インサイトの7つのセクション】
+===========================================
+
+この1ヶ月の日記を「人生の大切な1ページ」として読んでください。
+週間インサイトとは異なる、より深い洞察を提供してください。
+
+1. lifeContextSummary（人生の中のこの月）150-200文字
+   - 残り寿命における「この月の希少性」を伝える
+   - 日記の言葉を「」で引用（2つ以上）
+   - 人生の文脈で意味づける
+   - ※「今月」ではなく「${monthName}」「この${month}月」と表現
+
+2. storyline（月のストーリーライン）
+   beginning/middle/end の3時期（月初・月中・月末）
+   - 各時期のperiod, summary, keyQuote, moodを含める
+   - 1ヶ月の流れを振り返る
+
+3. valueDiscovery（価値観の発見）
+   - primaryValue: 最も強く現れた価値観（name, evidence, insight）
+   - secondaryValues: 2番目以降（2-3個、name, briefEvidence）
+   - hiddenInsight: ユーザーが気づいていなさそうな発見（80-120文字）
+   - ※パーセンテージは出さず、順位で表現
+
+4. highlights（変化のハイライト）2-4個
+   - date, type, title(15-25文字), description(50-80文字), quote
+   - 「意味のある日」を選ぶ
+
+5. letterToFutureSelf（未来の自分への手紙）200-300文字
+   - 「1年後の自分へ。」で始める
+   - 日記の言葉を2-3箇所引用
+   - 「${year}年${month}月の自分より」で終える
+   - 感動的で記憶に残る手紙を
+
+6. growth（成長と課題）
+   - improvements: 2-3個（各30-50文字）
+   - challenges: 2-3個（各30-50文字）
+   - transformation: 月初→月末の変化（50-80文字）
+
+7. question（次の月への問いかけ）60-100文字
+   - 背景説明 + 具体的なアクション提案
+   - ※「来月」ではなく「次の月」と表現`;
 }
 
 /**
- * 月次分析のヒントを生成
+ * 日記エントリーから価値観を分析
  */
-function generateMonthlyAnalysisHints(entries: GenerateMonthlyInsightRequest['entries']): string {
+function analyzeValuesFromEntries(entries: GenerateMonthlyInsightRequest['entries']): string {
+  const valueCounts: Record<string, { count: number; examples: string[] }> = {
+    '家族・人間関係': { count: 0, examples: [] },
+    '達成・成長': { count: 0, examples: [] },
+    '健康・運動': { count: 0, examples: [] },
+    '学び・知識': { count: 0, examples: [] },
+    '趣味・楽しみ': { count: 0, examples: [] },
+    '仕事・キャリア': { count: 0, examples: [] },
+    '自分の時間': { count: 0, examples: [] },
+    '貢献・感謝': { count: 0, examples: [] },
+  };
+
+  const patterns: Record<string, RegExp> = {
+    '家族・人間関係': /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|家族|彼|彼女|パートナー|話|会|一緒/g,
+    '達成・成長': /できた|終わった|達成|完了|成功|うまくいった|進んだ|続けられた|頑張/g,
+    '健康・運動': /運動|散歩|ランニング|ジム|筋トレ|ヨガ|健康|早起き|睡眠|歩/g,
+    '学び・知識': /読書|本|勉強|学|セミナー|講座|知識|理解|発見/g,
+    '趣味・楽しみ': /映画|音楽|ゲーム|趣味|楽し|旅行|遊/g,
+    '仕事・キャリア': /仕事|会議|プロジェクト|締切|上司|部下|報告|業務|残業/g,
+    '自分の時間': /一人|自分の時間|リラックス|休|ゆっくり|静か/g,
+    '貢献・感謝': /感謝|ありがと|手伝|助け|貢献|役に立/g,
+  };
+
+  // 良かったことから価値観を抽出
+  for (const entry of entries) {
+    const goodTime = entry.goodTime || '';
+    for (const [value, pattern] of Object.entries(patterns)) {
+      const matches = goodTime.match(pattern);
+      if (matches && matches.length > 0) {
+        valueCounts[value].count += matches.length;
+        if (valueCounts[value].examples.length < 3 && goodTime.length > 5) {
+          valueCounts[value].examples.push(`${entry.date}: ${goodTime.slice(0, 40)}`);
+        }
+      }
+    }
+  }
+
+  // ソートして上位を抽出
+  const sorted = Object.entries(valueCounts)
+    .filter(([, data]) => data.count > 0)
+    .sort((a, b) => b[1].count - a[1].count);
+
+  if (sorted.length === 0) {
+    return '価値観の自動抽出が難しい日記内容です。日記の文脈から価値観を読み取ってください。';
+  }
+
+  const total = sorted.reduce((sum, [, data]) => sum + data.count, 0);
+
+  const result = sorted.slice(0, 5).map(([value, data]) => {
+    const percentage = Math.round((data.count / total) * 100);
+    const examples = data.examples.length > 0 ? `\n    例: ${data.examples.slice(0, 2).join(' / ')}` : '';
+    return `・${value}: ${percentage}%（${data.count}回言及）${examples}`;
+  }).join('\n');
+
+  return `【自動抽出された価値観の傾向】\n${result}\n\n※これはあくまで参考値です。日記の文脈を深く読み、ユーザーの「本当の」価値観を発見してください。`;
+}
+
+/**
+ * 強化された月次分析のヒントを生成
+ */
+function generateEnhancedMonthlyAnalysisHints(entries: GenerateMonthlyInsightRequest['entries']): string {
   const hints: string[] = [];
 
-  // 良かったことの頻出キーワードを抽出
+  // 1. 登場人物の分析
   const allGoodTimes = entries.map(e => e.goodTime).join(' ');
-  const positiveKeywords = /達成|完了|できた|楽しかった|嬉しかった|充実|満足|成功|進んだ|続けられた/g;
-  const positiveMatches = allGoodTimes.match(positiveKeywords);
-  if (positiveMatches && positiveMatches.length > 0) {
-    const uniquePositive = [...new Set(positiveMatches)];
-    hints.push(`・「良かったこと」の頻出キーワード: ${uniquePositive.slice(0, 5).join('、')}`);
-  }
-
-  // 後悔の頻出キーワードを抽出
-  const allRegrets = entries.map(e => e.wastedTime).join(' ');
-  const negativeKeywords = /夜更かし|先延ばし|だらだら|無駄|スマホ|SNS|ゲーム|二度寝|寝坊|食べ過ぎ|飲み過ぎ|集中できなかった|怠けた/g;
-  const negativeMatches = allRegrets.match(negativeKeywords);
-  if (negativeMatches && negativeMatches.length > 0) {
-    const uniqueNegative = [...new Set(negativeMatches)];
-    const negativeCount = negativeMatches.length;
-    hints.push(`・「後悔」の頻出キーワード: ${uniqueNegative.slice(0, 5).join('、')}（計${negativeCount}回）`);
-  }
-
-  // 人物への言及をカウント
-  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|上司|部下|先輩|後輩|家族/g;
-  const allText = entries.map(e => `${e.goodTime} ${e.wastedTime} ${e.tomorrow}`).join(' ');
-  const peopleMatches = allText.match(peoplePattern);
+  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|上司|部下|先輩|後輩|彼|彼女|パートナー|家族/g;
+  const peopleMatches = allGoodTimes.match(peoplePattern);
   if (peopleMatches && peopleMatches.length > 0) {
     const uniquePeople = [...new Set(peopleMatches)];
-    hints.push(`・登場する人物: ${uniquePeople.join('、')}（${peopleMatches.length}回言及）`);
+    hints.push(`【人間関係】「良かったこと」に登場する人物: ${uniquePeople.join('、')}（計${peopleMatches.length}回）\n  → この月は誰との時間を大切にしていたか、letterToFutureSelfで触れてください`);
   }
 
-  // 月の前半と後半の傾向比較
+  // 2. 感情表現の分析
+  const emotionPattern = /嬉しい|嬉しかった|楽しい|楽しかった|幸せ|安心|ホッと|リラックス|充実|満足|ワクワク|感動|感謝/g;
+  const allText = entries.map(e => `${e.goodTime} ${e.tomorrow}`).join(' ');
+  const emotionMatches = allText.match(emotionPattern);
+  if (emotionMatches && emotionMatches.length > 0) {
+    const uniqueEmotions = [...new Set(emotionMatches)];
+    hints.push(`【感情】よく使われる感情表現: ${uniqueEmotions.join('、')}（計${emotionMatches.length}回）\n  → どんな時に喜びを感じているか、valueDiscoveryの根拠にしてください`);
+  }
+
+  // 3. 後悔のパターン分析
+  const allRegrets = entries.map(e => e.wastedTime).join(' ');
+  const regretKeywords = /夜更かし|先延ばし|だらだら|無駄|スマホ|SNS|ゲーム|二度寝|寝坊|食べ過ぎ|飲み過ぎ|Netflix|YouTube|動画|怒|イライラ|集中できな/g;
+  const regretMatches = allRegrets.match(regretKeywords);
+  if (regretMatches && regretMatches.length > 0) {
+    const uniqueRegrets = [...new Set(regretMatches)];
+    const regretCount = regretMatches.length;
+    hints.push(`【後悔パターン】${uniqueRegrets.join('、')}（計${regretCount}回）\n  → 後悔の裏にある「本当はこうしたかった」をhiddenInsightで言語化してください`);
+  }
+
+  // 4. 月の前半と後半の変化
   const halfPoint = Math.floor(entries.length / 2);
   const firstHalf = entries.slice(0, halfPoint);
   const secondHalf = entries.slice(halfPoint);
-  const firstHalfGoodCount = firstHalf.filter(e => e.goodTime && e.goodTime.length > 10).length;
-  const secondHalfGoodCount = secondHalf.filter(e => e.goodTime && e.goodTime.length > 10).length;
-  if (Math.abs(firstHalfGoodCount - secondHalfGoodCount) >= 2) {
-    const trend = firstHalfGoodCount < secondHalfGoodCount ? '後半に向けて充実度が上がっている' : '前半のほうが充実していた';
-    hints.push(`・月の前半/後半の傾向: ${trend}可能性`);
+
+  const firstHalfGoodLength = firstHalf.reduce((sum, e) => sum + (e.goodTime?.length || 0), 0);
+  const secondHalfGoodLength = secondHalf.reduce((sum, e) => sum + (e.goodTime?.length || 0), 0);
+  const avgFirst = firstHalf.length > 0 ? firstHalfGoodLength / firstHalf.length : 0;
+  const avgSecond = secondHalf.length > 0 ? secondHalfGoodLength / secondHalf.length : 0;
+
+  if (Math.abs(avgFirst - avgSecond) > 10) {
+    const trend = avgFirst < avgSecond
+      ? '月後半に向けて「良かったこと」の記述が増えている（より充実？）'
+      : '月前半のほうが「良かったこと」の記述が多い';
+    hints.push(`【月の変化】${trend}\n  → storylineの各時期で、この変化の流れを反映させてください`);
+  }
+
+  // 5. 「明日大切にしたいこと」→実現の分析
+  let intentionRealizedCount = 0;
+  let intentionChecked = 0;
+  for (let i = 0; i < entries.length - 1; i++) {
+    const tomorrow = entries[i].tomorrow;
+    const nextGoodTime = entries[i + 1]?.goodTime;
+    if (tomorrow && tomorrow.length > 3 && nextGoodTime && nextGoodTime.length > 3) {
+      intentionChecked++;
+      // 簡易的な類似性チェック
+      const tomorrowWords = tomorrow.split(/[\s、。,．・]/);
+      const goodTimeWords = nextGoodTime.split(/[\s、。,．・]/);
+      const hasCommon = tomorrowWords.some(w => w.length > 1 && goodTimeWords.some(g => g.includes(w) || w.includes(g)));
+      if (hasCommon) intentionRealizedCount++;
+    }
+  }
+  if (intentionChecked > 5) {
+    const rate = Math.round((intentionRealizedCount / intentionChecked) * 100);
+    hints.push(`【意図→行動】「明日大切にしたいこと」が翌日に反映されていそうな割合: 約${rate}%\n  → ${rate > 50 ? '意図を行動に移す力が高い。growthのimprovementsで触れてください' : '意図と行動のギャップ。growthのchallengesで触れることも検討'}`);
+  }
+
+  // 6. 特に印象的な日（文章量が多い日）を抽出
+  const entriesWithLength = entries.map(e => ({
+    date: e.date,
+    totalLength: (e.goodTime?.length || 0) + (e.wastedTime?.length || 0) + (e.tomorrow?.length || 0),
+    goodTime: e.goodTime,
+  })).sort((a, b) => b.totalLength - a.totalLength);
+
+  const topEntries = entriesWithLength.slice(0, 3);
+  if (topEntries.length > 0 && topEntries[0].totalLength > 50) {
+    const topDates = topEntries.map(e => `${e.date}（${e.totalLength}文字）`).join('、');
+    hints.push(`【重要な日の候補】記述量が多い日: ${topDates}\n  → highlightsの候補として検討してください`);
   }
 
   if (hints.length === 0) {
-    hints.push('・特定のパターンが見つけにくい場合は、ユーザーの言葉遣いの変化に注目してください');
+    hints.push('特定のパターンが見つけにくい場合は、日記の言葉遣いの変化、文章の長さ、感情の起伏に注目してください');
   }
 
-  return hints.join('\n');
+  return hints.join('\n\n');
 }
 
 /**
- * 月次インサイトのAIレスポンスをパース
+ * 月次インサイトのAIレスポンスをパース（新構造対応）
  */
 function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse | null {
   try {
@@ -1726,9 +2075,85 @@ function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse |
 
     const parsed = JSON.parse(cleanedResponse);
 
-    if (parsed && parsed.summary && Array.isArray(parsed.highlights) && Array.isArray(parsed.themes)) {
+    // 新構造のバリデーション
+    if (parsed && parsed.lifeContextSummary && parsed.storyline && parsed.valueDiscovery && parsed.letterToFutureSelf) {
       return {
-        summary: parsed.summary,
+        // 新セクション
+        lifeContextSummary: String(parsed.lifeContextSummary || ''),
+        storyline: {
+          beginning: {
+            period: String(parsed.storyline?.beginning?.period || ''),
+            summary: String(parsed.storyline?.beginning?.summary || ''),
+            keyQuote: parsed.storyline?.beginning?.keyQuote ? String(parsed.storyline.beginning.keyQuote) : undefined,
+            mood: (parsed.storyline?.beginning?.mood || 'reflective') as MonthlyInsightResponse['storyline']['beginning']['mood'],
+          },
+          middle: {
+            period: String(parsed.storyline?.middle?.period || ''),
+            summary: String(parsed.storyline?.middle?.summary || ''),
+            keyQuote: parsed.storyline?.middle?.keyQuote ? String(parsed.storyline.middle.keyQuote) : undefined,
+            mood: (parsed.storyline?.middle?.mood || 'reflective') as MonthlyInsightResponse['storyline']['middle']['mood'],
+          },
+          end: {
+            period: String(parsed.storyline?.end?.period || ''),
+            summary: String(parsed.storyline?.end?.summary || ''),
+            keyQuote: parsed.storyline?.end?.keyQuote ? String(parsed.storyline.end.keyQuote) : undefined,
+            mood: (parsed.storyline?.end?.mood || 'reflective') as MonthlyInsightResponse['storyline']['end']['mood'],
+          },
+        },
+        valueDiscovery: {
+          primaryValue: {
+            name: String(parsed.valueDiscovery?.primaryValue?.name || ''),
+            evidence: Array.isArray(parsed.valueDiscovery?.primaryValue?.evidence)
+              ? parsed.valueDiscovery.primaryValue.evidence.map(String)
+              : [],
+            insight: String(parsed.valueDiscovery?.primaryValue?.insight || ''),
+          },
+          secondaryValues: Array.isArray(parsed.valueDiscovery?.secondaryValues)
+            ? parsed.valueDiscovery.secondaryValues.map((v: Record<string, unknown>) => ({
+                name: String(v.name || ''),
+                briefEvidence: String(v.briefEvidence || ''),
+              }))
+            : [],
+          hiddenInsight: String(parsed.valueDiscovery?.hiddenInsight || ''),
+        },
+        highlights: Array.isArray(parsed.highlights)
+          ? parsed.highlights.map((h: Record<string, unknown>) => ({
+              date: String(h.date || ''),
+              type: String(h.type || 'achievement') as MonthlyInsightResponse['highlights'][0]['type'],
+              title: String(h.title || ''),
+              description: String(h.description || ''),
+              quote: h.quote ? String(h.quote) : undefined,
+            }))
+          : [],
+        letterToFutureSelf: String(parsed.letterToFutureSelf || ''),
+        growth: {
+          improvements: Array.isArray(parsed.growth?.improvements) ? parsed.growth.improvements.map(String) : [],
+          challenges: Array.isArray(parsed.growth?.challenges) ? parsed.growth.challenges.map(String) : [],
+          transformation: parsed.growth?.transformation ? String(parsed.growth.transformation) : undefined,
+        },
+        question: String(parsed.question || ''),
+        generatedAt: new Date().toISOString(),
+        modelVersion: 'gemini-2.5-pro',
+        // 後方互換性のため、summaryにlifeContextSummaryを設定
+        summary: String(parsed.lifeContextSummary || ''),
+      };
+    }
+
+    // 旧構造のフォールバック（互換性のため）
+    if (parsed && parsed.summary && Array.isArray(parsed.highlights)) {
+      console.log('[parseMonthlyInsightResponse] Using legacy format fallback');
+      return {
+        lifeContextSummary: String(parsed.summary || ''),
+        storyline: {
+          beginning: { period: '', summary: '', mood: 'reflective' },
+          middle: { period: '', summary: '', mood: 'reflective' },
+          end: { period: '', summary: '', mood: 'reflective' },
+        },
+        valueDiscovery: {
+          primaryValue: { name: '', evidence: [], insight: '' },
+          secondaryValues: [],
+          hiddenInsight: '',
+        },
         highlights: parsed.highlights.map((h: Record<string, unknown>) => ({
           date: String(h.date || ''),
           type: String(h.type || 'achievement') as MonthlyInsightResponse['highlights'][0]['type'],
@@ -1736,12 +2161,7 @@ function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse |
           description: String(h.description || ''),
           quote: h.quote ? String(h.quote) : undefined,
         })),
-        themes: parsed.themes.map((t: Record<string, unknown>) => ({
-          type: String(t.type || 'recurring_joy'),
-          title: String(t.title || ''),
-          description: String(t.description || ''),
-          examples: Array.isArray(t.examples) ? t.examples : undefined,
-        })),
+        letterToFutureSelf: '',
         growth: {
           improvements: Array.isArray(parsed.growth?.improvements) ? parsed.growth.improvements : [],
           challenges: Array.isArray(parsed.growth?.challenges) ? parsed.growth.challenges : [],
@@ -1750,6 +2170,8 @@ function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse |
         question: parsed.question || '',
         generatedAt: new Date().toISOString(),
         modelVersion: 'gemini-2.5-pro',
+        summary: String(parsed.summary || ''),
+        themes: Array.isArray(parsed.themes) ? parsed.themes : undefined,
       };
     }
 
@@ -1761,48 +2183,130 @@ function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse |
 }
 
 /**
- * フォールバック用の月次インサイトを生成
+ * フォールバック用の月次インサイトを生成（新構造対応）
  */
 function generateFallbackMonthlyInsight(request: GenerateMonthlyInsightRequest): MonthlyInsightResponse {
-  const { entries, remainingYears, yearMonth } = request;
+  const { entries, remainingYears, yearMonth, monthStartDate, monthEndDate } = request;
   const [year, month] = yearMonth.split('-').map(Number);
   const monthName = `${year}年${month}月`;
+  const sameMonthsRemaining = Math.round(remainingYears);
 
   // 最も長い「良かったこと」を見つける
-  let bestEntry = entries[0];
-  entries.forEach(entry => {
-    if (entry.goodTime && entry.goodTime.length > (bestEntry?.goodTime?.length || 0)) {
-      bestEntry = entry;
+  let bestGoodEntry: { date: string; content: string } | null = null;
+  let bestRegretEntry: { date: string; content: string } | null = null;
+
+  for (const entry of entries) {
+    if (entry.goodTime && entry.goodTime.length > (bestGoodEntry?.content.length || 0)) {
+      bestGoodEntry = { date: entry.date, content: entry.goodTime };
     }
-  });
+    if (entry.wastedTime && entry.wastedTime.length > (bestRegretEntry?.content.length || 0)) {
+      bestRegretEntry = { date: entry.date, content: entry.wastedTime };
+    }
+  }
 
   const formattedYears = Math.round(remainingYears * 10) / 10;
 
-  const summary = bestEntry?.goodTime
-    ? `${monthName}は${entries.length}日分の振り返りがありました。「${bestEntry.goodTime.slice(0, 30)}${bestEntry.goodTime.length > 30 ? '...' : ''}」など、日々の体験をしっかりと記録されていますね。こうして自分の時間と向き合う習慣は、残り約${formattedYears}年をより豊かにする大切な一歩です。`
-    : `${monthName}は${entries.length}日分の記録がありました。毎日の振り返りを続けていることは、残り約${formattedYears}年をより意識的に過ごすための大切な習慣ですね。`;
+  // 人物が登場しているか確認
+  const peoplePattern = /妻|夫|子ども|息子|娘|友人|友達|親|母|父|同僚|家族/g;
+  const allGoodTimes = entries.map(e => e.goodTime).join(' ');
+  const peopleMatches = allGoodTimes.match(peoplePattern);
+  const hasPeopleTheme = peopleMatches && peopleMatches.length > 0;
+
+  // lifeContextSummary
+  const goodQuote = bestGoodEntry ? bestGoodEntry.content.slice(0, 30) : '';
+  const lifeContextSummary = goodQuote
+    ? `残り約${formattedYears}年の人生で、あなたが過ごせる「${month}月」はあと約${sameMonthsRemaining}回。${monthName}はその貴重な1回でした。「${goodQuote}${bestGoodEntry!.content.length > 30 ? '...' : ''}」など、${hasPeopleTheme ? '大切な人との時間' : '充実した時間'}を重ねられた月でしたね。こうした時間は、二度と戻ってこない、かけがえのない宝物です。`
+    : `残り約${formattedYears}年の人生で、あなたが過ごせる「${month}月」はあと約${sameMonthsRemaining}回。${monthName}は${entries.length}日分の振り返りを記録できました。日々を言葉にすることは、人生を意識的に生きる第一歩です。`;
+
+  // storyline（フォールバックは簡易版・3時期）
+  const storyline = {
+    beginning: {
+      period: `月初（${monthStartDate.split('-')[2]}日〜10日頃）`,
+      summary: `${monthName}がスタート。${entries.length}日分の記録を通じて、この月が始まりました。`,
+      mood: 'reflective' as const,
+    },
+    middle: {
+      period: '月中（11〜20日頃）',
+      summary: '日々の振り返りを続けながら、少しずつこの月の色が見えてきた時期。',
+      mood: 'growing' as const,
+    },
+    end: {
+      period: `月末（21〜${monthEndDate.split('-')[2]}日）`,
+      summary: `${monthName}の締めくくり。この1ヶ月で積み重ねた時間が、確かな記録として残りました。`,
+      mood: 'peaceful' as const,
+    },
+  };
+
+  // valueDiscovery（フォールバックは簡易版・パーセンテージなし）
+  const valueDiscovery = {
+    primaryValue: {
+      name: hasPeopleTheme ? '人との繋がり' : '日々の振り返り',
+      evidence: bestGoodEntry ? [bestGoodEntry.content.slice(0, 50)] : ['振り返りを継続している'],
+      insight: hasPeopleTheme
+        ? `「良かったこと」に人との関わりが多く登場しています。人との時間があなたの幸せの源泉かもしれませんね。`
+        : `毎日の振り返りを続けられていること自体が、あなたの「成長したい」という価値観の表れです。`,
+    },
+    secondaryValues: [
+      {
+        name: '自己成長',
+        briefEvidence: `${entries.length}日間の振り返りを継続できている`,
+      },
+      {
+        name: '時間への意識',
+        briefEvidence: '日々の時間の使い方を記録している',
+      },
+    ],
+    hiddenInsight: `${entries.length}日分の記録を残せたこと自体が、「人生を大切に生きたい」というあなたの深い願いの表れです。記録を続けることで、きっと新しい発見があるはずです。`,
+  };
+
+  // highlights
+  const highlights: MonthlyInsightResponse['highlights'] = bestGoodEntry ? [{
+    date: bestGoodEntry.date,
+    type: 'achievement',
+    title: '心に残る瞬間があった日',
+    description: `この日の記録が特に印象的でした。「${bestGoodEntry.content.slice(0, 25)}${bestGoodEntry.content.length > 25 ? '...' : ''}」という言葉に、この月の大切な瞬間が凝縮されています。`,
+    quote: bestGoodEntry.content.slice(0, 50),
+  }] : [];
+
+  // letterToFutureSelf
+  const letterToFutureSelf = `1年後の自分へ。
+
+この${monthName}、私は${entries.length}日分の振り返りを記録しました。${bestGoodEntry ? `「${bestGoodEntry.content.slice(0, 30)}${bestGoodEntry.content.length > 30 ? '...' : ''}」という日があったことを、1年後も覚えているでしょうか。` : '毎日を言葉にすることで、時間を大切にしようとしていました。'}
+
+${hasPeopleTheme ? '大切な人との時間を意識できていた月でした。' : '日々の小さな喜びを見つけようとしていた月でした。'}この感覚を、1年後の今も大切にしていてほしいと思います。
+
+${year}年${month}月の自分より`;
+
+  // growth
+  const growth = {
+    improvements: [
+      `${entries.length}日間、振り返りの習慣を続けられた`,
+      hasPeopleTheme ? '大切な人との時間を意識できていた' : '日々の良かったことに目を向けられていた',
+    ],
+    challenges: [
+      'より具体的に感情や気づきを記録してみる',
+      '「明日大切にしたいこと」を翌日に意識してみる',
+    ],
+    transformation: `${monthName}を通じて、自分の時間と向き合う習慣を育てることができました。`,
+  };
+
+  // question
+  const question = hasPeopleTheme
+    ? `この月に会えた人に、次の月も連絡を取ってみませんか？「また会いたい」という一言が、次の素敵な時間につながります。`
+    : `次の月は、「良かった」と感じた瞬間をより具体的に書いてみませんか？細部を書くことで、記憶がより鮮明に残ります。`;
 
   return {
-    summary,
-    highlights: bestEntry ? [{
-      date: bestEntry.date,
-      type: 'achievement',
-      title: '振り返りの継続',
-      description: `この日の記録が印象的でした。日々の振り返りを${entries.length}日間続けられたことは素晴らしいです。`,
-      quote: bestEntry.goodTime?.slice(0, 50),
-    }] : [],
-    themes: [{
-      type: 'time_awareness',
-      title: '振り返りの習慣化',
-      description: `${entries.length}日間、自分の時間と向き合う時間を取れています。この「立ち止まって考える」習慣が、日々の選択を変えていきます。`,
-    }],
-    growth: {
-      improvements: ['日々の振り返りを継続できている'],
-      challenges: ['より具体的な記録を心がける'],
-    },
-    question: '来月は「良かった」と思える日を、どんな風に増やしてみたいですか？',
+    lifeContextSummary,
+    storyline,
+    valueDiscovery,
+    highlights,
+    letterToFutureSelf,
+    growth,
+    question,
     generatedAt: new Date().toISOString(),
     modelVersion: 'fallback',
+    // 後方互換性
+    summary: lifeContextSummary,
   };
 }
 
@@ -1881,16 +2385,90 @@ export const generateMonthlyInsight = onCall(
               },
             ],
             generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 8192,
+              temperature: 0.8, // 創造性を高めて手紙の質を向上
+              maxOutputTokens: 16384, // 出力量増加に対応
               responseMimeType: 'application/json',
               responseSchema: {
                 type: 'object',
                 properties: {
-                  summary: {
+                  // セクション1: 人生の中のこの月
+                  lifeContextSummary: {
                     type: 'string',
-                    description: '月全体のサマリー（150-200文字）'
+                    description: '人生の中のこの月（150-200文字）。残り寿命における希少性、日記の引用、温かい締め'
                   },
+                  // セクション2: 月のストーリーライン
+                  storyline: {
+                    type: 'object',
+                    description: '1ヶ月を月初・月中・月末の3時期で振り返る',
+                    properties: {
+                      beginning: {
+                        type: 'object',
+                        properties: {
+                          period: { type: 'string', description: '期間（例：月初 1〜10日）' },
+                          summary: { type: 'string', description: 'この時期の傾向や空気感（30-50文字）' },
+                          keyQuote: { type: 'string', description: 'この時期を象徴する日記の引用' },
+                          mood: { type: 'string', enum: ['busy', 'peaceful', 'challenging', 'growing', 'joyful', 'reflective'] }
+                        },
+                        required: ['period', 'summary', 'mood']
+                      },
+                      middle: {
+                        type: 'object',
+                        properties: {
+                          period: { type: 'string', description: '期間（例：月中 11〜20日）' },
+                          summary: { type: 'string' },
+                          keyQuote: { type: 'string' },
+                          mood: { type: 'string', enum: ['busy', 'peaceful', 'challenging', 'growing', 'joyful', 'reflective'] }
+                        },
+                        required: ['period', 'summary', 'mood']
+                      },
+                      end: {
+                        type: 'object',
+                        properties: {
+                          period: { type: 'string', description: '期間（例：月末 21〜31日）' },
+                          summary: { type: 'string' },
+                          keyQuote: { type: 'string' },
+                          mood: { type: 'string', enum: ['busy', 'peaceful', 'challenging', 'growing', 'joyful', 'reflective'] }
+                        },
+                        required: ['period', 'summary', 'mood']
+                      }
+                    },
+                    required: ['beginning', 'middle', 'end']
+                  },
+                  // セクション3: 価値観の発見（パーセンテージ廃止）
+                  valueDiscovery: {
+                    type: 'object',
+                    description: '日記から発見した価値観（順位で表現、パーセンテージなし）',
+                    properties: {
+                      primaryValue: {
+                        type: 'object',
+                        properties: {
+                          name: { type: 'string', description: '価値観の名前（例：家族との繋がり）' },
+                          evidence: {
+                            type: 'array',
+                            description: 'この価値観を示す日記の引用（2-3個）',
+                            items: { type: 'string' }
+                          },
+                          insight: { type: 'string', description: 'この価値観についての洞察（50-80文字）' }
+                        },
+                        required: ['name', 'evidence', 'insight']
+                      },
+                      secondaryValues: {
+                        type: 'array',
+                        description: '2番目以降の価値観（2-3個）',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            name: { type: 'string' },
+                            briefEvidence: { type: 'string', description: '簡潔な根拠（具体的な引用や傾向）' }
+                          },
+                          required: ['name', 'briefEvidence']
+                        }
+                      },
+                      hiddenInsight: { type: 'string', description: 'ユーザーが気づいていなさそうな発見（80-120文字）' }
+                    },
+                    required: ['primaryValue', 'secondaryValues', 'hiddenInsight']
+                  },
+                  // セクション4: ハイライト
                   highlights: {
                     type: 'array',
                     description: '特に印象的だった日（2-4個）',
@@ -1902,68 +2480,47 @@ export const generateMonthlyInsight = onCall(
                           type: 'string',
                           enum: ['achievement', 'connection', 'discovery', 'turning_point']
                         },
-                        title: { type: 'string', description: 'ハイライトのタイトル（10-20文字）' },
-                        description: { type: 'string', description: '説明（30-50文字）' },
-                        quote: { type: 'string', description: '日記からの引用（オプション）' },
+                        title: { type: 'string', description: 'タイトル（15-25文字、詩的に）' },
+                        description: { type: 'string', description: '説明（50-80文字）' },
+                        quote: { type: 'string', description: '日記からの引用' },
                       },
-                      required: ['date', 'type', 'title', 'description'],
+                      required: ['date', 'type', 'title', 'description', 'quote'],
                     },
                   },
-                  themes: {
-                    type: 'array',
-                    description: '月間テーマ（2-3個）',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        type: {
-                          type: 'string',
-                          enum: ['recurring_joy', 'persistent_challenge', 'evolving_priority', 'relationship_pattern', 'self_discovery', 'time_investment', 'value_alignment']
-                        },
-                        title: { type: 'string', description: 'テーマのタイトル（10-20文字）' },
-                        description: { type: 'string', description: 'テーマの説明（50-100文字）' },
-                        examples: {
-                          type: 'array',
-                          description: '関連する引用例',
-                          items: {
-                            type: 'object',
-                            properties: {
-                              date: { type: 'string' },
-                              quote: { type: 'string' },
-                            },
-                            required: ['date', 'quote'],
-                          },
-                        },
-                      },
-                      required: ['type', 'title', 'description'],
-                    },
+                  // セクション5: 未来の自分への手紙
+                  letterToFutureSelf: {
+                    type: 'string',
+                    description: '1年後の自分への手紙（200-300文字）。「1年後の自分へ。」で始め、日記の言葉を引用し、「○年○月の自分より」で終える'
                   },
+                  // セクション6: 成長と課題
                   growth: {
                     type: 'object',
                     description: '成長と課題',
                     properties: {
                       improvements: {
                         type: 'array',
-                        description: '成長した点（1-3個）',
+                        description: '成長した点（2-3個、各30-50文字）',
                         items: { type: 'string' },
                       },
                       challenges: {
                         type: 'array',
-                        description: '来月の課題（1-3個）',
+                        description: '次の月の課題（2-3個、各30-50文字）',
                         items: { type: 'string' },
                       },
                       transformation: {
                         type: 'string',
-                        description: '月初と月末の変化（オプション）',
+                        description: '月初→月末の変化（50-80文字）',
                       },
                     },
-                    required: ['improvements', 'challenges'],
+                    required: ['improvements', 'challenges', 'transformation'],
                   },
+                  // セクション7: 問いかけ
                   question: {
                     type: 'string',
-                    description: '来月への問いかけ（50-70文字）'
+                    description: '次の月への具体的なアクション提案（60-100文字）'
                   },
                 },
-                required: ['summary', 'highlights', 'themes', 'growth', 'question'],
+                required: ['lifeContextSummary', 'storyline', 'valueDiscovery', 'highlights', 'letterToFutureSelf', 'growth', 'question'],
               },
             },
           }),

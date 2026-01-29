@@ -429,14 +429,53 @@ export const getDiariesByDateRangeFromFirestore = async (
 // =============== 月次インサイト ===============
 
 /**
- * 月次インサイトのデータ構造（Firestore用）
+ * ストーリーラインのムード型
+ */
+type StorylineMood = 'busy' | 'peaceful' | 'challenging' | 'growing' | 'joyful' | 'reflective';
+
+/**
+ * 月次インサイトのデータ構造（Firestore用・新構造）
+ * 注意：既存データとの後方互換性のため、新フィールドはオプショナル
  */
 export interface MonthlyInsightDocument {
   monthKey: string; // YYYY-MM形式 (例: 2026-01)
   monthStartDate: string;
   monthEndDate: string;
   entryCount: number;
-  summary: string;
+  // 新セクション（オプショナル：既存データとの互換性）
+  lifeContextSummary?: string;
+  storyline?: {
+    beginning: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: StorylineMood;
+    };
+    middle: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: StorylineMood;
+    };
+    end: {
+      period: string;
+      summary: string;
+      keyQuote?: string;
+      mood: StorylineMood;
+    };
+  };
+  valueDiscovery?: {
+    primaryValue: {
+      name: string;
+      evidence: string[];
+      insight: string;
+    };
+    secondaryValues: Array<{
+      name: string;
+      briefEvidence: string;
+    }>;
+    hiddenInsight: string;
+  };
   highlights: Array<{
     date: string;
     type: 'achievement' | 'connection' | 'discovery' | 'turning_point';
@@ -444,12 +483,7 @@ export interface MonthlyInsightDocument {
     description: string;
     quote?: string;
   }>;
-  themes: Array<{
-    type: string;
-    title: string;
-    description: string;
-    examples?: Array<{ date: string; quote: string }>;
-  }>;
+  letterToFutureSelf?: string;
   growth: {
     improvements: string[];
     challenges: string[];
@@ -458,7 +492,42 @@ export interface MonthlyInsightDocument {
   question: string;
   generatedAt: string;
   modelVersion?: string;
+  // 後方互換性（旧フィールド）
+  summary?: string;
+  themes?: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples?: Array<{ date: string; quote: string }>;
+  }>;
 }
+
+/**
+ * オブジェクトからundefined値を再帰的に除去
+ * Firestoreはundefined値をサポートしないため、保存前に除去が必要
+ */
+const removeUndefinedFields = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) {
+      continue; // undefinedはスキップ
+    }
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      // ネストされたオブジェクトを再帰的に処理
+      result[key] = removeUndefinedFields(value as Record<string, unknown>);
+    } else if (Array.isArray(value)) {
+      // 配列内のオブジェクトも処理
+      result[key] = value.map((item) =>
+        item !== null && typeof item === 'object'
+          ? removeUndefinedFields(item as Record<string, unknown>)
+          : item
+      );
+    } else {
+      result[key] = value;
+    }
+  }
+  return result as Partial<T>;
+};
 
 /**
  * 月次インサイトを保存
@@ -468,11 +537,13 @@ export const saveMonthlyInsightToFirestore = async (
 ): Promise<void> => {
   try {
     const userDoc = getUserDocRef();
+    // undefinedフィールドを除去してから保存
+    const cleanedInsight = removeUndefinedFields(insight as unknown as Record<string, unknown>);
     await userDoc
       .collection(COLLECTIONS.MONTHLY_INSIGHTS)
       .doc(insight.monthKey)
       .set({
-        ...insight,
+        ...cleanedInsight,
         updatedAt: new Date().toISOString(),
       });
   } catch (error) {
