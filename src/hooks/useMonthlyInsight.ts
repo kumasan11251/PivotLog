@@ -94,6 +94,8 @@ interface UseMonthlyInsightReturn {
   canGoToNextMonth: boolean;
   /** 現在選択中の月がキャッシュ済み（生成済み）か */
   isCurrentMonthCached: boolean;
+  /** キャッシュ状態を再チェック */
+  refreshCacheStatus: () => Promise<void>;
   /** 先月の記録数（バナー表示用・後方互換性） */
   lastMonthEntryCount: number;
   /** 先月のインサイトを読み込み/生成（後方互換性） */
@@ -592,6 +594,7 @@ export const useMonthlyInsight = (
     goToNextMonth,
     canGoToNextMonth,
     isCurrentMonthCached,
+    refreshCacheStatus: checkCurrentMonthEntries,
     lastMonthEntryCount,
     loadOrGenerateLastMonthInsight,
     regenerateCurrentMonthInsight,

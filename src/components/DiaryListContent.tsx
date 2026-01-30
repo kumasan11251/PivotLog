@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { colors, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,7 +16,7 @@ import {
   EmptyList,
   YearMonthPickerModal,
 } from './diary';
-import { WeeklyInsightBanner, MonthlyInsightBanner } from './insight';
+import { CompactInsightButtons } from './insight';
 
 type ViewMode = 'list' | 'calendar';
 
@@ -54,20 +54,32 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   } = useDiaryList({ shouldRefresh });
 
   // 週次インサイト
+  // isCurrentWeekCached: Firestoreにキャッシュ済み（生成済み）かどうか
   const {
-    insight,
     state: insightState,
     lastWeekEntryCount,
     canGenerateInsight,
+    isCurrentWeekCached,
+    refreshCacheStatus: refreshWeeklyCacheStatus,
   } = useWeeklyInsight();
 
   // 月次インサイト
+  // isCurrentMonthCached: Firestoreにキャッシュ済み（生成済み）かどうか
   const {
-    insight: monthlyInsight,
     state: monthlyInsightState,
     currentMonthEntryCount,
     canGenerateInsight: canGenerateMonthlyInsight,
+    isCurrentMonthCached,
+    refreshCacheStatus: refreshMonthlyCacheStatus,
   } = useMonthlyInsight();
+
+  // 画面フォーカス時にキャッシュ状態を更新（インサイト画面から戻ってきた時など）
+  useFocusEffect(
+    useCallback(() => {
+      refreshWeeklyCacheStatus();
+      refreshMonthlyCacheStatus();
+    }, [refreshWeeklyCacheStatus, refreshMonthlyCacheStatus])
+  );
 
   // ========================================
   // ナビゲーションハンドラー
@@ -197,24 +209,18 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         onMonthPress={handleOpenYearMonthPicker}
       />
 
-      {/* 週次インサイトバナー */}
-      <WeeklyInsightBanner
-        entryCount={lastWeekEntryCount}
-        state={insightState}
-        hasInsight={!!insight}
-        canGenerate={canGenerateInsight}
-        summary={insight?.summary}
-        onPress={handleNavigateToWeeklyInsight}
-      />
-
-      {/* 月次インサイトバナー */}
-      <MonthlyInsightBanner
-        entryCount={currentMonthEntryCount}
-        state={monthlyInsightState}
-        hasInsight={!!monthlyInsight}
-        canGenerate={canGenerateMonthlyInsight}
-        summary={monthlyInsight?.summary}
-        onPress={handleNavigateToMonthlyInsight}
+      {/* コンパクトなインサイトボタン */}
+      <CompactInsightButtons
+        weeklyEntryCount={lastWeekEntryCount}
+        weeklyState={insightState}
+        hasWeeklyInsight={isCurrentWeekCached}
+        canGenerateWeekly={canGenerateInsight}
+        onWeeklyPress={handleNavigateToWeeklyInsight}
+        monthlyEntryCount={currentMonthEntryCount}
+        monthlyState={monthlyInsightState}
+        hasMonthlyInsight={isCurrentMonthCached}
+        canGenerateMonthly={canGenerateMonthlyInsight}
+        onMonthlyPress={handleNavigateToMonthlyInsight}
       />
 
       {viewMode === 'list' ? (
@@ -228,14 +234,20 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
           onRefresh={handleRefresh}
         />
       ) : (
-        <CalendarView
-          selectedYear={selectedYear}
-          selectedMonth={selectedMonth}
-          filteredDiaries={filteredDiaries}
-          selectedDate={selectedDate}
-          onSelectedDateChange={setSelectedDate}
-          onNavigateToEntry={handleNavigateToEntry}
-        />
+        <ScrollView
+          style={styles.calendarScrollView}
+          contentContainerStyle={styles.calendarScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <CalendarView
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            filteredDiaries={filteredDiaries}
+            selectedDate={selectedDate}
+            onSelectedDateChange={setSelectedDate}
+            onNavigateToEntry={handleNavigateToEntry}
+          />
+        </ScrollView>
       )}
 
       <YearMonthPickerModal
@@ -257,6 +269,13 @@ const styles = StyleSheet.create({
   listContent: {
     padding: spacing.padding.screen,
     flexGrow: 1,
+  },
+  calendarScrollView: {
+    flex: 1,
+  },
+  calendarScrollContent: {
+    flexGrow: 1,
+    paddingBottom: spacing.xl,
   },
 });
 

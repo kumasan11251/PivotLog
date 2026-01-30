@@ -15,3 +15,6 @@ export { MonthlyInsightBanner } from './MonthlyInsightBanner';
 export { MonthlyThemeCard } from './MonthlyThemeCard';
 export { MonthlyHighlightCard } from './MonthlyHighlightCard';
 export { MonthSelector } from './MonthSelector';
+
+// コンパクトボタン
+export { CompactInsightButtons } from './CompactInsightButtons';

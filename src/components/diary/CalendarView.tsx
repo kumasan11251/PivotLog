@@ -7,7 +7,7 @@ import { DiaryEntry } from '../../utils/storage';
 import { useCalendar } from '../../hooks/useCalendar';
 import DiaryCard, { formatDateParts } from './DiaryCard';
 
-const CARD_HEIGHT = 140;
+const CARD_HEIGHT = 110;
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 interface CalendarViewProps {
@@ -176,7 +176,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: spacing.padding.screen,
   },
   weekdayHeader: {

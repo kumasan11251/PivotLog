@@ -90,6 +90,8 @@ interface UseWeeklyInsightReturn {
   canGoToNextWeek: boolean;
   /** 現在選択中の週がキャッシュ済み（生成済み）か */
   isCurrentWeekCached: boolean;
+  /** キャッシュ状態を再チェック */
+  refreshCacheStatus: () => Promise<void>;
   /** 先週の記録数（バナー表示用・後方互換性） */
   lastWeekEntryCount: number;
   /** 先週のインサイトを読み込み/生成（後方互換性） */
@@ -570,6 +572,7 @@ export const useWeeklyInsight = (
     goToNextWeek,
     canGoToNextWeek,
     isCurrentWeekCached,
+    refreshCacheStatus: checkCurrentWeekEntries,
     // 後方互換性
     lastWeekEntryCount: currentWeekKey === lastWeekInfo.weekKey ? currentWeekEntryCount : 0,
     loadOrGenerateLastWeekInsight,
