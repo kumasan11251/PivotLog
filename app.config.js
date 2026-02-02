@@ -21,7 +21,7 @@ if (fs.existsSync(envPath)) {
 
 module.exports = {
   expo: {
-    name: 'pivot-log',
+    name: 'PivotLog',
     slug: 'pivot-log',
     version: '1.0.0',
     orientation: 'portrait',
@@ -76,6 +76,7 @@ module.exports = {
         },
       ],
       '@bacons/apple-targets',
+      './plugins/withAndroidWidget',
     ],
     extra: {
       geminiApiKey: env.GEMINI_API_KEY || '',

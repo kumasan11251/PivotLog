@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ウィジェット用カラー - ダークモード -->
+    <color name="widget_primary">#A3B899</color>
+    <color name="widget_text_primary">#F5F5F5</color>
+    <color name="widget_text_secondary">#A0A0A0</color>
+    <color name="widget_progress_background">#33FFFFFF</color>
+</resources>

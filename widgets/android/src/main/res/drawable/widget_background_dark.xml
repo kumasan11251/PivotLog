@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <!-- ライトモード: 白からセージグリーン（薄い）へのグラデーション -->
+    <!-- ダークモード: 深いグレーからセージグリーン（暗い）へのグラデーション -->
     <gradient
         android:type="linear"
         android:angle="135"
-        android:startColor="#FFFFFF"
-        android:centerColor="#F8FAF7"
-        android:endColor="#E8EDE6" />
+        android:startColor="#1E1E1E"
+        android:centerColor="#1F2420"
+        android:endColor="#252B26" />
     <corners android:radius="16dp" />
 </shape>

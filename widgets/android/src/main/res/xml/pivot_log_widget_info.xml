@@ -9,5 +9,6 @@
     android:widgetCategory="home_screen"
     android:targetCellWidth="3"
     android:targetCellHeight="2"
+    android:label="@string/widget_name"
     android:description="@string/widget_description">
 </appwidget-provider>
