@@ -125,6 +125,53 @@ export const loadHomeDisplaySettingsFromFirestore = async (): Promise<HomeDispla
   }
 };
 
+// =============== ウィジェット設定 ===============
+
+export interface WidgetSettingsFirestore {
+  customText: string;
+  updatedAt?: string;
+}
+
+/**
+ * ウィジェット設定をFirestoreに保存
+ */
+export const saveWidgetSettingsToFirestore = async (
+  settings: WidgetSettingsFirestore
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    await userDoc.collection(COLLECTIONS.SETTINGS).doc('widget').set(
+      {
+        ...settings,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('ウィジェット設定の保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * ウィジェット設定をFirestoreから読み込み
+ */
+export const loadWidgetSettingsFromFirestore = async (): Promise<WidgetSettingsFirestore | null> => {
+  try {
+    const userDoc = getUserDocRef();
+    const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('widget').get();
+    const docData = doc.data();
+
+    if (docData) {
+      return docData as WidgetSettingsFirestore;
+    }
+    return null;
+  } catch (error) {
+    console.error('ウィジェット設定の読み込みに失敗しました:', error);
+    return null;
+  }
+};
+
 // =============== 日記 ===============
 
 /**

@@ -5,6 +5,7 @@
  */
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { onAuthStateChanged, signInAnonymously, User, signOut as firebaseSignOut } from '../services/firebase';
+import { syncWidgetSettingsFromCloud } from '../utils/widgetStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -44,6 +45,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(firebaseUser);
         setShowAuthScreen(false);
         setIsLoading(false);
+
+        // ウィジェット設定をクラウドから同期
+        syncWidgetSettingsFromCloud().catch((error) => {
+          console.error('[AuthContext] ウィジェット設定の同期エラー:', error);
+        });
       } else {
         // 未ログインの場合は認証画面を表示
         setUser(null);

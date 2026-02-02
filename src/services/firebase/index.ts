@@ -40,8 +40,10 @@ export {
   getDiaryByDateFromFirestore,
   deleteDiaryEntryFromFirestore,
   getDiariesByMonthFromFirestore,
+  saveWidgetSettingsToFirestore,
+  loadWidgetSettingsFromFirestore,
 } from './firestore';
-export type { UserSettings, DiaryEntry, HomeDisplaySettings } from './firestore';
+export type { UserSettings, DiaryEntry, HomeDisplaySettings, WidgetSettingsFirestore } from './firestore';
 
 // Cloud Functionsサービス
 export {
