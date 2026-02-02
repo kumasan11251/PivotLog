@@ -25,6 +25,9 @@ export interface WidgetData {
   showRemainingTime: boolean; // 残り時間を表示するか
   showCustomText: boolean;    // カスタムテキストを表示するか
 
+  // テーマ設定
+  colorScheme: 'light' | 'dark';  // アプリで設定されたテーマ（light/dark）
+
   // メタデータ
   lastUpdated: string;        // 最終更新日時 ISO 8601
 }

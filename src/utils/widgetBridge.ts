@@ -21,7 +21,7 @@ try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const appleTargets = require('@bacons/apple-targets');
   ExtensionStorage = appleTargets.ExtensionStorage;
-} catch (error) {
+} catch {
   console.log('[WidgetBridge] @bacons/apple-targets module not available');
 }
 
@@ -114,5 +114,4 @@ export const WidgetBridge = new WidgetBridgeWrapper();
  */
 export const isWidgetBridgeAvailable = (): boolean => {
   return !!ExtensionStorage && Platform.OS === 'ios';
-};
 };

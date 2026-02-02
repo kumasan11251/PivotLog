@@ -5,6 +5,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 import { loadThemeSettings, saveThemeSettings } from '../utils/storage';
+import { syncWidgetData } from '../utils/widgetStorage';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 export type ColorScheme = 'light' | 'dark';
@@ -72,6 +73,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     setThemeModeState(mode);
     try {
       await saveThemeSettings({ themeMode: mode });
+      // ウィジェットにテーマ変更を反映
+      await syncWidgetData();
     } catch (error) {
       console.error('テーマ設定の保存に失敗:', error);
     }
