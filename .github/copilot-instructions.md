@@ -63,6 +63,21 @@ npm run android
 rm -rf node_modules/.cache && npx expo start --clear
 ```
 
+### Building the App
+
+**ビルドを依頼された場合は、常に `npm run dev:all:device` を使用して全プラットフォーム（iOS シミュレーター、Android エミュレーター、iOS 実機）を同時ビルドする。**
+
+```bash
+# 全プラットフォーム同時ビルド（実機含む）- デフォルト
+npm run dev:all:device
+
+# シミュレーター/エミュレーターのみ
+npm run dev:all
+
+# iOS実機のみ
+npm run ios:device
+```
+
 ### Linting
 
 ```bash

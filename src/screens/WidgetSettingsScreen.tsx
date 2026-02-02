@@ -327,6 +327,10 @@ const styles = StyleSheet.create({
   stepNumberText: {
     fontSize: 12,
     fontFamily: fonts.family.bold,
+    lineHeight: 24,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   stepText: {
     fontSize: 14,

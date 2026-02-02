@@ -59,21 +59,23 @@ export interface StreakInfo {
  * @param days 連続記録日数
  */
 export const getStreakInfo = (days: number): StreakInfo => {
+  // 絵文字はマイルストーンに応じて変化（達成感を演出）
+  let emoji = '📝';
   if (days >= 365) {
-    return { message: `${days}日連続！1年達成`, emoji: '🏆' };
+    emoji = '🏆';
   } else if (days >= 100) {
-    return { message: `${days}日連続！100日突破`, emoji: '💎' };
+    emoji = '💎';
   } else if (days >= 30) {
-    return { message: `${days}日連続！1ヶ月達成`, emoji: '🌟' };
+    emoji = '🌟';
   } else if (days >= 14) {
-    return { message: `${days}日連続！2週間達成`, emoji: '✨' };
+    emoji = '✨';
   } else if (days >= 7) {
-    return { message: `${days}日連続！1週間達成`, emoji: '🎉' };
+    emoji = '🎉';
   } else if (days >= 3) {
-    return { message: `${days}日連続で記録中`, emoji: '🔥' };
-  } else {
-    return { message: `${days}日連続で記録中`, emoji: '📝' };
+    emoji = '🔥';
   }
+
+  return { message: `${days}日間連続`, emoji };
 };
 
 export type CelebrationMessage = typeof CELEBRATION_MESSAGES[number];
