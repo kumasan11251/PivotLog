@@ -45,7 +45,7 @@ export interface AIUsageLimits {
  * デフォルトの利用制限設定
  */
 export const DEFAULT_AI_USAGE_LIMITS: AIUsageLimits = {
-  freeMonthlyReflectionLimit: 5,
+  freeMonthlyReflectionLimit: 0,
   premiumDiaryRegenerateLimit: 3,
   freeWeeklyInsightLimit: 0,
   freeMonthlyInsightLimit: 0,

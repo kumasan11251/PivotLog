@@ -191,6 +191,14 @@ export const useAIReflection = ({
             );
             break;
 
+          case 'FEATURE_NOT_AVAILABLE':
+            Alert.alert(
+              'プレミアム機能',
+              'AIリフレクションはプレミアムプランでご利用いただけます。',
+              [{ text: '閉じる', style: 'cancel' }]
+            );
+            break;
+
           default:
             Alert.alert('エラー', errorMessage);
         }

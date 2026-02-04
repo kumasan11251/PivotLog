@@ -34,7 +34,7 @@ type SubscriptionTier = 'free' | 'premium';
  */
 const AI_USAGE_LIMITS = {
   /** 無料ユーザーの月間リフレクション生成上限 */
-  freeMonthlyReflectionLimit: 5,
+  freeMonthlyReflectionLimit: 0,
   /** プレミアムユーザーの同一日記再生成上限 */
   premiumDiaryRegenerateLimit: 3,
 } as const;
@@ -45,7 +45,8 @@ const AI_USAGE_LIMITS = {
 type UsageLimitErrorCode =
   | 'MONTHLY_LIMIT_REACHED'
   | 'REGENERATE_NOT_ALLOWED'
-  | 'DIARY_REGENERATE_LIMIT';
+  | 'DIARY_REGENERATE_LIMIT'
+  | 'FEATURE_NOT_AVAILABLE';
 
 /**
  * 現在の年月を取得（YYYY-MM形式）
@@ -206,6 +207,18 @@ async function checkUsageLimit(
   const actualRegenerations = usage.diaryRegenCount > 0 ? usage.diaryRegenCount - 1 : 0;
 
   if (tier === 'free') {
+    // 無料ユーザー: 機能自体が利用不可（制限が0の場合）
+    if (AI_USAGE_LIMITS.freeMonthlyReflectionLimit === 0) {
+      return {
+        allowed: false,
+        errorCode: 'FEATURE_NOT_AVAILABLE',
+        details: {
+          tier: 'free',
+          message: 'AIリフレクションはプレミアムプランでご利用いただけます',
+        },
+      };
+    }
+
     // 無料ユーザー: 月間制限チェック
     if (usage.monthlyCount >= AI_USAGE_LIMITS.freeMonthlyReflectionLimit) {
       return {
@@ -610,6 +623,9 @@ export const generateReflection = onCall(
             break;
           case 'DIARY_REGENERATE_LIMIT':
             errorMessage = 'この日記のAIリフレクションは3回まで生成できます。';
+            break;
+          case 'FEATURE_NOT_AVAILABLE':
+            errorMessage = 'AIリフレクションはプレミアムプランでご利用いただけます。';
             break;
         }
 

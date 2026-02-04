@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors, spacing } from '../theme';
@@ -83,11 +84,22 @@ const DiaryEntryScreen: React.FC = () => {
   const handleGetAIReflection = useCallback(async () => {
     // キーボードを閉じる
     Keyboard.dismiss();
+
+    // 無料ユーザーはプレミアム訴求アラートを表示
+    if (!isPremium) {
+      Alert.alert(
+        'プレミアム機能',
+        'AIリフレクションはプレミアムプランでご利用いただけます。あなたの日記をAIが分析し、心に響く気づきを提供します。',
+        [{ text: '閉じる', style: 'cancel' }]
+      );
+      return;
+    }
+
     // リフレクションを取得
     await getReflection();
     // 利用状況を更新
     refreshUsage();
-  }, [getReflection, refreshUsage]);
+  }, [getReflection, refreshUsage, isPremium]);
 
   // 日記が入力されているかどうか
   const hasDiaryContent = formState.goodTime.trim() || formState.wastedTime.trim() || formState.tomorrow.trim();
@@ -280,6 +292,7 @@ const DiaryEntryScreen: React.FC = () => {
                     canRegenerate={canRegenerate}
                     remainingRegenerations={remainingRegenerations}
                     isLimitReached={!canGenerate && aiReflectionState !== 'loaded'}
+                    isFeatureLocked={!isPremium}
                   />
                 )}
               </View>

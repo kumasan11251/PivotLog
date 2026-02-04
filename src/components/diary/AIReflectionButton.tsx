@@ -17,6 +17,8 @@ interface AIReflectionButtonProps {
   remainingRegenerations?: number | null;
   /** 利用制限に達しているかどうか */
   isLimitReached?: boolean;
+  /** 機能がロックされているか（プレミアム専用） */
+  isFeatureLocked?: boolean;
 }
 
 /**
@@ -32,15 +34,21 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   canRegenerate = true,
   remainingRegenerations,
   isLimitReached = false,
+  isFeatureLocked = false,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
 
-  // ボタンの無効状態を決定
-  const isButtonDisabled = disabled || isLimitReached || (hasReflection && !canRegenerate);
+  // ボタンの無効状態を決定（isFeatureLocked時はタップ可能にする）
+  const isButtonDisabled = isFeatureLocked
+    ? disabled
+    : disabled || isLimitReached || (hasReflection && !canRegenerate);
 
   // 既にリフレクションがある場合は「もう一度受け取る」表示
   const buttonText = useMemo(() => {
+    if (isFeatureLocked && !hasReflection) {
+      return 'PivotLogからの気づきを受け取る';
+    }
     if (isLimitReached && !hasReflection) {
       return '今月の利用上限に達しました';
     }
@@ -53,7 +61,7 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
       return 'もう一度気づきを受け取る';
     }
     return 'PivotLogからの気づきを受け取る';
-  }, [hasReflection, canRegenerate, isPremium, isLimitReached]);
+  }, [hasReflection, canRegenerate, isPremium, isLimitReached, isFeatureLocked]);
 
   const buttonBackgroundColor = isButtonDisabled
     ? themeColors.border
@@ -65,6 +73,10 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
 
   // ヒントテキストを決定
   const hintText = useMemo(() => {
+    if (isFeatureLocked) {
+      return 'プレミアムプランで利用できます';
+    }
+
     if (disabled && !isLimitReached) {
       return '日記を入力すると気づきを受け取れます';
     }
@@ -86,7 +98,7 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
     }
 
     return null;
-  }, [disabled, isPremium, remainingThisMonth, hasReflection, remainingRegenerations, isLimitReached]);
+  }, [disabled, isPremium, remainingThisMonth, hasReflection, remainingRegenerations, isLimitReached, isFeatureLocked]);
 
   return (
     <View style={styles.container}>
@@ -114,6 +126,11 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
         >
           {buttonText}
         </Text>
+        {isFeatureLocked && (
+          <View style={[styles.proBadge, { backgroundColor: themeColors.primary }]}>
+            <Text style={styles.proBadgeText}>PRO</Text>
+          </View>
+        )}
       </TouchableOpacity>
 
       {hintText && (
@@ -153,6 +170,18 @@ const styles = StyleSheet.create({
   },
   buttonTextSecondary: {
     fontFamily: fonts.family.regular,
+  },
+  proBadge: {
+    marginLeft: spacing.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  proBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontFamily: fonts.family.bold,
+    ...textBase,
   },
   hintText: {
     fontSize: fonts.size.labelSmall,
