@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   LayoutAnimation,
   UIManager,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -18,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import type { WidgetSettingsScreenNavigationProp } from '../types/navigation';
+import type { MessageSource, WidgetCountdownMode } from '../types/widget';
 import { getColors, fonts, spacing } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
@@ -35,15 +37,46 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+// メッセージソースの選択肢
+const MESSAGE_SOURCE_OPTIONS: { value: MessageSource; label: string; description: string }[] = [
+  { value: 'custom', label: 'カスタム', description: '自分で入力したメッセージ' },
+  { value: 'perspective', label: '視点', description: '日替わりの視点メッセージ' },
+  { value: 'daily', label: 'ひとこと', description: '温かい日替わりメッセージ' },
+];
+
+// カウントダウンモードの選択肢
+const COUNTDOWN_MODE_OPTIONS: { value: WidgetCountdownMode; label: string; preview: string; icon: string }[] = [
+  { value: 'detailed', label: '年+日', preview: '46年 128日', icon: '📅' },
+  { value: 'yearsOnly', label: '年数のみ', preview: '46年', icon: '⏳' },
+  { value: 'weeksOnly', label: '週数のみ', preview: '2,418週', icon: '📆' },
+  { value: 'daysOnly', label: '日数のみ', preview: '16,928日', icon: '🔢' },
+];
+
 const WidgetSettingsScreen: React.FC = () => {
   const navigation = useNavigation<WidgetSettingsScreenNavigationProp>();
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isHelpExpanded, setIsHelpExpanded] = useState(true);
+
+  // 設定値
   const [customText, setCustomText] = useState('');
-  const [originalCustomText, setOriginalCustomText] = useState('');
-  const [isHelpExpanded, setIsHelpExpanded] = useState(true); // デフォルトは開いた状態
+  const [messageSource, setMessageSource] = useState<MessageSource>('custom');
+  const [countdownMode, setCountdownMode] = useState<WidgetCountdownMode>('detailed');
+  const [showDateHeader, setShowDateHeader] = useState(true);
+  const [showDiaryStatus, setShowDiaryStatus] = useState(true);
+  const [showStreak, setShowStreak] = useState(true);
+
+  // 元の値（変更検知用）
+  const [originalValues, setOriginalValues] = useState({
+    customText: '',
+    messageSource: 'custom' as MessageSource,
+    countdownMode: 'detailed' as WidgetCountdownMode,
+    showDateHeader: true,
+    showDiaryStatus: true,
+    showStreak: true,
+  });
 
   // 折りたたみ状態を読み込み
   useEffect(() => {
@@ -64,7 +97,6 @@ const WidgetSettingsScreen: React.FC = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const newState = !isHelpExpanded;
     setIsHelpExpanded(newState);
-    // 状態を保存
     try {
       await AsyncStorage.setItem(HELP_EXPANDED_KEY, String(newState));
     } catch (error) {
@@ -75,9 +107,21 @@ const WidgetSettingsScreen: React.FC = () => {
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const loadedSettings = await loadWidgetSettings();
-      setCustomText(loadedSettings.customText);
-      setOriginalCustomText(loadedSettings.customText);
+      const s = await loadWidgetSettings();
+      setCustomText(s.customText);
+      setMessageSource(s.messageSource);
+      setCountdownMode(s.countdownMode);
+      setShowDateHeader(s.showDateHeader);
+      setShowDiaryStatus(s.showDiaryStatus);
+      setShowStreak(s.showStreak);
+      setOriginalValues({
+        customText: s.customText,
+        messageSource: s.messageSource,
+        countdownMode: s.countdownMode,
+        showDateHeader: s.showDateHeader,
+        showDiaryStatus: s.showDiaryStatus,
+        showStreak: s.showStreak,
+      });
     } catch (error) {
       console.error('ウィジェット設定の読み込みに失敗:', error);
       Alert.alert('エラー', '設定の読み込みに失敗しました');
@@ -92,7 +136,13 @@ const WidgetSettingsScreen: React.FC = () => {
     }, [loadSettings])
   );
 
-  const hasChanges = customText !== originalCustomText;
+  const hasChanges =
+    customText !== originalValues.customText ||
+    messageSource !== originalValues.messageSource ||
+    countdownMode !== originalValues.countdownMode ||
+    showDateHeader !== originalValues.showDateHeader ||
+    showDiaryStatus !== originalValues.showDiaryStatus ||
+    showStreak !== originalValues.showStreak;
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -104,7 +154,14 @@ const WidgetSettingsScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      await saveWidgetSettings({ customText });
+      await saveWidgetSettings({
+        customText,
+        messageSource,
+        countdownMode,
+        showDateHeader,
+        showDiaryStatus,
+        showStreak,
+      });
       await syncWidgetData();
       navigation.goBack();
     } catch (error) {
@@ -128,6 +185,17 @@ const WidgetSettingsScreen: React.FC = () => {
     } else {
       navigation.goBack();
     }
+  };
+
+  const handleMessageSourceChange = (source: MessageSource) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setMessageSource(source);
+  };
+
+  const handleCountdownModeChange = (mode: WidgetCountdownMode) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCountdownMode(mode);
   };
 
   if (isLoading) {
@@ -169,34 +237,179 @@ const WidgetSettingsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* カスタムメッセージ */}
+        {/* メッセージ表示ソース */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>カスタムメッセージ</Text>
-            <Text style={[styles.charCount, { color: themeColors.text.secondary }]}>
-              {customText.length} / {MAX_CUSTOM_TEXT_LENGTH}
+          <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>メッセージ</Text>
+          <View style={[styles.segmentContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+            {MESSAGE_SOURCE_OPTIONS.map((option) => {
+              const isSelected = messageSource === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.segmentItem,
+                    isSelected && [styles.segmentItemSelected, { backgroundColor: themeColors.primary }],
+                  ]}
+                  onPress={() => handleMessageSourceChange(option.value)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.segmentLabel,
+                      { color: isSelected ? '#FFFFFF' : themeColors.text.primary },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={[styles.segmentDescription, { color: themeColors.text.secondary }]}>
+            {MESSAGE_SOURCE_OPTIONS.find((o) => o.value === messageSource)?.description}
+          </Text>
+        </View>
+
+        {/* カスタムメッセージ入力（カスタム選択時のみ） */}
+        {messageSource === 'custom' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>カスタムメッセージ</Text>
+              <Text style={[styles.charCount, { color: themeColors.text.secondary }]}>
+                {customText.length} / {MAX_CUSTOM_TEXT_LENGTH}
+              </Text>
+            </View>
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: themeColors.surface,
+                  borderColor: themeColors.border,
+                  color: themeColors.text.primary,
+                },
+              ]}
+              value={customText}
+              onChangeText={(text) => {
+                if (text.length <= MAX_CUSTOM_TEXT_LENGTH) {
+                  setCustomText(text);
+                }
+              }}
+              placeholder="ウィジェットに表示するメッセージを入力..."
+              placeholderTextColor={themeColors.text.secondary}
+              multiline
+              maxLength={MAX_CUSTOM_TEXT_LENGTH}
+            />
+            <Text style={[styles.inputHint, { color: themeColors.text.secondary }]}>
+              空欄の場合は日替わり視点メッセージが表示されます
             </Text>
           </View>
-          <TextInput
-            style={[
-              styles.textInput,
-              {
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-                color: themeColors.text.primary,
-              },
-            ]}
-            value={customText}
-            onChangeText={(text) => {
-              if (text.length <= MAX_CUSTOM_TEXT_LENGTH) {
-                setCustomText(text);
-              }
-            }}
-            placeholder="ウィジェットに表示するメッセージを入力..."
-            placeholderTextColor={themeColors.text.secondary}
-            multiline
-            maxLength={MAX_CUSTOM_TEXT_LENGTH}
-          />
+        )}
+
+        {/* カウントダウン表示モード */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>カウントダウン表示</Text>
+          <View style={styles.countdownGrid}>
+            {COUNTDOWN_MODE_OPTIONS.map((option) => {
+              const isSelected = countdownMode === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.countdownCard,
+                    {
+                      backgroundColor: themeColors.surface,
+                      borderColor: isSelected ? themeColors.primary : themeColors.border,
+                      borderWidth: isSelected ? 2 : 1,
+                    },
+                  ]}
+                  onPress={() => handleCountdownModeChange(option.value)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.countdownCardIcon}>{option.icon}</Text>
+                  <Text
+                    style={[
+                      styles.countdownCardLabel,
+                      { color: isSelected ? themeColors.primary : themeColors.text.primary },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.countdownCardPreview,
+                      { color: themeColors.text.secondary },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {option.preview}
+                  </Text>
+                  {isSelected && (
+                    <View style={[styles.selectedIndicator, { backgroundColor: themeColors.primary }]}>
+                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* 表示要素 */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>表示要素</Text>
+          <View style={[styles.toggleCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+            <View style={[styles.toggleItem, { borderBottomColor: themeColors.border }]}>
+              <View style={styles.toggleLabelContainer}>
+                <Text style={[styles.toggleLabel, { color: themeColors.text.primary }]}>日付</Text>
+                <Text style={[styles.toggleDescription, { color: themeColors.text.secondary }]}>
+                  今日の日付と曜日を表示
+                </Text>
+              </View>
+              <Switch
+                value={showDateHeader}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowDateHeader(value);
+                }}
+                trackColor={{ false: themeColors.border, true: themeColors.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <View style={[styles.toggleItem, { borderBottomColor: themeColors.border }]}>
+              <View style={styles.toggleLabelContainer}>
+                <Text style={[styles.toggleLabel, { color: themeColors.text.primary }]}>日記の記入状態</Text>
+                <Text style={[styles.toggleDescription, { color: themeColors.text.secondary }]}>
+                  今日の日記を書いたか表示
+                </Text>
+              </View>
+              <Switch
+                value={showDiaryStatus}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowDiaryStatus(value);
+                }}
+                trackColor={{ false: themeColors.border, true: themeColors.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <View style={styles.toggleItemLast}>
+              <View style={styles.toggleLabelContainer}>
+                <Text style={[styles.toggleLabel, { color: themeColors.text.primary }]}>連続記録</Text>
+                <Text style={[styles.toggleDescription, { color: themeColors.text.secondary }]}>
+                  連続記録日数を表示
+                </Text>
+              </View>
+              <Switch
+                value={showStreak}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowStreak(value);
+                }}
+                trackColor={{ false: themeColors.border, true: themeColors.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
         </View>
 
         {/* ウィジェット追加方法 */}
@@ -270,7 +483,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
   },
   section: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -282,9 +495,140 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.family.bold,
     marginLeft: spacing.xs,
+    marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+
+  // --- セグメントコントロール ---
+  segmentContainer: {
+    flexDirection: 'row',
+    borderRadius: spacing.borderRadius.medium,
+    borderWidth: 1,
+    padding: 3,
+    gap: 2,
+  },
+  segmentItem: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: spacing.borderRadius.small,
+  },
+  segmentItemSelected: {
+    borderRadius: spacing.borderRadius.small,
+  },
+  segmentLabel: {
+    fontSize: 12,
+    fontFamily: fonts.family.bold,
+  },
+  segmentDescription: {
+    fontSize: 12,
+    fontFamily: fonts.family.regular,
+    marginTop: spacing.sm,
+    marginLeft: spacing.xs,
+  },
+
+  // --- カスタムテキスト入力 ---
+  textInput: {
+    borderWidth: 1,
+    borderRadius: spacing.borderRadius.medium,
+    padding: spacing.md,
+    fontSize: 14,
+    fontFamily: fonts.family.regular,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 12,
+    fontFamily: fonts.family.regular,
+    marginRight: spacing.xs,
+  },
+  inputHint: {
+    fontSize: 11,
+    fontFamily: fonts.family.regular,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+
+  // --- カウントダウンモード ---
+  countdownGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  countdownCard: {
+    width: '48%',
+    flexGrow: 1,
+    flexBasis: '47%',
+    borderRadius: spacing.borderRadius.large,
+    padding: spacing.md,
+    alignItems: 'center',
+    position: 'relative',
+    minHeight: 90,
+    justifyContent: 'center',
+  },
+  countdownCardIcon: {
+    fontSize: 20,
+    marginBottom: spacing.xs,
+  },
+  countdownCardLabel: {
+    fontSize: 12,
+    fontFamily: fonts.family.bold,
+    marginBottom: 2,
+    textAlign: 'center',
+  },
+  countdownCardPreview: {
+    fontSize: 9,
+    fontFamily: fonts.family.regular,
+    textAlign: 'center',
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // --- トグル ---
+  toggleCard: {
+    borderRadius: spacing.borderRadius.large,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  toggleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  toggleItemLast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 14,
+  },
+  toggleLabelContainer: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  toggleLabel: {
+    fontSize: 15,
+    fontFamily: fonts.family.regular,
+  },
+  toggleDescription: {
+    fontSize: 11,
+    fontFamily: fonts.family.regular,
+    marginTop: 2,
+  },
+
+  // --- アコーディオン・ヘルプ ---
   accordionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -296,20 +640,6 @@ const styles = StyleSheet.create({
     borderRadius: spacing.borderRadius.large,
     padding: spacing.md,
     borderWidth: 1,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: spacing.borderRadius.medium,
-    padding: spacing.md,
-    fontSize: 14,
-    fontFamily: fonts.family.regular,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  charCount: {
-    fontSize: 12,
-    fontFamily: fonts.family.regular,
-    marginRight: spacing.xs,
   },
   stepItem: {
     flexDirection: 'row',

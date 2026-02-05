@@ -28,7 +28,7 @@ export interface DiaryEntry {
 }
 
 export interface HomeDisplaySettings {
-  countdownMode: 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly' | 'seasons';
+  countdownMode: 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
   progressMode: 'bar' | 'circle' | 'grid';
 }
 
@@ -129,6 +129,11 @@ export const loadHomeDisplaySettingsFromFirestore = async (): Promise<HomeDispla
 
 export interface WidgetSettingsFirestore {
   customText: string;
+  messageSource?: string;
+  showStreak?: boolean;
+  showDiaryStatus?: boolean;
+  showDateHeader?: boolean;
+  countdownMode?: string;
   updatedAt?: string;
 }
 

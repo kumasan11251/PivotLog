@@ -172,7 +172,6 @@ const HomeContent: React.FC = () => {
             countdownMode={countdownMode}
             onToggleMode={handleToggleCountdownMode}
             contentOpacity={countdownFadeAnim}
-            birthday={birthday ?? undefined}
           />
         </View>
 
@@ -198,6 +197,8 @@ const HomeContent: React.FC = () => {
             currentAge={currentAge}
             progressPercent={lifeProgress}
             birthday={birthday ?? undefined}
+            streakDays={streakDays}
+            hasTodayEntry={hasTodayEntry}
           />
         </View>
 

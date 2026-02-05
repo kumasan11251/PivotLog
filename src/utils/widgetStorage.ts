@@ -6,15 +6,19 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, NativeModules, Appearance } from 'react-native';
-import type { WidgetData, WidgetSettings } from '../types/widget';
+import type { WidgetData, WidgetSettings, CountdownMode } from '../types/widget';
 import { DEFAULT_WIDGET_SETTINGS } from '../types/widget';
-import { loadUserSettings, loadThemeSettings } from './storage';
+import { loadUserSettings, loadThemeSettings, loadDiaryEntries, getDiaryByDate } from './storage';
 import { calculateLifeProgress, calculateCurrentAge, calculateTimeLeft } from './timeCalculations';
 import { getCurrentUser } from '../services/firebase/auth';
 import {
   saveWidgetSettingsToFirestore,
   loadWidgetSettingsFromFirestore,
 } from '../services/firebase/firestore';
+import { getTodayPerspectiveMessage, formatPerspectiveMessage } from './perspectiveHelpers';
+import { calculateStreakFromEntries, getStreakEmoji } from './streakCalculator';
+import { getEffectiveToday } from './dateUtils';
+import { WEEKDAYS, DAILY_MESSAGES } from '../constants/home';
 
 // @bacons/apple-targets モジュールを動的にインポート
 let ExtensionStorage: {
@@ -34,7 +38,6 @@ try {
   console.log('[widgetStorage] @bacons/apple-targets module not available');
 }
 
-// Android用のExpoWidgetsモジュール
 // Android用のWidgetBridgeモジュール（React Native NativeModules経由）
 let WidgetBridge: {
   setWidgetData: (json: string, packageName: string) => Promise<boolean>;
@@ -68,6 +71,11 @@ export const saveWidgetSettings = async (settings: WidgetSettings): Promise<void
       try {
         await saveWidgetSettingsToFirestore({
           customText: settings.customText,
+          messageSource: settings.messageSource,
+          showStreak: settings.showStreak,
+          showDiaryStatus: settings.showDiaryStatus,
+          showDateHeader: settings.showDateHeader,
+          countdownMode: settings.countdownMode,
         });
         console.log('[widgetStorage] ウィジェット設定をFirestoreに同期しました');
       } catch (firestoreError) {
@@ -91,7 +99,12 @@ export const loadWidgetSettings = async (): Promise<WidgetSettings> => {
   try {
     const data = await AsyncStorage.getItem(WIDGET_SETTINGS_KEY);
     if (data) {
-      return { ...DEFAULT_WIDGET_SETTINGS, ...JSON.parse(data) };
+      const parsed = { ...DEFAULT_WIDGET_SETTINGS, ...JSON.parse(data) };
+      // 既存ユーザーが'seasons'を設定していた場合のフォールバック
+      if (parsed.countdownMode === 'seasons') {
+        parsed.countdownMode = 'detailed';
+      }
+      return parsed;
     }
     return DEFAULT_WIDGET_SETTINGS;
   } catch (error) {
@@ -113,9 +126,10 @@ export const syncWidgetSettingsFromCloud = async (): Promise<void> => {
 
     const cloudSettings = await loadWidgetSettingsFromFirestore();
     if (cloudSettings && cloudSettings.customText !== undefined) {
-      // クラウドの設定をローカルに保存
+      // クラウドの設定をローカルに保存（新フィールドも含む）
       const settings: WidgetSettings = {
-        customText: cloudSettings.customText,
+        ...DEFAULT_WIDGET_SETTINGS,
+        ...cloudSettings,
       };
       await AsyncStorage.setItem(WIDGET_SETTINGS_KEY, JSON.stringify(settings));
       console.log('[widgetStorage] クラウドからウィジェット設定を同期しました');
@@ -126,6 +140,42 @@ export const syncWidgetSettingsFromCloud = async (): Promise<void> => {
   } catch (error) {
     console.error('[widgetStorage] クラウド同期エラー:', error);
   }
+};
+
+/**
+ * 今日の日付ラベルを生成
+ * @returns "2月4日(火)" 形式
+ */
+const generateTodayDateLabel = (): string => {
+  const today = new Date();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const weekday = WEEKDAYS[today.getDay()];
+  return `${month}月${day}日(${weekday})`;
+};
+
+/**
+ * 日替わりメッセージを取得（日付ベースで決定論的に選択）
+ */
+const getTodayDailyMessage = (): string => {
+  const today = new Date();
+  const dayOfYear = Math.floor(
+    (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const index = dayOfYear % DAILY_MESSAGES.length;
+  return DAILY_MESSAGES[index];
+};
+
+/**
+ * カウントダウンモードを解決
+ * 既存ユーザーが 'syncWithHome' や 'seasons' を設定していた場合は 'detailed' にフォールバック
+ */
+const resolveCountdownMode = (widgetMode: string): CountdownMode => {
+  // 既存ユーザーのフォールバック
+  if (widgetMode === 'syncWithHome' || widgetMode === 'seasons') {
+    return 'detailed';
+  }
+  return (widgetMode as CountdownMode) || 'detailed';
 };
 
 /**
@@ -151,10 +201,58 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
     } else if (themeSettings?.themeMode === 'light') {
       colorScheme = 'light';
     } else {
-      // system の場合はデバイスの設定に従う
       const systemColorScheme = Appearance.getColorScheme();
       colorScheme = systemColorScheme === 'dark' ? 'dark' : 'light';
     }
+
+    // --- 拡張データの生成 ---
+
+    // 日記・ストリーク情報（視点メッセージのフィルタリングに必要なため先に取得）
+    let hasTodayEntry = false;
+    let streakDays = 0;
+    let totalDays = 0;
+    try {
+      const dayStartHour = userSettings.dayStartHour ?? 0;
+      const todayString = getEffectiveToday(dayStartHour);
+      const todayEntry = await getDiaryByDate(todayString);
+      hasTodayEntry = todayEntry !== null;
+
+      const allDiaries = await loadDiaryEntries();
+      const streakResult = calculateStreakFromEntries(allDiaries, dayStartHour);
+      streakDays = streakResult.streakDays;
+      totalDays = streakResult.totalDays;
+    } catch (diaryError) {
+      console.error('[widgetStorage] 日記データ取得エラー:', diaryError);
+    }
+
+    // 視点メッセージ（ストリーク・日記記入状態を渡してフィルタリング）
+    const birthdayMonth = userSettings.birthday
+      ? parseInt(userSettings.birthday.split('-')[1], 10)
+      : undefined;
+    const perspectiveMessage = getTodayPerspectiveMessage(birthdayMonth, {
+      streakDays,
+      hasTodayEntry,
+    });
+    const formattedPerspective = formatPerspectiveMessage(perspectiveMessage, {
+      remainingYears: timeLeft.totalYears,
+      remainingDays: timeLeft.totalDays,
+      remainingWeeks: timeLeft.totalWeeks,
+      currentAge,
+      progressPercent: lifeProgress,
+      streakDays,
+    });
+
+    // 日替わりメッセージ
+    const dailyMessage = getTodayDailyMessage();
+
+    // ストリーク絵文字
+    const streakEmoji = getStreakEmoji(streakDays);
+
+    // 日付ラベル
+    const todayDateLabel = generateTodayDateLabel();
+
+    // カウントダウンモード解決
+    const countdownMode = resolveCountdownMode(widgetSettings.countdownMode);
 
     return {
       birthday: userSettings.birthday,
@@ -164,11 +262,32 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
       remainingDays: Math.floor(timeLeft.totalDays),
       currentAge,
       customText: widgetSettings.customText,
-      showProgress: true,        // 常に表示
-      showRemainingTime: true,   // 常に表示
-      showCustomText: true,      // 常に表示
-      colorScheme,               // テーマ設定
+      showProgress: true,
+      showRemainingTime: true,
+      showCustomText: true,
+      colorScheme,
       lastUpdated: new Date().toISOString(),
+
+      // 拡張フィールド
+      perspectiveEmoji: formattedPerspective.emoji,
+      perspectiveMainText: formattedPerspective.mainText,
+      perspectiveSubtext: formattedPerspective.subtext ?? '',
+      dailyMessage,
+      messageSource: widgetSettings.messageSource,
+
+      hasTodayEntry,
+      streakDays,
+      totalDays,
+      streakEmoji,
+
+      todayDateLabel,
+
+      countdownMode,
+      totalWeeks: Math.floor(timeLeft.totalWeeks),
+
+      showStreak: widgetSettings.showStreak,
+      showDiaryStatus: widgetSettings.showDiaryStatus,
+      showDateHeader: widgetSettings.showDateHeader,
     };
   } catch (error) {
     console.error('ウィジェットデータの生成に失敗:', error);
@@ -179,7 +298,7 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
 /**
  * ウィジェットデータをネイティブ側に同期
  * iOS: @bacons/apple-targets の ExtensionStorage を使用 (App Groups UserDefaults)
- * Android: ExpoWidgets モジュールを使用 (SharedPreferences)
+ * Android: WidgetBridge モジュールを使用 (SharedPreferences)
  */
 export const syncWidgetData = async (): Promise<boolean> => {
   try {

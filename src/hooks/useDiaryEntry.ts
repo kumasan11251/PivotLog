@@ -297,7 +297,12 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
       clearTimeout(saveTimerRef.current);
       performAutoSave(formState);
     }
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // ディープリンク経由でスタックが空の場合はHomeへ遷移
+      navigation.navigate('Home');
+    }
   }, [formState, navigation, performAutoSave]);
 
   return {

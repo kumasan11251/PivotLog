@@ -13,6 +13,7 @@ export type RootStackParamList = {
   LinkAccount: undefined;
   Feedback: undefined;
   WidgetSettings: undefined;
+  ReminderSettings: undefined;
   WeeklyInsight: { weekKey?: string } | undefined;
   MonthlyInsight: { monthKey?: string } | undefined;
 };
@@ -29,5 +30,6 @@ export type EditLifespanScreenNavigationProp = NativeStackNavigationProp<RootSta
 export type LinkAccountScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'LinkAccount'>;
 export type FeedbackScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Feedback'>;
 export type WidgetSettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WidgetSettings'>;
+export type ReminderSettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ReminderSettings'>;
 export type WeeklyInsightScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WeeklyInsight'>;
 export type MonthlyInsightScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MonthlyInsight'>;

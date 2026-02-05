@@ -3,6 +3,23 @@
  */
 
 /**
+ * メッセージ表示ソースの種類
+ */
+export type MessageSource = 'custom' | 'perspective' | 'daily';
+
+/**
+ * カウントダウン表示モード
+ */
+export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
+
+/**
+ * ウィジェット用カウントダウンモード
+ * ※ 以前は 'syncWithHome' オプションがあったが、ホーム画面との表示形式の違いで
+ *   混乱を招くため削除。既存ユーザーのフォールバックは widgetStorage.ts で処理。
+ */
+export type WidgetCountdownMode = CountdownMode;
+
+/**
  * ウィジェットで共有するデータ構造
  * React Native アプリとネイティブウィジェット間で共有される
  */
@@ -30,6 +47,33 @@ export interface WidgetData {
 
   // メタデータ
   lastUpdated: string;        // 最終更新日時 ISO 8601
+
+  // --- 以下、拡張フィールド（全てオプショナルで後方互換性維持） ---
+
+  // 日替わりコンテンツ
+  perspectiveEmoji?: string;       // 視点メッセージ絵文字
+  perspectiveMainText?: string;    // メインテキスト（プレースホルダー展開済み）
+  perspectiveSubtext?: string;     // サブテキスト
+  dailyMessage?: string;           // DAILY_MESSAGESからの温かいメッセージ
+  messageSource?: MessageSource;   // メッセージ表示ソース設定
+
+  // 日記・記録
+  hasTodayEntry?: boolean;         // 今日の日記記入済みか
+  streakDays?: number;             // 連続記録日数
+  totalDays?: number;              // 総記録日数
+  streakEmoji?: string;            // マイルストーン対応絵文字
+
+  // 日付
+  todayDateLabel?: string;         // "2月4日(火)" 形式
+
+  // カウントダウンモード用
+  countdownMode?: CountdownMode;   // 表示モード
+  totalWeeks?: number;             // 残り週数
+
+  // 表示設定フラグ
+  showStreak?: boolean;            // 連続記録を表示するか
+  showDiaryStatus?: boolean;       // 日記記入状態を表示するか
+  showDateHeader?: boolean;        // 日付ヘッダーを表示するか
 }
 
 /**
@@ -37,8 +81,12 @@ export interface WidgetData {
  * ユーザーが設定画面で入力するデータ
  */
 export interface WidgetSettings {
-  // カスタムテキスト
   customText: string;
+  messageSource: MessageSource;
+  showStreak: boolean;
+  showDiaryStatus: boolean;
+  showDateHeader: boolean;
+  countdownMode: WidgetCountdownMode;
 }
 
 /**
@@ -46,6 +94,11 @@ export interface WidgetSettings {
  */
 export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
   customText: '',
+  messageSource: 'custom',
+  showStreak: true,
+  showDiaryStatus: true,
+  showDateHeader: true,
+  countdownMode: 'detailed',
 };
 
 /**

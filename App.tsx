@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, ActivityIndicator, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, getStateFromPath as defaultGetStateFromPath, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import MainTabScreen from './src/screens/MainTabScreen';
@@ -15,8 +16,10 @@ import LinkAccountScreen from './src/screens/LinkAccountScreen';
 import FeedbackScreen from './src/screens/FeedbackScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
+import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
 import WeeklyInsightScreen from './src/screens/WeeklyInsightScreen';
 import MonthlyInsightScreen from './src/screens/MonthlyInsightScreen';
+import { initializeReminder } from './src/services/notification';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { WeeklyInsightProvider } from './src/contexts/WeeklyInsightContext';
@@ -28,6 +31,47 @@ import { colors, fonts, getColors } from './src/theme';
 import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// ナビゲーションref（通知タップ時のナビゲーション用）
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+// 今日の日付を取得（YYYY-MM-DD形式）
+const getTodayDateString = (): string => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// ディープリンク設定
+const linkingConfig = {
+  screens: {
+    Home: 'home',
+    DiaryEntry: 'diary/:initialDate',
+  },
+};
+
+const linking = {
+  prefixes: ['pivotlog://'],
+  config: linkingConfig,
+  getStateFromPath: (path: string, options: Parameters<typeof defaultGetStateFromPath>[1]) => {
+    // Expo development client のURLを除外
+    if (path.includes('expo-development-client')) {
+      return undefined;
+    }
+    const state = defaultGetStateFromPath(path, options);
+    // DiaryEntryへのディープリンク時、Homeをスタック下部に挿入
+    if (state?.routes?.length === 1 && state.routes[0].name === 'DiaryEntry') {
+      return {
+        ...state,
+        routes: [{ name: 'Home' as const }, ...state.routes],
+        index: 1,
+      };
+    }
+    return state;
+  },
+};
 
 // メインナビゲーション（認証済みユーザー用）
 function MainNavigator() {
@@ -63,6 +107,9 @@ function MainNavigator() {
         if (!onboardingDone) {
           setShowOnboarding(true);
         }
+
+        // リマインダー通知を初期化（設定済みの場合は再スケジュール）
+        await initializeReminder();
       } catch (error) {
         console.error('初期化エラー:', error);
         setIsSetupComplete(false);
@@ -107,6 +154,7 @@ function MainNavigator() {
       <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
       <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} />
+      <Stack.Screen name="ReminderSettings" component={ReminderSettingsScreen} />
       <Stack.Screen
         name="WeeklyInsight"
         component={WeeklyInsightScreen}
@@ -162,6 +210,34 @@ export default function App() {
     NotoSansJP_700Bold,
   });
 
+  // 通知レスポンスリスナーのref
+  const notificationResponseListener = useRef<Notifications.Subscription | null>(null);
+
+  // 通知タップ時のハンドリング
+  useEffect(() => {
+    // 通知をタップしたときのリスナー
+    notificationResponseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      console.log('通知がタップされました:', data);
+
+      // リマインダー通知の場合は日記入力画面へ遷移
+      if (data?.type === 'daily_reminder' || data?.type === 'test') {
+        // ナビゲーションの準備ができるまで少し待つ
+        setTimeout(() => {
+          if (navigationRef.isReady()) {
+            navigationRef.navigate('DiaryEntry', { initialDate: getTodayDateString() });
+          }
+        }, 100);
+      }
+    });
+
+    return () => {
+      if (notificationResponseListener.current) {
+        notificationResponseListener.current.remove();
+      }
+    };
+  }, []);
+
   if (!fontsLoaded) {
     return (
       <SafeAreaProvider>
@@ -179,7 +255,7 @@ export default function App() {
           <SubscriptionProvider>
             <WeeklyInsightProvider>
               <MonthlyInsightProvider>
-                <NavigationContainer>
+                <NavigationContainer ref={navigationRef} linking={linking}>
                   <RootNavigator />
                 </NavigationContainer>
               </MonthlyInsightProvider>

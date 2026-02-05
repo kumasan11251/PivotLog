@@ -16,8 +16,6 @@ interface CountdownSectionProps {
   onToggleMode: () => void;
   /** コンテンツ部分の透明度（アニメーション用） */
   contentOpacity?: Animated.Value;
-  /** 誕生日（YYYY-MM-DD形式）- seasonsモードで誕生日当日表示に使用 */
-  birthday?: string;
 }
 
 /**
@@ -29,7 +27,6 @@ const CountdownSection: React.FC<CountdownSectionProps> = ({
   countdownMode,
   onToggleMode,
   contentOpacity,
-  birthday,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
@@ -47,7 +44,7 @@ const CountdownSection: React.FC<CountdownSectionProps> = ({
         icon="hourglass"
       />
       <ContentWrapper style={contentStyle}>
-        <CountdownDisplay timeLeft={timeLeft} mode={countdownMode} birthday={birthday} />
+        <CountdownDisplay timeLeft={timeLeft} mode={countdownMode} />
       </ContentWrapper>
     </View>
   );

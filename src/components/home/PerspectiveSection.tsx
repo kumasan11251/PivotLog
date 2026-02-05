@@ -18,6 +18,10 @@ interface PerspectiveSectionProps {
   progressPercent: number;
   /** 誕生日（YYYY-MM-DD形式）*/
   birthday?: string;
+  /** 連続記録日数 */
+  streakDays?: number;
+  /** 今日の日記記入済みか */
+  hasTodayEntry?: boolean;
 }
 
 /**
@@ -31,6 +35,8 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   currentAge,
   progressPercent,
   birthday,
+  streakDays,
+  hasTodayEntry,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
@@ -40,14 +46,18 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
     ? parseInt(birthday.split('-')[1], 10)
     : undefined;
 
-  // 今日のメッセージを取得（誕生日月を渡して季節・誕生日メッセージをフィルタリング）
-  const todayMessage = getTodayPerspectiveMessage(birthdayMonth);
+  // 今日のメッセージを取得（誕生日月・ストリーク・日記記入状態を渡してフィルタリング）
+  const todayMessage = getTodayPerspectiveMessage(birthdayMonth, {
+    streakDays,
+    hasTodayEntry,
+  });
   const formattedMessage = formatPerspectiveMessage(todayMessage, {
     remainingYears,
     remainingDays,
     remainingWeeks,
     currentAge,
     progressPercent,
+    streakDays,
   });
 
   return (

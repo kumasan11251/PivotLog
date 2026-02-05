@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { loadHomeDisplaySettings, saveHomeDisplaySettings } from '../utils/storage';
+import { syncWidgetData } from '../utils/widgetStorage';
 
-export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly' | 'seasons';
+export type CountdownMode = 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
 export type ProgressMode = 'bar' | 'circle' | 'grid';
 
 interface UseDisplaySettingsResult {
@@ -25,7 +26,9 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
     const loadSettings = async () => {
       const settings = await loadHomeDisplaySettings();
       if (settings) {
-        setCountdownModeState(settings.countdownMode);
+        // 既存ユーザーが'seasons'を設定していた場合のフォールバック
+        const validMode = settings.countdownMode === ('seasons' as string) ? 'detailed' : settings.countdownMode;
+        setCountdownModeState(validMode as CountdownMode);
         setProgressMode(settings.progressMode);
       }
       setIsLoading(false);
@@ -34,12 +37,11 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
   }, []);
 
   const toggleCountdownMode = useCallback(async () => {
-    // 左から右に進む順番: detailed → yearsOnly → weeksOnly → daysOnly → seasons
+    // 左から右に進む順番: detailed → yearsOnly → weeksOnly → daysOnly → detailed
     const newMode =
       countdownMode === 'detailed' ? 'yearsOnly' :
       countdownMode === 'yearsOnly' ? 'weeksOnly' :
       countdownMode === 'weeksOnly' ? 'daysOnly' :
-      countdownMode === 'daysOnly' ? 'seasons' :
       'detailed';
 
     setCountdownModeState(newMode);
@@ -47,6 +49,13 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
       countdownMode: newMode,
       progressMode,
     });
+
+    // ウィジェットが「ホーム連動」モードの場合に反映されるよう同期
+    try {
+      await syncWidgetData();
+    } catch (error) {
+      console.error('[useDisplaySettings] ウィジェット同期エラー:', error);
+    }
   }, [countdownMode, progressMode]);
 
   const setCountdownMode = useCallback(async (mode: CountdownMode) => {
@@ -55,6 +64,13 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
       countdownMode: mode,
       progressMode,
     });
+
+    // ウィジェットが「ホーム連動」モードの場合に反映されるよう同期
+    try {
+      await syncWidgetData();
+    } catch (error) {
+      console.error('[useDisplaySettings] ウィジェット同期エラー:', error);
+    }
   }, [progressMode]);
 
   const toggleProgressMode = useCallback(async () => {

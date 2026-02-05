@@ -303,7 +303,52 @@ const SettingsScreen: React.FC = () => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* プロフィール設定セクション */}
+        {/* ① ウィジェット・通知セクション */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>ウィジェット・通知</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <SettingItem
+              icon="apps-outline"
+              label="ウィジェット設定"
+              value="ホーム画面に追加"
+              onPress={() => navigation.navigate('WidgetSettings')}
+              themeColors={themeColors}
+            />
+            <SettingItem
+              icon="notifications-outline"
+              label="リマインダー"
+              value="毎日の振り返りを習慣に"
+              onPress={() => navigation.navigate('ReminderSettings')}
+              isLast
+              themeColors={themeColors}
+            />
+          </View>
+        </View>
+
+        {/* ② 一般設定セクション（外観 + 記録設定を統合） */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>一般設定</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <SettingItem
+              icon="contrast-outline"
+              label="テーマ"
+              value={getThemeLabel(themeMode)}
+              onPress={() => setShowThemePicker(true)}
+              themeColors={themeColors}
+            />
+            <SettingItem
+              icon="time-outline"
+              label="1日の開始時刻"
+              value={formatDayStartHour(dayStartHour)}
+              onPress={() => setShowDayStartPicker(true)}
+              isLoading={isLoading}
+              isLast
+              themeColors={themeColors}
+            />
+          </View>
+        </View>
+
+        {/* ③ プロフィール設定セクション */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>プロフィール</Text>
           <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
@@ -327,59 +372,90 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 外観設定セクション */}
+        {/* ④ アカウントセクション（フィードバックを統合） */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>外観</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>アカウント</Text>
           <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <View style={[styles.infoItem, dynamicStyles.settingItem]}>
+              <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
+                <Ionicons name="person-outline" size={20} color={themeColors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>ログイン状態</Text>
+                <View style={styles.accountStatusRow}>
+                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
+                    {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
+                  </Text>
+                  <View style={[
+                    styles.accountBadge,
+                    user?.isAnonymous ? styles.guestBadge : styles.linkedBadge
+                  ]}>
+                    <Ionicons
+                      name={user?.isAnonymous ? 'warning-outline' : 'checkmark-circle'}
+                      size={12}
+                      color={user?.isAnonymous ? '#FF9800' : '#4CAF50'}
+                    />
+                    <Text style={[
+                      styles.badgeText,
+                      user?.isAnonymous ? styles.guestBadgeText : styles.linkedBadgeText
+                    ]}>
+                      {user?.isAnonymous ? '未連携' : '連携済み'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+            {user?.isAnonymous ? (
+              // 匿名ユーザーの場合：アカウント連携を表示
+              <TouchableOpacity
+                style={[styles.settingItem, dynamicStyles.settingItem]}
+                onPress={() => navigation.navigate('LinkAccount')}
+                activeOpacity={0.6}
+              >
+                <View style={[styles.settingIconContainer, styles.linkAccountIconContainer, dynamicStyles.settingIconContainer]}>
+                  <Ionicons name="link-outline" size={20} color={themeColors.primary} />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>アカウントを連携</Text>
+                  <Text style={[styles.linkAccountSubtext, dynamicStyles.settingValue]}>メールアドレスでデータをバックアップ</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
+              </TouchableOpacity>
+            ) : (
+              // 非匿名ユーザーの場合：ログアウトを表示
+              <TouchableOpacity
+                style={[styles.settingItem, dynamicStyles.settingItem]}
+                onPress={handleSignOut}
+                activeOpacity={0.6}
+              >
+                <View style={[styles.settingIconContainer, styles.logoutIconContainer]}>
+                  <Ionicons name="log-out-outline" size={20} color="#D32F2F" />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingLabel, styles.logoutText]}>ログアウト</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
+              </TouchableOpacity>
+            )}
+            {/* フィードバック */}
             <SettingItem
-              icon="contrast-outline"
-              label="テーマ"
-              value={getThemeLabel(themeMode)}
-              onPress={() => setShowThemePicker(true)}
+              icon="chatbubble-ellipses-outline"
+              label="ご意見・ご要望を送る"
+              value="不具合報告や機能改善など"
+              onPress={() => navigation.navigate('Feedback')}
               isLast
               themeColors={themeColors}
             />
           </View>
         </View>
 
-        {/* 記録設定セクション */}
+        {/* ⑤ その他セクション（アプリ情報 + データ管理を統合） */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>記録設定</Text>
-          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
-            <SettingItem
-              icon="time-outline"
-              label="1日の開始時刻"
-              value={formatDayStartHour(dayStartHour)}
-              onPress={() => setShowDayStartPicker(true)}
-              isLoading={isLoading}
-              isLast
-              themeColors={themeColors}
-            />
-          </View>
-        </View>
-
-        {/* ウィジェットセクション */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>ウィジェット</Text>
-          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
-            <SettingItem
-              icon="apps-outline"
-              label="ウィジェット設定"
-              value="ホーム画面に追加"
-              onPress={() => navigation.navigate('WidgetSettings')}
-              isLast
-              themeColors={themeColors}
-            />
-          </View>
-        </View>
-
-        {/* アプリ情報 */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>アプリ情報</Text>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>その他</Text>
           <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             {/* バージョン（タップで開発者メニューをトグル） */}
             <TouchableOpacity
-              style={[styles.settingItem, dynamicStyles.settingItem, !showDebugSection && styles.settingItemLast]}
+              style={[styles.settingItem, dynamicStyles.settingItem]}
               onPress={toggleDebugSection}
               activeOpacity={0.6}
             >
@@ -490,100 +566,8 @@ const SettingsScreen: React.FC = () => {
                 )}
               </Animated.View>
             )}
-          </View>
-        </View>
 
-        {/* フィードバック */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>フィードバック</Text>
-          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
-            <SettingItem
-              icon="chatbubble-ellipses-outline"
-              label="ご意見・ご要望を送る"
-              value="不具合報告や機能改善など"
-              onPress={() => navigation.navigate('Feedback')}
-              isLast
-              themeColors={themeColors}
-            />
-          </View>
-        </View>
-
-        {/* アカウント */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>アカウント</Text>
-          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
-            <View style={[styles.infoItem, dynamicStyles.settingItem]}>
-              <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
-                <Ionicons name="person-outline" size={20} color={themeColors.primary} />
-              </View>
-              <View style={styles.settingContent}>
-                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>ログイン状態</Text>
-                <View style={styles.accountStatusRow}>
-                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
-                    {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
-                  </Text>
-                  <View style={[
-                    styles.accountBadge,
-                    user?.isAnonymous ? styles.guestBadge : styles.linkedBadge
-                  ]}>
-                    <Ionicons
-                      name={user?.isAnonymous ? 'warning-outline' : 'checkmark-circle'}
-                      size={12}
-                      color={user?.isAnonymous ? '#FF9800' : '#4CAF50'}
-                    />
-                    <Text style={[
-                      styles.badgeText,
-                      user?.isAnonymous ? styles.guestBadgeText : styles.linkedBadgeText
-                    ]}>
-                      {user?.isAnonymous ? '未連携' : '連携済み'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-            {user?.isAnonymous ? (
-              // 匿名ユーザーの場合：アカウント連携を表示
-              <>
-                <TouchableOpacity
-                  style={[styles.settingItem, styles.settingItemLast]}
-                  onPress={() => navigation.navigate('LinkAccount')}
-                  activeOpacity={0.6}
-                >
-                  <View style={[styles.settingIconContainer, styles.linkAccountIconContainer, dynamicStyles.settingIconContainer]}>
-                    <Ionicons name="link-outline" size={20} color={themeColors.primary} />
-                  </View>
-                  <View style={styles.settingContent}>
-                    <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>アカウントを連携</Text>
-                    <Text style={[styles.linkAccountSubtext, dynamicStyles.settingValue]}>メールアドレスでデータをバックアップ</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
-                </TouchableOpacity>
-              </>
-            ) : (
-              // 非匿名ユーザーの場合：ログアウトを表示
-              <>
-                <TouchableOpacity
-                  style={[styles.settingItem, styles.settingItemLast]}
-                  onPress={handleSignOut}
-                  activeOpacity={0.6}
-                >
-                  <View style={[styles.settingIconContainer, styles.logoutIconContainer]}>
-                    <Ionicons name="log-out-outline" size={20} color="#D32F2F" />
-                  </View>
-                  <View style={styles.settingContent}>
-                    <Text style={[styles.settingLabel, styles.logoutText]}>ログアウト</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* データ削除セクション */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>データ管理</Text>
-          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            {/* アカウント削除 */}
             <TouchableOpacity
               style={[styles.settingItem, styles.settingItemLast]}
               onPress={handleDeleteAccount}
