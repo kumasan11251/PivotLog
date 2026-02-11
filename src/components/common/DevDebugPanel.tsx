@@ -293,10 +293,10 @@ const DevDebugPanel: React.FC<DevDebugPanelProps> = ({ visible, onClose }) => {
 
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: themeColors.text.secondary }]}>
-                  Premium 再生成上限
+                  Premium 日次上限
                 </Text>
                 <Text style={[styles.infoValue, { color: themeColors.text.primary }]}>
-                  {limits.premiumDiaryRegenerateLimit}回/日記
+                  {limits.premiumDailyLimit}回/日
                 </Text>
               </View>
             </View>

@@ -5,11 +5,22 @@
  */
 
 import functions from '@react-native-firebase/functions';
+import type { MonthlyThemeType } from '../../types/monthlyInsight';
 
 /**
  * サポートするAIモデルの型
  */
 export type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
+
+/**
+ * 直近の日記エントリ（リクエスト用）
+ */
+export interface RecentDiaryEntry {
+  date: string;
+  goodTime: string;
+  wastedTime: string;
+  tomorrow: string;
+}
 
 /**
  * AIリフレクション生成リクエストの型
@@ -23,16 +34,48 @@ export interface GenerateReflectionRequest {
   remainingDays: number;
   /** 日記の日付（YYYY-MM-DD形式）- 利用制限チェック用 */
   diaryDate?: string;
+  /** 直近の日記データ（Phase 2で追加） */
+  recentEntries?: RecentDiaryEntry[];
 }
 
 /**
  * AIリフレクション生成レスポンスの型
+ * V1形式とV2形式の両方をサポート
  */
 export interface ReflectionResponse {
-  content: string;
-  question: string;
+  // V1形式（後方互換）
+  content?: string;
+  question?: string;
+  // V2形式（動的セクション）
+  understanding?: string;
+  perspective?: string;
+  tomorrow?: string;
+  schemaVersion?: 1 | 2;
+  // 共通フィールド
   generatedAt: string;
   modelVersion: string;
+  // V1拡張フィールド（Phase 1で追加）
+  emotionInsight?: {
+    detected: string;
+    depth: string;
+  };
+  lifeContext?: {
+    perspective: string;
+  };
+  actionSuggestion?: {
+    micro: string;
+    reason: string;
+  };
+  // V1拡張フィールド（Phase 2で追加）
+  continuity?: {
+    connectionToPast?: {
+      referenceDate: string;
+      connection: string;
+    };
+    growthObservation?: {
+      observation: string;
+    };
+  };
 }
 
 /**
@@ -211,7 +254,7 @@ export interface MonthlyInsightResponse {
   // 後方互換性
   summary?: string;
   themes?: Array<{
-    type: string;
+    type: MonthlyThemeType;
     title: string;
     description: string;
     examples?: Array<{ date: string; quote: string }>;

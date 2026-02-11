@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.widget.RemoteViews
 import android.graphics.Color
@@ -34,6 +35,14 @@ class PivotLogWidgetProvider : AppWidgetProvider() {
         const val DARK_PRIMARY = "#A3B899"
         const val DARK_TEXT_PRIMARY = "#F5F5F5"
         const val DARK_TEXT_SECONDARY = "#A0A0A0"
+
+        /**
+         * システムのダークモード設定を取得
+         */
+        fun isSystemDarkMode(context: Context): Boolean {
+            val nightModeFlags = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+            return nightModeFlags == Configuration.UI_MODE_NIGHT_YES
+        }
     }
 
     override fun onUpdate(
@@ -71,9 +80,15 @@ internal fun updateAppWidget(
         val data = JSONObject(jsonData)
         val views = RemoteViews(context.packageName, R.layout.pivot_log_widget)
 
-        // colorScheme判定
+        // themeMode判定（後方互換性のためcolorSchemeもフォールバックとして使用）
+        val themeMode = if (data.has("themeMode")) data.getString("themeMode") else null
         val colorScheme = if (data.has("colorScheme")) data.getString("colorScheme") else "light"
-        val isDarkMode = colorScheme == "dark"
+        val isDarkMode = when (themeMode) {
+            "light" -> false
+            "dark" -> true
+            "system" -> PivotLogWidgetProvider.isSystemDarkMode(context)
+            else -> colorScheme == "dark"  // themeModeがない場合は後方互換性のためcolorSchemeを使用
+        }
 
         val primaryColor = Color.parseColor(if (isDarkMode) PivotLogWidgetProvider.DARK_PRIMARY else PivotLogWidgetProvider.LIGHT_PRIMARY)
         val textPrimaryColor = Color.parseColor(if (isDarkMode) PivotLogWidgetProvider.DARK_TEXT_PRIMARY else PivotLogWidgetProvider.LIGHT_TEXT_PRIMARY)
@@ -220,9 +235,14 @@ internal fun updateAppWidget(
             val deepLinkUri = if (hasTodayEntry) {
                 "pivotlog://home"
             } else {
-                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val todayString = dateFormat.format(Date())
-                "pivotlog://diary/$todayString"
+                // effectiveTodayDate があればそれを使用（dayStartHour考慮済み）、なければフォールバック
+                val effectiveTodayDate = if (data.has("effectiveTodayDate") && !data.isNull("effectiveTodayDate")) {
+                    data.getString("effectiveTodayDate")
+                } else {
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    dateFormat.format(Date())
+                }
+                "pivotlog://diary/$effectiveTodayDate"
             }
 
             val intent = Intent(Intent.ACTION_VIEW).apply {

@@ -41,6 +41,17 @@ export const getCurrentYearMonth = (): string => {
 };
 
 /**
+ * 現在の日付を取得（YYYY-MM-DD形式）
+ */
+export const getCurrentDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
  * AIリフレクションの利用状況を取得
  */
 export const getAIReflectionUsage = async (): Promise<AIReflectionUsage | null> => {
@@ -102,9 +113,13 @@ export const checkAIReflectionLimit = async (
   try {
     const usage = await getAIReflectionUsage();
     const currentMonth = getCurrentYearMonth();
+    const currentDateStr = getCurrentDate();
 
     // 今月の利用回数
     const usedThisMonth = usage?.monthlyUsage?.[currentMonth]?.count || 0;
+
+    // 今日の利用回数
+    const usedToday = usage?.dailyUsage?.[currentDateStr] || 0;
 
     // この日記の総生成回数（regenerateCountは「総生成回数」）
     const diaryRecord = usage?.reflectionHistory?.[diaryDate];
@@ -123,7 +138,7 @@ export const checkAIReflectionLimit = async (
           canGenerate: false,
           limitReason: 'FEATURE_NOT_AVAILABLE',
           remainingThisMonth: 0,
-          remainingRegenerations: 0,
+          remainingRegenerations: null,
           usedThisMonth,
           regenerationsUsed: actualRegenerations,
         };
@@ -135,7 +150,7 @@ export const checkAIReflectionLimit = async (
           canGenerate: false,
           limitReason: 'MONTHLY_LIMIT_REACHED',
           remainingThisMonth: 0,
-          remainingRegenerations: 0,
+          remainingRegenerations: null,
           usedThisMonth,
           regenerationsUsed: actualRegenerations,
         };
@@ -147,7 +162,7 @@ export const checkAIReflectionLimit = async (
           canGenerate: false,
           limitReason: 'REGENERATE_NOT_ALLOWED',
           remainingThisMonth: limits.freeMonthlyReflectionLimit - usedThisMonth,
-          remainingRegenerations: 0,
+          remainingRegenerations: null,
           usedThisMonth,
           regenerationsUsed: actualRegenerations,
         };
@@ -156,20 +171,20 @@ export const checkAIReflectionLimit = async (
       return {
         canGenerate: true,
         remainingThisMonth: limits.freeMonthlyReflectionLimit - usedThisMonth,
-        remainingRegenerations: 0, // 無料は再生成不可なので常に0
+        remainingRegenerations: null, // 無料は再生成不可
         usedThisMonth,
         regenerationsUsed: actualRegenerations,
       };
     }
 
     // プレミアムユーザーの制限チェック
-    // 同一日記の再生成上限チェック（実際の再生成回数でチェック）
-    if (hasExistingReflection && actualRegenerations >= limits.premiumDiaryRegenerateLimit) {
+    // 1日の利用上限チェック
+    if (usedToday >= limits.premiumDailyLimit) {
       return {
         canGenerate: false,
-        limitReason: 'DIARY_REGENERATE_LIMIT',
+        limitReason: 'DAILY_LIMIT_REACHED',
         remainingThisMonth: null, // 無制限
-        remainingRegenerations: 0,
+        remainingRegenerations: null, // 無制限
         usedThisMonth,
         regenerationsUsed: actualRegenerations,
       };
@@ -177,10 +192,8 @@ export const checkAIReflectionLimit = async (
 
     return {
       canGenerate: true,
-      remainingThisMonth: null, // プレミアムは無制限
-      remainingRegenerations: hasExistingReflection
-        ? limits.premiumDiaryRegenerateLimit - actualRegenerations
-        : limits.premiumDiaryRegenerateLimit,
+      remainingThisMonth: null, // プレミアムは月間無制限
+      remainingRegenerations: null, // プレミアムは再生成無制限
       usedThisMonth,
       regenerationsUsed: actualRegenerations,
     };
@@ -191,7 +204,7 @@ export const checkAIReflectionLimit = async (
       canGenerate: false,
       limitReason: 'MONTHLY_LIMIT_REACHED',
       remainingThisMonth: 0,
-      remainingRegenerations: 0,
+      remainingRegenerations: null,
       usedThisMonth: 0,
       regenerationsUsed: 0,
     };

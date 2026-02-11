@@ -127,9 +127,15 @@ export const syncWidgetSettingsFromCloud = async (): Promise<void> => {
     const cloudSettings = await loadWidgetSettingsFromFirestore();
     if (cloudSettings && cloudSettings.customText !== undefined) {
       // クラウドの設定をローカルに保存（新フィールドも含む）
+      // Firestoreの型は汎用的なstring型なので、WidgetSettingsに適合するようにキャスト
       const settings: WidgetSettings = {
         ...DEFAULT_WIDGET_SETTINGS,
-        ...cloudSettings,
+        customText: cloudSettings.customText,
+        messageSource: (cloudSettings.messageSource as WidgetSettings['messageSource']) ?? DEFAULT_WIDGET_SETTINGS.messageSource,
+        showStreak: cloudSettings.showStreak ?? DEFAULT_WIDGET_SETTINGS.showStreak,
+        showDiaryStatus: cloudSettings.showDiaryStatus ?? DEFAULT_WIDGET_SETTINGS.showDiaryStatus,
+        showDateHeader: cloudSettings.showDateHeader ?? DEFAULT_WIDGET_SETTINGS.showDateHeader,
+        countdownMode: (cloudSettings.countdownMode as WidgetSettings['countdownMode']) ?? DEFAULT_WIDGET_SETTINGS.countdownMode,
       };
       await AsyncStorage.setItem(WIDGET_SETTINGS_KEY, JSON.stringify(settings));
       console.log('[widgetStorage] クラウドからウィジェット設定を同期しました');
@@ -193,14 +199,18 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
     const lifeProgress = calculateLifeProgress(userSettings.birthday, userSettings.targetLifespan);
     const currentAge = calculateCurrentAge(userSettings.birthday);
 
-    // テーマ設定を取得してカラースキームを決定
+    // テーマ設定を取得
     const themeSettings = await loadThemeSettings();
+    const themeMode = themeSettings?.themeMode ?? 'system';
+
+    // colorScheme は後方互換性のため引き続き計算（古いウィジェットバージョン用）
     let colorScheme: 'light' | 'dark' = 'light';
-    if (themeSettings?.themeMode === 'dark') {
+    if (themeMode === 'dark') {
       colorScheme = 'dark';
-    } else if (themeSettings?.themeMode === 'light') {
+    } else if (themeMode === 'light') {
       colorScheme = 'light';
     } else {
+      // system モードの場合は現在のシステム設定を取得（フォールバック用）
       const systemColorScheme = Appearance.getColorScheme();
       colorScheme = systemColorScheme === 'dark' ? 'dark' : 'light';
     }
@@ -211,9 +221,11 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
     let hasTodayEntry = false;
     let streakDays = 0;
     let totalDays = 0;
+    let effectiveTodayDate = '';
     try {
       const dayStartHour = userSettings.dayStartHour ?? 0;
       const todayString = getEffectiveToday(dayStartHour);
+      effectiveTodayDate = todayString;
       const todayEntry = await getDiaryByDate(todayString);
       hasTodayEntry = todayEntry !== null;
 
@@ -266,6 +278,7 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
       showRemainingTime: true,
       showCustomText: true,
       colorScheme,
+      themeMode,
       lastUpdated: new Date().toISOString(),
 
       // 拡張フィールド
@@ -281,6 +294,7 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
       streakEmoji,
 
       todayDateLabel,
+      effectiveTodayDate,
 
       countdownMode,
       totalWeeks: Math.floor(timeLeft.totalWeeks),

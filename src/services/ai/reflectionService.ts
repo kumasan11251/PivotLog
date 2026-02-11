@@ -3,13 +3,15 @@
  * 日記に対するPivotLogからの気づきを生成
  */
 
-import type { AIReflectionData } from '../../types/aiReflection';
+import type { AIReflectionData, AIReflectionDataV1 } from '../../types/aiReflection';
+import { isV2Reflection } from '../../types/aiReflection';
 import { getAIConfig, AIProvider } from './config';
 import {
   REFLECTION_SYSTEM_PROMPT,
   generateUserPrompt,
   parseAIResponse,
   generateFallbackReflection,
+  generateFallbackReflectionV2,
   ReflectionPromptParams,
 } from './prompts';
 import { generateReflectionViaCloudFunctions } from '../firebase/functions';
@@ -32,6 +34,13 @@ export interface GenerateReflectionRequest {
   remainingDays: number;
   /** 日記の日付（YYYY-MM-DD形式）- 利用制限チェック用 */
   diaryDate?: string;
+  /** 直近の日記データ（Phase 2で追加） */
+  recentEntries?: Array<{
+    date: string;
+    goodTime: string;
+    wastedTime: string;
+    tomorrow: string;
+  }>;
 }
 
 /**
@@ -329,12 +338,15 @@ const generateGeminiReflection = async (
         };
       }
 
-      // 回答が途中で切れていないかチェック
-      if (parsed.content.length < 30 || parsed.question.length < 10) {
-        console.warn('[Gemini] Response seems too short, retrying...');
-        console.warn('  content length:', parsed.content.length);
-        console.warn('  question length:', parsed.question.length);
-        throw new Error('Response too short');
+      // 回答が途中で切れていないかチェック（V1形式の場合）
+      if (!isV2Reflection(parsed)) {
+        const v1Parsed = parsed as AIReflectionDataV1;
+        if (v1Parsed.content.length < 30 || v1Parsed.question.length < 10) {
+          console.warn('[Gemini] Response seems too short, retrying...');
+          console.warn('  content length:', v1Parsed.content.length);
+          console.warn('  question length:', v1Parsed.question.length);
+          throw new Error('Response too short');
+        }
       }
 
       return {
@@ -373,13 +385,36 @@ const generateCloudFunctionsReflection = async (
     remainingYears: params.remainingYears,
     remainingDays: params.remainingDays,
     diaryDate: params.diaryDate,
+    recentEntries: params.recentEntries, // Phase 2
   });
 
+  // V2形式の場合（schemaVersion === 2 && understanding が存在）
+  if (response.schemaVersion === 2 && response.understanding) {
+    console.log('[Cloud Functions] V2 format detected');
+    return {
+      understanding: response.understanding,
+      ...(response.perspective && { perspective: response.perspective }),
+      ...(response.tomorrow && { tomorrow: response.tomorrow }),
+      generatedAt: response.generatedAt,
+      modelVersion: response.modelVersion,
+      schemaVersion: 2,
+    };
+  }
+
+  // V1形式の場合（後方互換）
+  console.log('[Cloud Functions] V1 format detected');
+  // undefinedの場合はFirestore保存時にエラーになるため、条件付きスプレッドを使用
   return {
-    content: response.content,
-    question: response.question,
+    content: response.content || '',
+    question: response.question || '',
     generatedAt: response.generatedAt,
     modelVersion: response.modelVersion,
+    // 拡張フィールドを渡す（Phase 1）- undefinedの場合は含めない
+    ...(response.emotionInsight && { emotionInsight: response.emotionInsight }),
+    ...(response.lifeContext && { lifeContext: response.lifeContext }),
+    ...(response.actionSuggestion && { actionSuggestion: response.actionSuggestion }),
+    // Phase 2 - undefinedの場合は含めない
+    ...(response.continuity && { continuity: response.continuity }),
   };
 };
 
@@ -435,6 +470,7 @@ export const generateReflection = async (
     remainingYears: request.remainingYears,
     remainingDays: request.remainingDays,
     diaryDate: request.diaryDate,
+    recentEntries: request.recentEntries, // Phase 2
   };
 
   try {
@@ -465,7 +501,7 @@ export const generateReflection = async (
         errorObj.message?.includes('3回まで')) {
       throw error;
     }
-    // エラー時はフォールバックを返す
-    return generateFallbackReflection(params);
+    // エラー時はV2フォールバックを返す
+    return generateFallbackReflectionV2(params);
   }
 };

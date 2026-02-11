@@ -74,7 +74,11 @@ export const useDisplaySettings = (): UseDisplaySettingsResult => {
   }, [progressMode]);
 
   const toggleProgressMode = useCallback(async () => {
-    const newMode = progressMode === 'bar' ? 'circle' : progressMode === 'circle' ? 'grid' : 'bar';
+    // bar → circle → grid → bar
+    const newMode =
+      progressMode === 'bar' ? 'circle' :
+      progressMode === 'circle' ? 'grid' :
+      'bar';
     setProgressMode(newMode);
     await saveHomeDisplaySettings({
       countdownMode,

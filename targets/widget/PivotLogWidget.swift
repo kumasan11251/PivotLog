@@ -57,6 +57,7 @@ struct PivotLogWidgetData: Codable {
     var showRemainingTime: Bool
     var showCustomText: Bool
     var colorScheme: String?
+    var themeMode: String?  // "light" | "dark" | "system"
     var lastUpdated: String
 
     // 拡張フィールド（オプショナルで後方互換性維持）
@@ -72,6 +73,7 @@ struct PivotLogWidgetData: Codable {
     var streakEmoji: String?
 
     var todayDateLabel: String?
+    var effectiveTodayDate: String?
 
     var countdownMode: String?
     var totalWeeks: Int?
@@ -230,10 +232,22 @@ struct PivotLogWidgetEntryView: View {
     @Environment(\.colorScheme) var systemColorScheme
 
     var isDarkMode: Bool {
-        if let data = entry.widgetData {
-            return data.isDarkMode
+        guard let data = entry.widgetData else {
+            // データがない場合はシステム設定に従う
+            return systemColorScheme == .dark
         }
-        return systemColorScheme == .dark
+
+        // themeMode を確認（存在しない場合は後方互換性のため colorScheme を使用）
+        let mode = data.themeMode ?? (data.colorScheme == "dark" ? "dark" : "light")
+
+        switch mode {
+        case "light":
+            return false
+        case "dark":
+            return true
+        default:  // "system" または未定義
+            return systemColorScheme == .dark
+        }
     }
 
     var primaryColor: Color {
@@ -262,10 +276,15 @@ struct PivotLogWidgetEntryView: View {
         if data.hasTodayEntry == true {
             return URL(string: "pivotlog://home")!
         }
-        // 今日の日付をYYYY-MM-DD形式で取得
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let todayString = formatter.string(from: Date())
+        // effectiveTodayDate があればそれを使用（dayStartHour考慮済み）、なければフォールバック
+        let todayString: String
+        if let effectiveDate = data.effectiveTodayDate, !effectiveDate.isEmpty {
+            todayString = effectiveDate
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            todayString = formatter.string(from: Date())
+        }
         return URL(string: "pivotlog://diary/\(todayString)")!
     }
 

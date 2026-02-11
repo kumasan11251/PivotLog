@@ -74,7 +74,6 @@ const DiaryEntryScreen: React.FC = () => {
   const {
     remainingThisMonth,
     canRegenerate,
-    remainingRegenerations,
     canGenerate,
     refreshUsage,
   } = useAIReflectionLimit({ diaryDate: dateString, hasLocalReflection });
@@ -279,19 +278,20 @@ const DiaryEntryScreen: React.FC = () => {
                   <AIReflectionCard
                     reflection={aiReflection}
                     fadeAnim={reflectionFadeAnim}
+                    onRegenerate={handleGetAIReflection}
+                    canRegenerate={canRegenerate}
+                    isRegenerating={false}
                   />
                 )}
 
-                {(aiReflectionState === 'idle' || aiReflectionState === 'loaded' || aiReflectionState === 'limit_reached') && (
+                {/* 初回生成時のみボタンを表示（再生成はカード内のアイコンから） */}
+                {aiReflectionState === 'idle' && (
                   <AIReflectionButton
                     onPress={handleGetAIReflection}
                     disabled={!hasDiaryContent}
-                    hasReflection={aiReflectionState === 'loaded' || aiReflectionState === 'limit_reached'}
                     remainingThisMonth={remainingThisMonth}
                     isPremium={isPremium}
-                    canRegenerate={canRegenerate}
-                    remainingRegenerations={remainingRegenerations}
-                    isLimitReached={!canGenerate && aiReflectionState !== 'loaded'}
+                    isLimitReached={!canGenerate}
                     isFeatureLocked={!isPremium}
                   />
                 )}

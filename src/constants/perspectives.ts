@@ -229,7 +229,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'meals',
     category: 'reframe',
-    template: 'あと約{remainingDays}回の朝食、昼食、夕食',
+    template: 'あと約{remainingDays}日、食事をできる',
     subtext: '一口ごとに、今日を味わっている',
     emoji: '🍽️',
   },

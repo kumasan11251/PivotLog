@@ -43,7 +43,8 @@ export interface WidgetData {
   showCustomText: boolean;    // カスタムテキストを表示するか
 
   // テーマ設定
-  colorScheme: 'light' | 'dark';  // アプリで設定されたテーマ（light/dark）
+  colorScheme: 'light' | 'dark';  // アプリで設定されたテーマ（light/dark）- 後方互換性用
+  themeMode?: 'light' | 'dark' | 'system';  // テーマモード（system時はウィジェット側でOS設定を参照）
 
   // メタデータ
   lastUpdated: string;        // 最終更新日時 ISO 8601
@@ -65,6 +66,7 @@ export interface WidgetData {
 
   // 日付
   todayDateLabel?: string;         // "2月4日(火)" 形式
+  effectiveTodayDate?: string;     // dayStartHour考慮済みの「今日」(YYYY-MM-DD)
 
   // カウントダウンモード用
   countdownMode?: CountdownMode;   // 表示モード

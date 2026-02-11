@@ -26,12 +26,6 @@ interface UseAIReflectionLimitReturn {
   remainingThisMonth: number | null;
   /** 再生成可能かどうか */
   canRegenerate: boolean;
-  /** この日記の再生成回数 */
-  diaryRegenerateCount: number;
-  /** この日記の再生成上限 */
-  diaryRegenerateLimit: number;
-  /** この日記の残り再生成回数 */
-  remainingRegenerations: number | null;
   /** 生成可能かどうか */
   canGenerate: boolean;
   /** 制限に達している場合の理由 */
@@ -73,7 +67,7 @@ export const useAIReflectionLimit = ({
         canGenerate: false,
         limitReason: 'MONTHLY_LIMIT_REACHED',
         remainingThisMonth: 0,
-        remainingRegenerations: 0,
+        remainingRegenerations: null,
         usedThisMonth: 0,
         regenerationsUsed: 0,
       });
@@ -89,7 +83,7 @@ export const useAIReflectionLimit = ({
 
   // 既にリフレクションが生成されているか
   // 1. Firestoreの利用履歴にregenerationsUsed > 0がある
-  // 2. limitReasonがREGENERATE_NOT_ALLOWEDまたはDIARY_REGENERATE_LIMIT
+  // 2. limitReasonがREGENERATE_NOT_ALLOWED
   // 3. ローカル（AsyncStorage）にリフレクションが保存されている
   const hasExistingReflection = useMemo(() => {
     // ローカルにリフレクションがある場合は既に生成済み
@@ -98,8 +92,7 @@ export const useAIReflectionLimit = ({
     if (!usageCheck) return false;
     // Firestoreの利用履歴で判定
     return usageCheck.regenerationsUsed > 0 ||
-           usageCheck.limitReason === 'REGENERATE_NOT_ALLOWED' ||
-           usageCheck.limitReason === 'DIARY_REGENERATE_LIMIT';
+           usageCheck.limitReason === 'REGENERATE_NOT_ALLOWED';
   }, [usageCheck, hasLocalReflection]);
 
   // 再生成可能かどうか
@@ -112,10 +105,9 @@ export const useAIReflectionLimit = ({
     }
 
     // 既にリフレクションがある場合
-    // プレミアムユーザーは再生成可能（上限まで）
+    // プレミアムユーザーは再生成可能（日次制限に達していなければ）
     if (isPremium) {
-      return usageCheck.remainingRegenerations !== null &&
-             usageCheck.remainingRegenerations > 0;
+      return usageCheck.canGenerate;
     }
     // 無料ユーザーは再生成不可
     return false;
@@ -127,21 +119,12 @@ export const useAIReflectionLimit = ({
     return limits.freeMonthlyReflectionLimit;
   }, [isPremium, limits]);
 
-  // 残り再生成回数を計算
-  const remainingRegenerations = useMemo(() => {
-    if (!usageCheck) return null;
-    return usageCheck.remainingRegenerations;
-  }, [usageCheck]);
-
   return {
     isPremium,
     monthlyUsed: usageCheck?.usedThisMonth || 0,
     monthlyLimit,
     remainingThisMonth: usageCheck?.remainingThisMonth ?? null,
     canRegenerate,
-    diaryRegenerateCount: usageCheck?.regenerationsUsed || 0,
-    diaryRegenerateLimit: isPremium ? limits.premiumDiaryRegenerateLimit : 0,
-    remainingRegenerations,
     canGenerate: usageCheck?.canGenerate || false,
     limitReason: usageCheck?.limitReason,
     isLoading,

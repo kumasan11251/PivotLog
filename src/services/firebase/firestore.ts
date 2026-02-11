@@ -257,7 +257,7 @@ export const deleteDiaryEntryFromFirestore = async (id: string): Promise<void> =
       const usageRef = userDoc.collection(COLLECTIONS.USAGE).doc('aiReflection');
       const usageDoc = await usageRef.get();
 
-      if (usageDoc.exists) {
+      if (usageDoc.exists()) {
         const data = usageDoc.data();
         if (data?.reflectionHistory && data.reflectionHistory[id]) {
           // reflectionHistoryから該当日付のエントリを削除

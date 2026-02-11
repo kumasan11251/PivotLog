@@ -6,15 +6,10 @@ import { useTheme } from '../../contexts/ThemeContext';
 interface AIReflectionButtonProps {
   onPress: () => void;
   disabled?: boolean;
-  hasReflection?: boolean;
   /** 今月の残り回数（無制限の場合はnull） */
   remainingThisMonth?: number | null;
   /** プレミアムユーザーかどうか */
   isPremium?: boolean;
-  /** 再生成可能かどうか */
-  canRegenerate?: boolean;
-  /** この日記の再生成残り回数 */
-  remainingRegenerations?: number | null;
   /** 利用制限に達しているかどうか */
   isLimitReached?: boolean;
   /** 機能がロックされているか（プレミアム専用） */
@@ -28,11 +23,8 @@ interface AIReflectionButtonProps {
 const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   onPress,
   disabled = false,
-  hasReflection = false,
   remainingThisMonth,
   isPremium = false,
-  canRegenerate = true,
-  remainingRegenerations,
   isLimitReached = false,
   isFeatureLocked = false,
 }) => {
@@ -42,34 +34,26 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   // ボタンの無効状態を決定（isFeatureLocked時はタップ可能にする）
   const isButtonDisabled = isFeatureLocked
     ? disabled
-    : disabled || isLimitReached || (hasReflection && !canRegenerate);
+    : disabled || isLimitReached;
 
-  // 既にリフレクションがある場合は「もう一度受け取る」表示
+  // ボタンテキスト（初回生成のみ表示されるので、再生成関連のテキストは不要）
   const buttonText = useMemo(() => {
-    if (isFeatureLocked && !hasReflection) {
+    if (isFeatureLocked) {
       return 'PivotLogからの気づきを受け取る';
     }
-    if (isLimitReached && !hasReflection) {
-      return '今月の利用上限に達しました';
-    }
-    if (hasReflection) {
-      if (!canRegenerate) {
-        return isPremium
-          ? '再生成の上限に達しました'
-          : '再生成はプレミアム機能です';
-      }
-      return 'もう一度気づきを受け取る';
+    if (isLimitReached) {
+      return '利用上限に達しました';
     }
     return 'PivotLogからの気づきを受け取る';
-  }, [hasReflection, canRegenerate, isPremium, isLimitReached, isFeatureLocked]);
+  }, [isLimitReached, isFeatureLocked]);
 
   const buttonBackgroundColor = isButtonDisabled
     ? themeColors.border
-    : hasReflection
-    ? 'transparent'
     : `${themeColors.primary}20`;
 
-  const buttonBorderColor = isButtonDisabled ? themeColors.border : themeColors.primary;
+  const buttonBorderColor = isButtonDisabled
+    ? themeColors.border
+    : themeColors.primary;
 
   // ヒントテキストを決定
   const hintText = useMemo(() => {
@@ -89,16 +73,8 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
       return `今月の残り: ${remainingThisMonth}回`;
     }
 
-    // プレミアムユーザーの再生成残り回数
-    if (isPremium && hasReflection && remainingRegenerations !== null && remainingRegenerations !== undefined) {
-      if (remainingRegenerations <= 0) {
-        return 'この日記の再生成上限に達しました';
-      }
-      return `この日記の残り再生成: ${remainingRegenerations}回`;
-    }
-
     return null;
-  }, [disabled, isPremium, remainingThisMonth, hasReflection, remainingRegenerations, isLimitReached, isFeatureLocked]);
+  }, [disabled, isPremium, remainingThisMonth, isLimitReached, isFeatureLocked]);
 
   return (
     <View style={styles.container}>
@@ -109,7 +85,6 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
             backgroundColor: buttonBackgroundColor,
             borderColor: buttonBorderColor,
           },
-          hasReflection && styles.buttonSecondary,
         ]}
         onPress={onPress}
         disabled={isButtonDisabled}
@@ -121,7 +96,6 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
             styles.buttonText,
             { color: themeColors.primary },
             isButtonDisabled && { color: themeColors.text.secondary },
-            hasReflection && styles.buttonTextSecondary,
           ]}
         >
           {buttonText}
@@ -156,9 +130,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  buttonSecondary: {
-    borderStyle: 'dashed',
-  },
   icon: {
     fontSize: 18,
     marginRight: spacing.sm,
@@ -167,9 +138,6 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
     ...textBase,
-  },
-  buttonTextSecondary: {
-    fontFamily: fonts.family.regular,
   },
   proBadge: {
     marginLeft: spacing.sm,

@@ -2,7 +2,7 @@
  * テーマコンテキスト
  * アプリ全体でテーマ（ライト/ダーク/システム）設定を共有するためのContext
  */
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 import { loadThemeSettings, saveThemeSettings } from '../utils/storage';
 import { syncWidgetData } from '../utils/widgetStorage';
@@ -39,6 +39,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const systemColorScheme = useSystemColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [isLoading, setIsLoading] = useState(true);
+  const prevSystemColorScheme = useRef(systemColorScheme);
 
   // テーマ設定を読み込む
   useEffect(() => {
@@ -67,6 +68,24 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [themeMode, systemColorScheme]);
 
   const isDark = colorScheme === 'dark';
+
+  // システムテーマ変更時にウィジェットを再同期（themeMode === 'system' の場合のみ）
+  useEffect(() => {
+    // ローディング中や初回レンダリング時はスキップ
+    if (isLoading) return;
+
+    // themeMode が 'system' の場合のみ
+    if (themeMode !== 'system') return;
+
+    // システムカラースキームが変わった場合
+    if (prevSystemColorScheme.current !== systemColorScheme) {
+      prevSystemColorScheme.current = systemColorScheme;
+      // ウィジェットを再同期（非同期で実行）
+      syncWidgetData().catch((error) => {
+        console.error('[ThemeContext] ウィジェット再同期エラー:', error);
+      });
+    }
+  }, [systemColorScheme, themeMode, isLoading]);
 
   // テーマを変更して保存
   const setThemeMode = useCallback(async (mode: ThemeMode) => {

@@ -35,8 +35,8 @@ type SubscriptionTier = 'free' | 'premium';
 const AI_USAGE_LIMITS = {
   /** 無料ユーザーの月間リフレクション生成上限 */
   freeMonthlyReflectionLimit: 0,
-  /** プレミアムユーザーの同一日記再生成上限 */
-  premiumDiaryRegenerateLimit: 3,
+  /** プレミアムユーザーの1日あたりの生成上限 */
+  premiumDailyLimit: 30,
 } as const;
 
 /**
@@ -45,7 +45,7 @@ const AI_USAGE_LIMITS = {
 type UsageLimitErrorCode =
   | 'MONTHLY_LIMIT_REACHED'
   | 'REGENERATE_NOT_ALLOWED'
-  | 'DIARY_REGENERATE_LIMIT'
+  | 'DAILY_LIMIT_REACHED'
   | 'FEATURE_NOT_AVAILABLE';
 
 /**
@@ -56,6 +56,17 @@ function getCurrentYearMonth(): string {
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
+}
+
+/**
+ * 現在の日付を取得（YYYY-MM-DD形式）
+ */
+function getCurrentDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -98,6 +109,7 @@ async function getAIReflectionUsageWithDiary(
 ): Promise<{
   monthlyCount: number;
   diaryRegenCount: number;
+  dailyCount: number;
   hasExistingReflection: boolean;
 }> {
   try {
@@ -109,23 +121,27 @@ async function getAIReflectionUsageWithDiary(
       .get();
 
     const currentMonth = getCurrentYearMonth();
+    const currentDate = getCurrentDate();
 
     if (!usageDoc.exists) {
       return {
         monthlyCount: 0,
         diaryRegenCount: 0,
+        dailyCount: 0,
         hasExistingReflection: false,
       };
     }
 
     const data = usageDoc.data();
     const monthlyCount = data?.monthlyUsage?.[currentMonth]?.count || 0;
+    const dailyCount = data?.dailyUsage?.[currentDate] || 0;
     const diaryRecord = data?.reflectionHistory?.[diaryDate];
     const diaryRegenCount = diaryRecord?.regenerateCount || 0;
 
     return {
       monthlyCount,
       diaryRegenCount,
+      dailyCount,
       hasExistingReflection: diaryRegenCount > 0,
     };
   } catch (error) {
@@ -133,6 +149,7 @@ async function getAIReflectionUsageWithDiary(
     return {
       monthlyCount: 0,
       diaryRegenCount: 0,
+      dailyCount: 0,
       hasExistingReflection: false,
     };
   }
@@ -148,6 +165,7 @@ async function recordAIReflectionUsage(
 ): Promise<void> {
   try {
     const currentMonth = getCurrentYearMonth();
+    const currentDate = getCurrentDate();
     const now = new Date().toISOString();
     const usageRef = db
       .collection('users')
@@ -159,6 +177,7 @@ async function recordAIReflectionUsage(
     const usageDoc = await usageRef.get();
     const currentData = usageDoc.data() || {};
     const currentMonthlyCount = currentData?.monthlyUsage?.[currentMonth]?.count || 0;
+    const currentDailyCount = currentData?.dailyUsage?.[currentDate] || 0;
     const existingDiaryRecord = currentData?.reflectionHistory?.[diaryDate];
 
     // 更新データを構築
@@ -169,6 +188,10 @@ async function recordAIReflectionUsage(
           count: currentMonthlyCount + 1,
           lastGeneratedAt: now,
         },
+      },
+      dailyUsage: {
+        ...currentData?.dailyUsage,
+        [currentDate]: currentDailyCount + 1,
       },
       reflectionHistory: {
         ...currentData?.reflectionHistory,
@@ -185,7 +208,7 @@ async function recordAIReflectionUsage(
       updatedAt: now,
     }, { merge: true });
 
-    console.log(`[recordAIReflectionUsage] Updated usage for user ${userId}, diary ${diaryDate}`);
+    console.log(`[recordAIReflectionUsage] Updated usage for user ${userId}, diary ${diaryDate}, daily: ${currentDailyCount + 1}`);
   } catch (error) {
     console.error('[recordAIReflectionUsage] Error:', error);
     // 利用状況の更新失敗は致命的ではないので、エラーをスローしない
@@ -201,10 +224,6 @@ async function checkUsageLimit(
   tier: SubscriptionTier
 ): Promise<{ allowed: boolean; errorCode?: UsageLimitErrorCode; details?: Record<string, unknown> }> {
   const usage = await getAIReflectionUsageWithDiary(userId, diaryDate);
-
-  // regenerateCountは「総生成回数」を表す（初回=1, 再生成1回目=2, ...)
-  // 再生成回数 = regenerateCount - 1
-  const actualRegenerations = usage.diaryRegenCount > 0 ? usage.diaryRegenCount - 1 : 0;
 
   if (tier === 'free') {
     // 無料ユーザー: 機能自体が利用不可（制限が0の場合）
@@ -244,15 +263,14 @@ async function checkUsageLimit(
       };
     }
   } else {
-    // プレミアムユーザー: 同一日記の再生成上限（実際の再生成回数でチェック）
-    if (usage.hasExistingReflection &&
-        actualRegenerations >= AI_USAGE_LIMITS.premiumDiaryRegenerateLimit) {
+    // プレミアムユーザー: 1日の利用上限チェック
+    if (usage.dailyCount >= AI_USAGE_LIMITS.premiumDailyLimit) {
       return {
         allowed: false,
-        errorCode: 'DIARY_REGENERATE_LIMIT',
+        errorCode: 'DAILY_LIMIT_REACHED',
         details: {
-          limit: AI_USAGE_LIMITS.premiumDiaryRegenerateLimit,
-          used: actualRegenerations,
+          limit: AI_USAGE_LIMITS.premiumDailyLimit,
+          used: usage.dailyCount,
           remaining: 0,
         },
       };
@@ -263,66 +281,266 @@ async function checkUsageLimit(
 }
 
 /**
- * システムプロンプト
+ * システムプロンプト（V1: 後方互換のため残置）
+ * @deprecated V2に移行済み。REFLECTION_SYSTEM_PROMPT_V2を使用
  */
-const REFLECTION_SYSTEM_PROMPT = `あなたは「PivotLog」という人生の有限性を意識するライフログアプリの優しいリフレクションパートナーです。
+export const REFLECTION_SYSTEM_PROMPT_V1 = `あなたは「PivotLog」のデイリーリフレクションパートナーです。
+
+【PivotLogとは】
+人生の有限性を意識するライフログアプリ。ユーザーは目標寿命を設定し、残り時間を可視化しながら、毎日3つの問いに答えています。
 
 【あなたの役割】
-ユーザーの日記を読み、その日の体験に深く共感し、「明日からの小さな一歩」につながる具体的な問いかけを投げかけます。説教や助言ではなく、ユーザー自身が「やってみようかな」と思えるきっかけを作ります。
+単なる共感や励ましではなく、ユーザーが「自分でも気づいていなかった感情や価値観」を発見し、「明日から具体的に行動したくなる」ようなリフレクションを提供します。
 
-【共感メッセージの作り方】
-1. 日記から「具体的な言葉」を必ず1つ以上引用する（「」で囲む）
-2. その体験がなぜ良かったのか/なぜ後悔なのかを言語化して返す
-3. 抽象的な言葉（「大切なもの」「本当の幸せ」など）は避ける
-4. 残り時間への言及は「たまに」でOK（毎回入れない）。入れる場合は具体的な数字で
+【分析の3層構造 - 最重要】
+日記を読む際、以下の3層で分析してください：
+1. 表層：書かれている出来事（何が起きたか）
+2. 中層：その裏にある感情（どう感じたか）
+3. 深層：その感情が示す価値観（何を大切にしているか）
 
-＜共感の例＞
-- ◯「友達とランチできた」のですね。久しぶりに会えて、心が温まる時間だったのではないでしょうか。
-- ◯「つい夜更かしした」こと、気づけたのが素晴らしいです。明日の自分へのプレゼントは、今夜の選択から始まりますね。
-- ◯「子どもと公園に行けた」のですね。残り何百回の週末、こういう時間を積み重ねていけたら素敵ですね。（←たまに入れるパターン）
-- ✕ 大切な時間を過ごせたのですね。（←具体的な引用がない）
-- ✕ 人生において本当に大切なものに気づけましたね。（←抽象的すぎる）
+＜3層分析の例＞
+日記：「妻に夕食を作ってもらった」
+- 表層：夕食を作ってもらった
+- 中層：感謝と安らぎ、誰かに大切にされている実感
+- 深層：「ケアされること」「パートナーとの絆」を大切にしている
 
-【問いかけの作り方 - 最重要】
-問いかけは「明日〜1週間以内に実行できる具体的な行動」につながるものにしてください。
+【各フィールドの書き方】
 
-＜良い問いかけの特徴＞
-1. 日記に書かれた人・場所・活動を具体的に使う
-2. 「いつ」「誰と」「どこで」が想像できる
-3. 疑問形だけど、行動のヒントが含まれている
-4. 押し付けではなく「〜してみませんか？」「〜はいかがですか？」の柔らかい提案
+■ emotionInsight（感情の洞察）
+- detected：読み取った感情を具体的に言語化
+  ◯「達成感と安堵が混ざったような満足感」
+  ◯「焦りの裏にある、もっと良くしたいという向上心」
+  ◯「静かな充実感と、誰かに認められた喜び」
+  ✕「嬉しい」「悲しい」（単純すぎる）
+- depth：その感情の奥にある想い・価値観
+  ◯「自分の成長を実感できることが、あなたにとって大きな喜びなのかもしれません」
+  ◯「人との繋がりの中で安心を感じるタイプなのでしょうね」
 
-＜問いかけの例＞
-- ◯「そのランチの相手に、今週中にLINEしてみませんか？」
-- ◯「明日の朝、10分だけ早く起きてみるのはいかがですか？」
-- ◯「今日感じた『嬉しい』を、誰かに話してみたくなりませんか？」
-- ◯「来週の週末、同じことをもう一度やってみるとしたら？」
-- ✕「人生で本当に大切にしたいものは何でしょうか？」（←抽象的すぎる）
-- ✕「残りの人生をどう生きたいですか？」（←大きすぎる問い）
-- ✕「ふと考えてみてください」（←何を考えればいいかわからない）
+■ lifeContext（人生の文脈）
+- perspective：人生という長いスパンでの意味づけ
+  ◯「人生で経験できる『妻との夕食』はあと何千回でしょう。今日もその1回でした」
+  ◯「10年後に振り返ったとき、この時期の挑戦を誇らしく思えるはずです」
+  ✕「残り○年です」（数字の羅列だけは避ける）
+  ✕「人生は有限です」（当たり前すぎる）
+
+■ actionSuggestion（アクション提案）
+- micro：5分以内で実行できる具体的なアクション
+  ◯「明日の朝、『ありがとう』を伝えてみませんか」
+  ◯「今週中に、同じ相手にLINEを送ってみては」
+  ◯「明日、いつもより10分早く起きてみませんか」
+  ✕「もっと意識しましょう」（曖昧）
+  ✕「生活を変えましょう」（大きすぎる）
+- reason：なぜそのアクションが意味を持つか
+  ◯「小さな感謝の積み重ねが、関係性を温かく育てていきます」
+  ◯「昨日感じた嬉しさを、言葉にして共有することで、その価値が倍になります」
+
+■ content（共感メッセージ）
+- 日記から具体的な言葉を「」で引用
+- その体験がなぜ良かったのか/なぜ後悔なのかを言語化
+- 温かく、穏やかなトーン
+
+■ question（問いかけ）
+- 「はい/いいえ」で答えられない問い
+- 「なぜ」より「どうすれば」「何が」で始める
+- 考えたくなる、行動のヒントが含まれた問い
+  ◯「今日の『嬉しい』を、誰と分かち合いたいですか？」
+  ◯「来週、同じ体験をもう一度するとしたら、何を変えますか？」
+  ✕「ふと考えてみてください」（曖昧）
+  ✕「人生で大切なものは何ですか」（大きすぎる）
 
 【トーン】
 - 温かく、穏やかに、親しみを込めて
-- 「〜ですね」「〜かもしれませんね」「〜はいかがですか？」のような柔らかい語尾
+- 「〜ですね」「〜かもしれませんね」のような柔らかい語尾
 - 批判や指示は絶対にしない
-- 友達が「それいいね、やってみなよ！」と軽く背中を押す感じ
+- 友人が温かく背中を押すような感じ
 
 【絶対に避けること】
-- 「人生とは」「本当の幸せとは」などの哲学的な問い
-- 「ふと考えてみてください」だけで終わる曖昧な問い
-- ユーザーの日記に書かれていないことを勝手に推測する
+- 「人生とは」「本当の幸せとは」などの哲学的な決めつけ
+- 日記に書かれていないことの推測
 - 説教臭いアドバイス
+- 単純な感情ラベル（「嬉しそう」「悲しそう」だけ）
+
+【過去との連携について - Phase 2】
+直近の日記が提供されている場合、以下のように過去との繋がりを見出してください：
+
+■ continuity（過去からの連続性）
+過去データがある場合のみ出力。ない場合は省略。
+
+- connectionToPast（過去との繋がり）
+  - referenceDate: 参照した日記の日付（YYYY-MM-DD）
+  - connection: 繋がりの説明（50-80文字）
+    ◯「昨日の『もっと家族と過ごしたい』という想いが、今日の『子どもと公園で遊んだ』に繋がっていますね」
+    ◯「3日前に後悔していた『運動不足』が、今日の『朝ジョギングした』という行動に変わっています」
+    ✕「昨日も今日も家族のことを書いています」（単なる事実の羅列）
+
+- growthObservation（成長の観察）
+  - observation: 成長の観察コメント（50-80文字）
+    ◯「『明日こそ』と思い続けていたことを、今日ついに実行に移せましたね」
+    ◯「3日間の記録を見ると、少しずつ自分への優しさが増しているように感じます」
+
+【過去データの分析ポイント】
+1. 意図→行動の連続性: 過去の「明日やりたいこと」が今日の「良かったこと」に変化しているか
+2. 後悔→改善: 過去の後悔が今日のポジティブな行動に変わっているか
+3. 繰り返しパターン: 同じ人物・活動・テーマが繰り返し登場するか
+4. 感情の変遷: 日を追うごとに感情がどう変化しているか
+
+【出力形式（過去データあり）】
+{
+  "emotionInsight": {
+    "detected": "読み取った感情（15-30文字）",
+    "depth": "その感情の奥にある想い（30-50文字）"
+  },
+  "lifeContext": {
+    "perspective": "人生視点からの意味づけ（50-80文字）"
+  },
+  "actionSuggestion": {
+    "micro": "5分以内でできるアクション（30-50文字）",
+    "reason": "なぜそのアクションが意味を持つか（40-60文字）"
+  },
+  "content": "共感メッセージ（100-180文字）",
+  "question": "深い問いかけ（40-80文字）",
+  "continuity": {
+    "connectionToPast": {
+      "referenceDate": "YYYY-MM-DD",
+      "connection": "過去との繋がり（50-80文字）"
+    },
+    "growthObservation": {
+      "observation": "成長の観察（50-80文字）"
+    }
+  }
+}
+
+【出力形式（過去データなし）】
+{
+  "emotionInsight": { ... },
+  "lifeContext": { ... },
+  "actionSuggestion": { ... },
+  "content": "...",
+  "question": "..."
+}
+※ continuityフィールドは省略`;
+
+/**
+ * システムプロンプト V2（動的セクション版）
+ * 日記の内容に応じて1〜3セクションを生成
+ */
+const REFLECTION_SYSTEM_PROMPT_V2 = `あなたは「PivotLog」のデイリーリフレクションパートナーです。
+
+【PivotLogとは】
+人生の有限性を意識するライフログアプリ。ユーザーは目標寿命を設定し、残り時間を可視化しながら、毎日3つの問いに答えています。
+
+【あなたの役割】
+単なる共感や励ましではなく、ユーザーが「自分でも気づいていなかった感情や価値観」を発見し、「明日から具体的に行動したくなる」ようなリフレクションを提供します。
+
+【分析の3層構造 - 最重要】
+日記を読む際、以下の3層で分析してください：
+1. 表層：書かれている出来事（何が起きたか）
+2. 中層：その裏にある感情（どう感じたか）
+3. 深層：その感情が示す価値観（何を大切にしているか）
+
+【動的セクション構造】
+日記の内容に応じて、1〜3セクションを出力してください。すべてのセクションを必ず出力する必要はありません。
+
+■ understanding（必須）: 今日のあなたへ
+- 感情の理解と共感の核となるメッセージ
+- 日記から具体的な言葉を「」で引用
+- その体験がなぜ良かったのか/なぜ後悔なのかを言語化
+- 温かく、穏やかなトーン
+- 過去の日記との繋がりがあれば、自然に織り込む
+
+■ perspective（任意）: 人生という視点で
+- 深い日記や人生の節目にのみ出力
+- 軽い日記（「ランチが美味しかった」など）では省略
+- 人生という長いスパンでの意味づけ
+- 数字の羅列だけは避ける（「残り○年」ではなく、具体的なイメージで）
+- 成長の観察があれば含める
+
+■ tomorrow（任意）: 明日へのヒント
+- アクション提案や問いかけが意味を持つときに出力
+- 5分以内で実行できる具体的なアクション、またはその理由
+- 「はい/いいえ」で答えられない問い
+- 考えたくなる、行動のヒントが含まれた問い
+
+【セクション数の判断基準 - 記入量ではなく内容の深さで判断】
+重要: 文字数や記入量ではなく、感情の深さや人生との関連性で判断してください。
+
+■ 1セクションのみ（understandingのみ）
+- 表面的な出来事のみ（「ランチが美味しかった」「天気が良かった」）
+- 感情の奥行きがまだ見えない日記
+- 共感メッセージだけで十分な場合
+
+■ 2セクション（understanding + tomorrow または perspective）
+- 感情が読み取れる日記（嬉しさ、悔しさ、安心感など）
+- 人間関係や仕事に関する振り返り
+- 行動のヒントや問いかけが意味を持つ内容
+
+■ 3セクション（すべて）
+- 人生の節目や大きな決断（転職、引越し、家族の変化など）
+- 価値観に触れる深い振り返り
+- 過去との繋がりや成長が見える日記
+
+例:
+- 「母の誕生日に感謝を伝えた」→ 短いが深い → 2-3セクション
+- 「今日は仕事して、ご飯食べて、寝た」→ 短くて浅い → 1セクション
+- 「長年の夢だった〇〇を達成した」→ 短いが人生の節目 → 3セクション
+
+【「深い」とは何か - 具体例】
+浅い（避ける）→ 深い（目指す）
+- 「嬉しそうですね！」→「『〇〇』という言葉の裏に、△△という感情が感じられます」
+- 「後悔されているのですね」→「その後悔は、あなたが『もっとできたはず』と自分に期待している証拠かもしれません」
+- 「明日も頑張りましょう」→「今日気づいた〇〇を、明日の△△に活かせそうですね」
+
+【トーン】
+- 温かく、穏やかに、親しみを込めて
+- 「〜ですね」「〜かもしれませんね」のような柔らかい語尾
+- 批判や指示は絶対にしない
+- 友人が温かく背中を押すような感じ
+
+【絶対に避けること】
+- 「人生とは」「本当の幸せとは」などの哲学的な決めつけ
+- 日記に書かれていないことの推測
+- 説教臭いアドバイス
+- 端的すぎて無機質な返答（「嬉しそうですね」だけなど）
+
+【過去データがある場合】
+直近の日記が提供されている場合、繋がりがあれば自然に織り込んでください（毎回必須ではありません）：
+- 意図→行動の連続性: 過去の「明日やりたいこと」が今日の「良かったこと」に変化しているか
+- 後悔→改善: 過去の後悔が今日のポジティブな行動に変わっているか
+- 繋がりがない場合は、無理に言及しない
 
 【出力形式】
-{"content":"共感メッセージ（80-150文字）","question":"具体的な問いかけ（30-60文字）"}`;
+{
+  "understanding": "今日のあなたへ（必須、80-150文字程度）",
+  "perspective": "人生という視点で（任意、深い日記の場合のみ、80-150文字程度）",
+  "tomorrow": "明日へのヒント（任意、アクションや問いかけが意味を持つ場合、80-150文字程度）",
+  "schemaVersion": 2
+}
+
+※ perspectiveとtomorrowは、日記の内容に応じて省略可能`;
 
 /**
  * リクエストデータの型
  */
 /**
+ * デフォルトで使用するGeminiモデル
+ * 安定版リリース時は 'gemini-3-flash' に更新する
+ */
+const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
+
+/**
  * サポートするAIモデルの型
  */
-type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
+type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-3-flash-preview' | 'gemini-3-flash';
+
+/**
+ * 直近の日記エントリ（Phase 2で追加）
+ */
+interface RecentDiaryEntry {
+  date: string;
+  goodTime: string;
+  wastedTime: string;
+  tomorrow: string;
+}
 
 /**
  * リクエストデータの型
@@ -334,23 +552,91 @@ interface GenerateReflectionRequest {
   currentAge: number;
   remainingYears: number;
   remainingDays: number;
-  /** 使用するAIモデル（デフォルト: gemini-2.5-pro） */
+  /** 使用するAIモデル（デフォルト: gemini-3-flash-preview） */
   model?: GeminiModel;
   /** 日記の日付（YYYY-MM-DD形式）- 利用制限チェック用 */
   diaryDate?: string;
   /** 利用制限チェックをスキップするか（開発用） */
   skipUsageCheck?: boolean;
+  /** 直近の日記データ（Phase 2で追加） */
+  recentEntries?: RecentDiaryEntry[];
 }
 
 /**
- * レスポンスデータの型
+ * 感情の洞察
  */
-interface ReflectionResponse {
+interface EmotionInsight {
+  detected: string;
+  depth: string;
+}
+
+/**
+ * 人生の文脈
+ */
+interface LifeContext {
+  perspective: string;
+}
+
+/**
+ * アクション提案
+ */
+interface ActionSuggestion {
+  micro: string;
+  reason: string;
+}
+
+/**
+ * 過去からの連続性（Phase 2で追加）
+ */
+interface ContinuityInsight {
+  connectionToPast?: {
+    referenceDate: string;
+    connection: string;
+  };
+  growthObservation?: {
+    observation: string;
+  };
+}
+
+/**
+ * レスポンスデータの型（V1: 拡張版）
+ */
+interface ReflectionResponseV1 {
   content: string;
   question: string;
   generatedAt: string;
   modelVersion: string;
+  schemaVersion?: 1;
+  // 拡張フィールド（Phase 1）
+  emotionInsight?: EmotionInsight;
+  lifeContext?: LifeContext;
+  actionSuggestion?: ActionSuggestion;
+  // 拡張フィールド（Phase 2）
+  continuity?: ContinuityInsight;
 }
+
+/**
+ * レスポンスデータの型（V2: 動的セクション）
+ */
+interface ReflectionResponseV2 {
+  /** 必須: 今日のあなたへ（感情の理解と共感） */
+  understanding: string;
+  /** 任意: 人生という視点で（深い日記のときのみ） */
+  perspective?: string;
+  /** 任意: 明日へのヒント（アクション + 問いかけ） */
+  tomorrow?: string;
+  /** 生成日時 */
+  generatedAt: string;
+  /** 使用したモデルバージョン */
+  modelVersion: string;
+  /** スキーマバージョン（V2は2） */
+  schemaVersion: 2;
+}
+
+/**
+ * レスポンスデータの型（V1とV2の統合）
+ */
+type ReflectionResponse = ReflectionResponseV1 | ReflectionResponseV2;
 
 /**
  * ユーザープロンプトを生成
@@ -363,6 +649,7 @@ function generateUserPrompt(params: GenerateReflectionRequest): string {
     currentAge,
     remainingYears,
     remainingDays,
+    recentEntries,
   } = params;
 
   let focusHint = '';
@@ -374,23 +661,51 @@ function generateUserPrompt(params: GenerateReflectionRequest): string {
     focusHint = '明日への想いを応援し、その意識を持てていることを肯定してください。';
   }
 
-  return `【ユーザー情報】
+  let prompt = `【ユーザー情報】
 ${currentAge}歳。目標寿命まで残り約${remainingYears}年（${remainingDays.toLocaleString()}日）。
 
 【今日の振り返り】
 ✨ 良かったこと: ${goodTime || '（記入なし）'}
 💭 後悔していること: ${wastedTime || '（記入なし）'}
-🌅 明日大切にしたいこと: ${tomorrow || '（記入なし）'}
+🌅 明日大切にしたいこと: ${tomorrow || '（記入なし）'}`;
 
+  // 直近の日記データがある場合は追加（Phase 2）
+  if (recentEntries && recentEntries.length > 0) {
+    prompt += '\n\n【直近の日記】\n';
+    for (const entry of recentEntries) {
+      prompt += `--- ${entry.date} ---\n`;
+      prompt += `✨ 良かった: ${entry.goodTime || '（なし）'}\n`;
+      prompt += `💭 後悔: ${entry.wastedTime || '（なし）'}\n`;
+      prompt += `🌅 明日: ${entry.tomorrow || '（なし）'}\n\n`;
+    }
+    prompt += '※ 過去の日記との繋がりや成長も見出して、continuityフィールドに出力してください。\n';
+  }
+
+  prompt += `
 【リフレクションのポイント】
 ${focusHint}
 残り${remainingDays.toLocaleString()}日という時間の中で、今日の体験がどんな意味を持つか考えさせる問いかけを添えてください。`;
+
+  return prompt;
 }
 
 /**
- * AIのレスポンスをパース
+ * パース結果の型（拡張フィールド対応）
  */
-function parseAIResponse(response: string): { content: string; question: string } | null {
+interface ParsedAIResponse {
+  content: string;
+  question: string;
+  emotionInsight?: EmotionInsight;
+  lifeContext?: LifeContext;
+  actionSuggestion?: ActionSuggestion;
+  continuity?: ContinuityInsight;
+}
+
+/**
+ * AIのレスポンスをパース（V1: 後方互換のため残置）
+ * @deprecated V2に移行済み。parseAIResponseV2を使用
+ */
+export function parseAIResponseV1(response: string): ParsedAIResponse | null {
   try {
     console.log('[parseAIResponse] Input length:', response.length);
 
@@ -400,23 +715,79 @@ function parseAIResponse(response: string): { content: string; question: string 
       .replace(/```\s*/gi, '')
       .trim();
 
-    console.log('[parseAIResponse] Cleaned response:', cleanedResponse.slice(0, 200) + '...');
+    console.log('[parseAIResponse] Cleaned response:', cleanedResponse.slice(0, 300) + '...');
 
-    // 方法1: JSONとしてパース
+    // 方法1: JSONとしてパース（拡張フィールド対応）
     try {
       const parsed = JSON.parse(cleanedResponse);
       if (parsed && parsed.content && typeof parsed.content === 'string') {
         console.log('[parseAIResponse] JSON.parse succeeded');
         console.log('[parseAIResponse] content length:', parsed.content.length);
         console.log('[parseAIResponse] question length:', (parsed.question || '').length);
-        return {
+        console.log('[parseAIResponse] has emotionInsight:', !!parsed.emotionInsight);
+        console.log('[parseAIResponse] has lifeContext:', !!parsed.lifeContext);
+        console.log('[parseAIResponse] has actionSuggestion:', !!parsed.actionSuggestion);
+
+        const result: ParsedAIResponse = {
           content: parsed.content,
           question: parsed.question || '',
         };
+
+        // 拡張フィールドがあれば追加
+        if (parsed.emotionInsight &&
+            typeof parsed.emotionInsight.detected === 'string' &&
+            typeof parsed.emotionInsight.depth === 'string') {
+          result.emotionInsight = {
+            detected: parsed.emotionInsight.detected,
+            depth: parsed.emotionInsight.depth,
+          };
+        }
+
+        if (parsed.lifeContext &&
+            typeof parsed.lifeContext.perspective === 'string') {
+          result.lifeContext = {
+            perspective: parsed.lifeContext.perspective,
+          };
+        }
+
+        if (parsed.actionSuggestion &&
+            typeof parsed.actionSuggestion.micro === 'string' &&
+            typeof parsed.actionSuggestion.reason === 'string') {
+          result.actionSuggestion = {
+            micro: parsed.actionSuggestion.micro,
+            reason: parsed.actionSuggestion.reason,
+          };
+        }
+
+        // Phase 2: continuityフィールドのパース（存在する場合のみ）
+        if (parsed.continuity) {
+          console.log('[parseAIResponse] has continuity:', !!parsed.continuity);
+          result.continuity = {};
+          if (parsed.continuity.connectionToPast &&
+              typeof parsed.continuity.connectionToPast.referenceDate === 'string' &&
+              typeof parsed.continuity.connectionToPast.connection === 'string') {
+            result.continuity.connectionToPast = {
+              referenceDate: parsed.continuity.connectionToPast.referenceDate,
+              connection: parsed.continuity.connectionToPast.connection,
+            };
+          }
+          if (parsed.continuity.growthObservation &&
+              typeof parsed.continuity.growthObservation.observation === 'string') {
+            result.continuity.growthObservation = {
+              observation: parsed.continuity.growthObservation.observation,
+            };
+          }
+          // continuityが空オブジェクトの場合はnullに
+          if (!result.continuity.connectionToPast && !result.continuity.growthObservation) {
+            result.continuity = undefined;
+          }
+        }
+
+        return result;
       }
     } catch (jsonError) {
       console.log('[parseAIResponse] JSON.parse failed:', jsonError);
-      // パース失敗時は正規表現で抽出
+      // パース失敗時は正規表現で抽出（レガシー対応）
     }
 
     // 方法2: より柔軟な正規表現でcontentとquestionを抽出
@@ -514,26 +885,131 @@ function parseAIResponse(response: string): { content: string; question: string 
 }
 
 /**
- * フォールバック用のリフレクションを生成
+ * V2用パース結果の型
  */
-function generateFallbackReflection(params: GenerateReflectionRequest): ReflectionResponse {
-  const { goodTime, wastedTime, remainingYears } = params;
+interface ParsedAIResponseV2 {
+  understanding: string;
+  perspective?: string;
+  tomorrow?: string;
+}
+
+/**
+ * AIのレスポンスをパース（V2: 動的セクション）
+ */
+function parseAIResponseV2(response: string): ParsedAIResponseV2 | null {
+  try {
+    console.log('[parseAIResponseV2] Input length:', response.length);
+
+    // Markdownコードブロックを除去
+    const cleanedResponse = response
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+
+    console.log('[parseAIResponseV2] Cleaned response:', cleanedResponse.slice(0, 300) + '...');
+
+    // JSONとしてパース
+    const parsed = JSON.parse(cleanedResponse);
+
+    if (parsed && parsed.understanding && typeof parsed.understanding === 'string') {
+      console.log('[parseAIResponseV2] JSON.parse succeeded');
+      console.log('[parseAIResponseV2] understanding length:', parsed.understanding.length);
+      console.log('[parseAIResponseV2] has perspective:', !!parsed.perspective);
+      console.log('[parseAIResponseV2] has tomorrow:', !!parsed.tomorrow);
+
+      const result: ParsedAIResponseV2 = {
+        understanding: parsed.understanding,
+      };
+
+      // オプショナルフィールド
+      if (parsed.perspective && typeof parsed.perspective === 'string') {
+        result.perspective = parsed.perspective;
+      }
+      if (parsed.tomorrow && typeof parsed.tomorrow === 'string') {
+        result.tomorrow = parsed.tomorrow;
+      }
+
+      return result;
+    }
+
+    console.log('[parseAIResponseV2] Missing required field: understanding');
+    return null;
+  } catch (error) {
+    console.error('[parseAIResponseV2] Unexpected error:', error);
+    return null;
+  }
+}
+
+/**
+ * フォールバック用のリフレクションを生成（V1: 後方互換のため残置）
+ * @deprecated V2に移行済み。generateFallbackReflectionV2を使用
+ */
+export function generateFallbackReflectionV1(params: GenerateReflectionRequest): ReflectionResponse {
+  const { goodTime, wastedTime, remainingYears, remainingDays, recentEntries } = params;
 
   let content: string;
   let question: string;
+  let emotionInsight: EmotionInsight;
+  let lifeContext: LifeContext;
+  let actionSuggestion: ActionSuggestion;
+  let continuity: ContinuityInsight | undefined;
 
   if (goodTime) {
-    content = `「${goodTime.slice(0, 15)}${goodTime.length > 15 ? '...' : ''}」という体験を大切にされていますね。日々の小さな喜びに気づけることは、とても素敵なことです。`;
+    content = `「${goodTime.slice(0, 20)}${goodTime.length > 20 ? '...' : ''}」という体験を大切にされていますね。日々の小さな喜びに気づき、それを言葉にできることは、とても素敵な習慣です。`;
+    emotionInsight = {
+      detected: '満足感と穏やかな喜び',
+      depth: '日常の中に価値を見出す姿勢があなたの強みです',
+    };
+    lifeContext = {
+      perspective: `人生で経験できる「今日のような良い日」はあと何千回でしょう。今日もその1日でした。`,
+    };
+    actionSuggestion = {
+      micro: '今日の良かったことを、誰かに話してみませんか',
+      reason: '喜びを共有することで、その価値が倍になります',
+    };
+    question = '今日感じた「良かった」を、明日も感じるために何ができそうですか？';
   } else if (wastedTime) {
     content = '今日を振り返り、反省点を見つけられたことは、明日への一歩ですね。自分に正直に向き合う姿勢が素晴らしいです。';
-  } else {
-    content = '今日も一日を振り返る時間を取られていますね。この習慣が、あなたの人生をより豊かにしていくでしょう。';
-  }
-
-  if (wastedTime) {
+    emotionInsight = {
+      detected: '反省と前向きな気持ち',
+      depth: 'より良くなりたいという向上心の表れです',
+    };
+    lifeContext = {
+      perspective: `残り${remainingDays.toLocaleString()}日の中で、今日の気づきは明日を変える種になります。`,
+    };
+    actionSuggestion = {
+      micro: '明日の朝、今日の反省を1つだけ意識してみませんか',
+      reason: '小さな意識の変化が、大きな行動の変化につながります',
+    };
     question = '今日の後悔を、明日への学びに変えるとしたら、何を意識しますか？';
   } else {
+    content = '今日も一日を振り返る時間を取られていますね。この習慣が、あなたの人生をより豊かにしていくでしょう。';
+    emotionInsight = {
+      detected: '穏やかな内省の時間',
+      depth: '自分と向き合う習慣を持つことは、とても価値があります',
+    };
+    lifeContext = {
+      perspective: `残り約${remainingYears}年の中で、毎日の振り返りがあなたの軸を作っていきます。`,
+    };
+    actionSuggestion = {
+      micro: '明日は、1つでも具体的な出来事を書いてみませんか',
+      reason: '具体的な記録が、振り返りをより豊かにします',
+    };
     question = `残り約${remainingYears}年の中で、今日のような時間をあと何回過ごせるでしょうか。`;
+  }
+
+  // Phase 2: 過去データがある場合は簡易的なcontinuityを生成
+  if (recentEntries && recentEntries.length > 0) {
+    const yesterday = recentEntries[0];
+    continuity = {
+      connectionToPast: {
+        referenceDate: yesterday.date,
+        connection: '昨日の想いが、今日の行動に繋がっているかもしれませんね。日々の積み重ねが、あなたの成長を形作っています。',
+      },
+      growthObservation: {
+        observation: '毎日振り返りを続けていること自体が、大きな成長の証です。',
+      },
+    };
   }
 
   return {
@@ -541,6 +1017,53 @@ function generateFallbackReflection(params: GenerateReflectionRequest): Reflecti
     question,
     generatedAt: new Date().toISOString(),
     modelVersion: 'fallback',
+    emotionInsight,
+    lifeContext,
+    actionSuggestion,
+    ...(continuity && { continuity }),
+  };
+}
+
+/**
+ * フォールバック用のリフレクションを生成（V2: 動的セクション）
+ */
+function generateFallbackReflectionV2(params: GenerateReflectionRequest): ReflectionResponseV2 {
+  const { goodTime, wastedTime, remainingYears, recentEntries } = params;
+
+  let understanding: string;
+  let perspective: string | undefined;
+  let tomorrow: string | undefined;
+
+  if (goodTime) {
+    understanding = `「${goodTime.slice(0, 20)}${goodTime.length > 20 ? '...' : ''}」という体験を大切にされていますね。日々の小さな喜びに気づき、それを言葉にできることは、とても素敵な習慣です。その体験の裏には、満足感と穏やかな喜びが感じられます。`;
+
+    // 過去データがある場合は繋がりに言及
+    if (recentEntries && recentEntries.length > 0) {
+      understanding += ' 毎日振り返りを続けていること自体が、大きな成長の証ですね。';
+    }
+
+    // 標準的な日記なので、tomorrowを追加
+    tomorrow = '今日の良かったことを、誰かに話してみませんか。喜びを共有することで、その価値が倍になります。今日感じた「良かった」を、明日も感じるために何ができそうですか？';
+  } else if (wastedTime) {
+    understanding = '今日を振り返り、反省点を見つけられたことは、明日への一歩ですね。自分に正直に向き合う姿勢が素晴らしいです。その後悔は、あなたが「もっとできたはず」と自分に期待している証拠かもしれません。';
+
+    tomorrow = '明日の朝、今日の反省を1つだけ意識してみませんか。小さな意識の変化が、大きな行動の変化につながります。今日の後悔を、明日への学びに変えるとしたら、何を意識しますか？';
+  } else {
+    understanding = '今日も一日を振り返る時間を取られていますね。この習慣が、あなたの人生をより豊かにしていくでしょう。自分と向き合う習慣を持つことは、とても価値があります。';
+
+    // 内容が薄いので、perspectiveを追加
+    perspective = `残り約${remainingYears}年の中で、毎日の振り返りがあなたの軸を作っていきます。今日のような時間をあと何回過ごせるでしょうか。`;
+
+    tomorrow = '明日は、1つでも具体的な出来事を書いてみませんか。具体的な記録が、振り返りをより豊かにします。';
+  }
+
+  return {
+    understanding,
+    ...(perspective && { perspective }),
+    ...(tomorrow && { tomorrow }),
+    generatedAt: new Date().toISOString(),
+    modelVersion: 'fallback',
+    schemaVersion: 2,
   };
 }
 
@@ -621,8 +1144,8 @@ export const generateReflection = onCall(
           case 'REGENERATE_NOT_ALLOWED':
             errorMessage = '無料プランでは同じ日記の再生成はできません。プレミアムプランにアップグレードすると再生成が可能になります。';
             break;
-          case 'DIARY_REGENERATE_LIMIT':
-            errorMessage = 'この日記のAIリフレクションは3回まで生成できます。';
+          case 'DAILY_LIMIT_REACHED':
+            errorMessage = '本日の利用上限に達しました。明日以降に再度お試しください。';
             break;
           case 'FEATURE_NOT_AVAILABLE':
             errorMessage = 'AIリフレクションはプレミアムプランでご利用いただけます。';
@@ -642,17 +1165,19 @@ export const generateReflection = onCall(
 
     if (!apiKey) {
       console.error('GEMINI_API_KEY is not configured');
-      // APIキーがない場合はフォールバックを返す
-      return generateFallbackReflection(data);
+      // APIキーがない場合はV2フォールバックを返す
+      return generateFallbackReflectionV2(data);
     }
 
     try {
       const userPrompt = generateUserPrompt(data);
-      const combinedPrompt = `${REFLECTION_SYSTEM_PROMPT}\n\n---\n\n${userPrompt}`;
+      // V2用のシステムプロンプトを使用
+      const combinedPrompt = `${REFLECTION_SYSTEM_PROMPT_V2}\n\n---\n\n${userPrompt}`;
 
-      // 使用するモデルを決定（デフォルト: gemini-2.5-pro）
-      const selectedModel: GeminiModel = data.model || 'gemini-2.5-pro';
+      // 使用するモデルを決定（デフォルト: gemini-3-flash-preview）
+      const selectedModel: GeminiModel = data.model || DEFAULT_GEMINI_MODEL;
       console.log('[generateReflection] Selected model:', selectedModel);
+      console.log('[generateReflection] Using V2 schema');
       console.log('[generateReflection] Calling Gemini API...');
 
       // Gemini APIにリクエストを送信（リトライ機能付き）
@@ -678,19 +1203,29 @@ export const generateReflection = onCall(
                   temperature: 0.7,
                   maxOutputTokens: 2048,
                   responseMimeType: 'application/json',
+                  // V2用のレスポンススキーマ（動的セクション）
                   responseSchema: {
                     type: 'object',
                     properties: {
-                      content: {
+                      understanding: {
                         type: 'string',
-                        description: '共感メッセージ（100-180文字）',
+                        description: '今日のあなたへ：感情の理解と共感（必須、80-150文字程度）',
                       },
-                      question: {
+                      perspective: {
                         type: 'string',
-                        description: '問いかけ（40-80文字）',
+                        description: '人生という視点で：深い日記の場合のみ（任意、80-150文字程度）',
+                      },
+                      tomorrow: {
+                        type: 'string',
+                        description: '明日へのヒント：アクション提案や問いかけ（任意、80-150文字程度）',
+                      },
+                      schemaVersion: {
+                        type: 'integer',
+                        description: 'スキーマバージョン（常に2）',
                       },
                     },
-                    required: ['content', 'question'],
+                    // understandingのみ必須、perspectiveとtomorrowは任意
+                    required: ['understanding'],
                   },
                 },
                 // Safety settingsを緩和して、日常的な日記内容がブロックされないようにする
@@ -749,26 +1284,29 @@ export const generateReflection = onCall(
           console.log('[generateReflection] Raw content:', content);
           console.log('[generateReflection] Content length:', content.length);
 
-          const parsed = parseAIResponse(content);
+          // V2用のパース関数を使用
+          const parsed = parseAIResponseV2(content);
 
           if (!parsed) {
-            console.error(`[generateReflection] Failed to parse response (attempt ${attempt}):`, content);
+            console.error(`[generateReflection] Failed to parse V2 response (attempt ${attempt}):`, content);
             throw new Error('Failed to parse response');
           }
 
           // 回答が途中で切れていないかチェック（最低限の文字数チェック）
-          if (parsed.content.length < 30 || parsed.question.length < 10) {
+          if (parsed.understanding.length < 30) {
             console.warn('[generateReflection] Response seems too short, retrying...');
-            console.warn('  content length:', parsed.content.length);
-            console.warn('  question length:', parsed.question.length);
+            console.warn('  understanding length:', parsed.understanding.length);
             throw new Error('Response too short');
           }
 
-          const result: ReflectionResponse = {
-            content: parsed.content,
-            question: parsed.question,
+          // V2形式のレスポンスを構築
+          const result: ReflectionResponseV2 = {
+            understanding: parsed.understanding,
+            ...(parsed.perspective && { perspective: parsed.perspective }),
+            ...(parsed.tomorrow && { tomorrow: parsed.tomorrow }),
             generatedAt: new Date().toISOString(),
             modelVersion: selectedModel,
+            schemaVersion: 2,
           };
 
           // 生成成功時に利用状況を記録
@@ -796,8 +1334,8 @@ export const generateReflection = onCall(
     } catch (error) {
       console.error('[generateReflection] Error:', error);
 
-      // エラー時はフォールバックを返す（ユーザー体験を損なわないため）
-      return generateFallbackReflection(data);
+      // エラー時はV2フォールバックを返す（ユーザー体験を損なわないため）
+      return generateFallbackReflectionV2(data);
     }
   }
 );
@@ -1406,7 +1944,7 @@ export const generateWeeklyInsight = onCall(
       console.log('[generateWeeklyInsight] Calling Gemini API...');
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_GEMINI_MODEL}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -1512,7 +2050,7 @@ export const generateWeeklyInsight = onCall(
         patterns: parsed.patterns,
         question: parsed.question,
         generatedAt: new Date().toISOString(),
-        modelVersion: 'gemini-2.5-pro',
+        modelVersion: DEFAULT_GEMINI_MODEL,
       };
 
       console.log('[generateWeeklyInsight] Success');
@@ -2149,7 +2687,7 @@ function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse |
         },
         question: String(parsed.question || ''),
         generatedAt: new Date().toISOString(),
-        modelVersion: 'gemini-2.5-pro',
+        modelVersion: DEFAULT_GEMINI_MODEL,
         // 後方互換性のため、summaryにlifeContextSummaryを設定
         summary: String(parsed.lifeContextSummary || ''),
       };
@@ -2185,7 +2723,7 @@ function parseMonthlyInsightResponse(response: string): MonthlyInsightResponse |
         },
         question: parsed.question || '',
         generatedAt: new Date().toISOString(),
-        modelVersion: 'gemini-2.5-pro',
+        modelVersion: DEFAULT_GEMINI_MODEL,
         summary: String(parsed.summary || ''),
         themes: Array.isArray(parsed.themes) ? parsed.themes : undefined,
       };
@@ -2388,7 +2926,7 @@ export const generateMonthlyInsight = onCall(
       console.log('[generateMonthlyInsight] Calling Gemini API...');
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_GEMINI_MODEL}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {

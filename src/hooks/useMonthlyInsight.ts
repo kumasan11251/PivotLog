@@ -18,7 +18,7 @@ import {
   GenerateMonthlyInsightRequest,
 } from '../services/firebase/functions';
 import { useMonthlyInsightContext } from '../contexts/MonthlyInsightContext';
-import type { MonthlyInsightData, MonthlyInsightState } from '../types/monthlyInsight';
+import type { MonthlyInsightData, MonthlyInsightState, MonthlyTheme } from '../types/monthlyInsight';
 
 // ユーティリティ関数を再エクスポート（後方互換性のため）
 export {
@@ -279,7 +279,7 @@ export const useMonthlyInsight = (
             modelVersion: cachedInsight.modelVersion,
             // 後方互換性
             summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
-            themes: cachedInsight.themes,
+            themes: cachedInsight.themes as MonthlyTheme[] | undefined,
           });
           setIsCurrentMonthCached(true);
           setState('loaded');
@@ -352,7 +352,7 @@ export const useMonthlyInsight = (
             modelVersion: cachedInsight.modelVersion,
             // 後方互換性
             summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
-            themes: cachedInsight.themes,
+            themes: cachedInsight.themes as MonthlyTheme[] | undefined,
           });
           setIsCurrentMonthCached(true);
           setState('loaded');
@@ -420,7 +420,7 @@ export const useMonthlyInsight = (
             modelVersion: cachedInsight.modelVersion,
             // 後方互換性
             summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
-            themes: cachedInsight.themes,
+            themes: cachedInsight.themes as MonthlyTheme[] | undefined,
           });
           setState('loaded');
         }

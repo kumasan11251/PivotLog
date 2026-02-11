@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { Animated, Alert } from 'react-native';
 import type { AIReflectionData, AIReflectionState } from '../types/aiReflection';
 import type { UsageLimitReason } from '../types/subscription';
-import { getDiaryByDate, saveDiaryEntry, DiaryEntry, loadUserSettings } from '../utils/storage';
+import { getDiaryByDate, saveDiaryEntry, DiaryEntry, loadUserSettings, getRecentDiaryEntries } from '../utils/storage';
 import { generateReflection } from '../services/ai';
 import { calculateCurrentAge, calculateTimeLeft } from '../utils/timeCalculations';
 
@@ -93,6 +93,15 @@ export const useAIReflection = ({
         remainingDays = Math.floor(timeLeft.totalDays);
       }
 
+      // Phase 2: 直近3日分の日記を取得
+      const recentDiaries = await getRecentDiaryEntries(dateString, 3);
+      const recentEntries = recentDiaries.map((diary) => ({
+        date: diary.date,
+        goodTime: diary.goodTime,
+        wastedTime: diary.wastedTime,
+        tomorrow: diary.tomorrow,
+      }));
+
       // AIサービスを使ってリフレクションを生成
       const newReflection = await generateReflection({
         goodTime: formState.goodTime,
@@ -102,6 +111,7 @@ export const useAIReflection = ({
         remainingYears,
         remainingDays,
         diaryDate: dateString, // 利用制限チェック用に日付を追加
+        recentEntries: recentEntries.length > 0 ? recentEntries : undefined, // Phase 2
       });
 
       // 先にリフレクションを表示（保存に失敗しても表示はする）
@@ -183,10 +193,10 @@ export const useAIReflection = ({
             );
             break;
 
-          case 'DIARY_REGENERATE_LIMIT':
+          case 'DAILY_LIMIT_REACHED':
             Alert.alert(
-              '再生成の上限に達しました',
-              'この日記のAIリフレクションは3回まで生成できます。',
+              '本日の利用上限に達しました',
+              '明日以降に再度お試しください。',
               [{ text: '閉じる', style: 'cancel' }]
             );
             break;
@@ -230,12 +240,12 @@ export const useAIReflection = ({
         return;
       }
 
-      if (errorMessage.includes('3回まで')) {
-        setLastLimitReason('DIARY_REGENERATE_LIMIT');
+      if (errorMessage.includes('本日の利用上限')) {
+        setLastLimitReason('DAILY_LIMIT_REACHED');
         setReflectionState('limit_reached');
         Alert.alert(
-          '再生成の上限に達しました',
-          'この日記のAIリフレクションは3回まで生成できます。',
+          '本日の利用上限に達しました',
+          '明日以降に再度お試しください。',
           [{ text: '閉じる', style: 'cancel' }]
         );
         return;

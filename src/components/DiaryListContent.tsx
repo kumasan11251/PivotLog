@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { HomeScreenNavigationProp } from '../types/navigation';
-import { colors, spacing, getColors } from '../theme';
+import { spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { DiaryEntry } from '../utils/storage';
 import { useDiaryList } from '../hooks/useDiaryList';
@@ -264,7 +264,6 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   listContent: {
     padding: spacing.padding.screen,

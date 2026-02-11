@@ -11,6 +11,7 @@ import {
   deleteDiaryEntryFromFirestore,
   deleteAllUserDataFromFirestore,
   getDiariesByMonthFromFirestore,
+  getDiariesByDateRangeFromFirestore,
 } from '../services/firebase/firestore';
 import type { AIReflectionData } from '../types/aiReflection';
 
@@ -355,6 +356,56 @@ export const getDiaryByDate = async (date: string): Promise<DiaryEntry | null> =
   } catch (error) {
     console.error('日記の取得に失敗しました:', error);
     return null;
+  }
+};
+
+/**
+ * 指定日付からN日前の日付を計算する
+ * @param dateStr 基準日付（YYYY-MM-DD）
+ * @param days 日数
+ * @returns N日前の日付（YYYY-MM-DD）
+ */
+const getDateBefore = (dateStr: string, days: number): string => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() - days);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+/**
+ * 直近N日分の日記を取得（指定日付を除く）
+ * Phase 2: 過去データ連携用
+ * @param excludeDate 除外する日付（通常は今日）
+ * @param days 取得する日数（デフォルト: 3）
+ * @returns 日記エントリの配列（日付降順）
+ */
+export const getRecentDiaryEntries = async (
+  excludeDate: string,
+  days: number = 3
+): Promise<DiaryEntry[]> => {
+  try {
+    // excludeDateの1日前から、days日分の範囲を計算
+    const endDate = getDateBefore(excludeDate, 1); // 昨日
+    const startDate = getDateBefore(excludeDate, days); // N日前
+
+    if (isLoggedIn()) {
+      // Firestore: 日付範囲クエリで効率的に取得
+      const entries = await getDiariesByDateRangeFromFirestore(startDate, endDate);
+      // 降順（新しい順）でソート
+      return entries.sort((a, b) => b.date.localeCompare(a.date));
+    } else {
+      // AsyncStorage: 全件取得後にフィルタリング
+      const allDiaries = await loadDiaryEntries();
+      return allDiaries
+        .filter((diary) => diary.date >= startDate && diary.date <= endDate)
+        .sort((a, b) => b.date.localeCompare(a.date));
+    }
+  } catch (error) {
+    console.error('直近の日記取得に失敗しました:', error);
+    return [];
   }
 };
 

@@ -20,7 +20,7 @@ import {
   MIN_ENTRIES_FOR_MONTHLY_INSIGHT,
   getMonthInfoFromKey,
 } from '../utils/monthUtils';
-import type { MonthlyInsightData } from '../types/monthlyInsight';
+import type { MonthlyInsightData, MonthlyTheme } from '../types/monthlyInsight';
 
 // ========================================
 // 型定義
@@ -140,7 +140,7 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
             modelVersion: cached.modelVersion,
             // 後方互換性
             summary: cached.summary || cached.lifeContextSummary,
-            themes: cached.themes,
+            themes: cached.themes as MonthlyTheme[] | undefined,
           };
           insightCacheRef.current.set(monthKey, insight);
           updateTask(monthKey, { status: 'completed', completedAt: Date.now() });
@@ -279,7 +279,7 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
         modelVersion: firestoreData.modelVersion,
         // 後方互換性
         summary: firestoreData.summary || firestoreData.lifeContextSummary,
-        themes: firestoreData.themes,
+        themes: firestoreData.themes as MonthlyTheme[] | undefined,
       };
       insightCacheRef.current.set(monthKey, insight);
       return insight;

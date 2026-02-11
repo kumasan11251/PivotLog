@@ -33,8 +33,8 @@ export interface SubscriptionStatus {
 export interface AIUsageLimits {
   /** 無料ユーザーの月間リフレクション生成上限 */
   freeMonthlyReflectionLimit: number;
-  /** プレミアムユーザーの同一日記再生成上限 */
-  premiumDiaryRegenerateLimit: number;
+  /** プレミアムユーザーの1日あたりの生成上限 */
+  premiumDailyLimit: number;
   /** 無料ユーザーの週次インサイト生成上限（0=利用不可） */
   freeWeeklyInsightLimit: number;
   /** 無料ユーザーの月次インサイト生成上限（0=利用不可） */
@@ -46,7 +46,7 @@ export interface AIUsageLimits {
  */
 export const DEFAULT_AI_USAGE_LIMITS: AIUsageLimits = {
   freeMonthlyReflectionLimit: 0,
-  premiumDiaryRegenerateLimit: 3,
+  premiumDailyLimit: 30,
   freeWeeklyInsightLimit: 0,
   freeMonthlyInsightLimit: 0,
 };
@@ -62,6 +62,10 @@ export interface AIReflectionUsage {
   /** 日記ごとの生成履歴 */
   reflectionHistory: {
     [diaryDate: string]: DiaryReflectionRecord;
+  };
+  /** 日次利用状況（YYYY-MM-DD形式をキーとする） */
+  dailyUsage?: {
+    [date: string]: number;
   };
   /** 最終更新日時 */
   updatedAt: string;
@@ -113,7 +117,7 @@ export interface UsageLimitCheckResult {
 export type UsageLimitReason =
   | 'MONTHLY_LIMIT_REACHED'      // 月間制限に達した
   | 'REGENERATE_NOT_ALLOWED'    // 無料プランでは再生成不可
-  | 'DIARY_REGENERATE_LIMIT'    // 同一日記の再生成上限
+  | 'DAILY_LIMIT_REACHED'       // 1日の利用上限に達した
   | 'FEATURE_NOT_AVAILABLE';    // この機能は利用不可
 
 /**
