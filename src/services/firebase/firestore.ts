@@ -738,3 +738,47 @@ export const getRecentMonthlyInsightsFromFirestore = async (
     return [];
   }
 };
+
+// =============== AI同意状態 ===============
+
+import type { AIConsentStatus } from '../../types/aiConsent';
+
+/**
+ * AI同意状態を保存
+ */
+export const saveAIConsentToFirestore = async (
+  consent: AIConsentStatus
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    await userDoc.collection(COLLECTIONS.SETTINGS).doc('aiConsent').set(
+      {
+        ...consent,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('AI同意状態の保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * AI同意状態を読み込み
+ */
+export const loadAIConsentFromFirestore = async (): Promise<AIConsentStatus | null> => {
+  try {
+    const userDoc = getUserDocRef();
+    const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('aiConsent').get();
+    const docData = doc.data();
+
+    if (docData) {
+      return docData as AIConsentStatus;
+    }
+    return null;
+  } catch (error) {
+    console.error('AI同意状態の読み込みに失敗しました:', error);
+    return null;
+  }
+};

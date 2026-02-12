@@ -25,10 +25,12 @@ import {
   AIReflectionButton,
   AIReflectionLoading,
 } from '../components/diary';
+import AIConsentModal from '../components/common/AIConsentModal';
 import { useDiaryEntry, DiaryFieldKey } from '../hooks/useDiaryEntry';
 import { useAIReflection } from '../hooks/useAIReflection';
 import { useAIReflectionLimit } from '../hooks/useAIReflectionLimit';
 import { DIARY_QUESTIONS } from '../constants/diary';
+import { hasValidAIConsent, recordAIConsent } from '../utils/storage';
 
 const DiaryEntryScreen: React.FC = () => {
   const { isDark } = useTheme();
@@ -52,6 +54,9 @@ const DiaryEntryScreen: React.FC = () => {
     handleBack,
     handleDateChange,
   } = useDiaryEntry();
+
+  // AI同意モーダル
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   // Refs
   const scrollViewRef = useRef<ScrollView>(null);
@@ -78,6 +83,12 @@ const DiaryEntryScreen: React.FC = () => {
     refreshUsage,
   } = useAIReflectionLimit({ diaryDate: dateString, hasLocalReflection });
 
+  // 同意後にリフレクションを取得する内部関数
+  const executeGetReflection = useCallback(async () => {
+    await getReflection();
+    refreshUsage();
+  }, [getReflection, refreshUsage]);
+
   // AIリフレクション取得ボタンのハンドラ
   // キーボードを閉じてからリフレクションを取得する
   const handleGetAIReflection = useCallback(async () => {
@@ -94,11 +105,24 @@ const DiaryEntryScreen: React.FC = () => {
       return;
     }
 
+    // 同意チェック
+    const hasConsent = await hasValidAIConsent();
+    if (!hasConsent) {
+      setShowConsentModal(true);
+      return;
+    }
+
     // リフレクションを取得
-    await getReflection();
-    // 利用状況を更新
-    refreshUsage();
-  }, [getReflection, refreshUsage, isPremium]);
+    await executeGetReflection();
+  }, [executeGetReflection, isPremium]);
+
+  // 同意後の処理
+  const handleConsent = useCallback(async () => {
+    await recordAIConsent();
+    setShowConsentModal(false);
+    // 同意後にリフレクションを取得
+    await executeGetReflection();
+  }, [executeGetReflection]);
 
   // 日記が入力されているかどうか
   const hasDiaryContent = formState.goodTime.trim() || formState.wastedTime.trim() || formState.tomorrow.trim();
@@ -281,6 +305,7 @@ const DiaryEntryScreen: React.FC = () => {
                     onRegenerate={handleGetAIReflection}
                     canRegenerate={canRegenerate}
                     isRegenerating={false}
+                    diaryDate={dateString}
                   />
                 )}
 
@@ -307,6 +332,12 @@ const DiaryEntryScreen: React.FC = () => {
             selectedDate={selectedDate}
             onDateChange={handleDateChange}
             onClose={() => setShowDatePicker(false)}
+          />
+
+          <AIConsentModal
+            visible={showConsentModal}
+            onConsent={handleConsent}
+            onCancel={() => setShowConsentModal(false)}
           />
         </View>
       </KeyboardAvoidingView>

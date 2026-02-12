@@ -4,6 +4,9 @@ import { getColors, fonts, spacing, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { AIReflectionData, AIReflectionDataV1, AIReflectionDataV2 } from '../../types/aiReflection';
 import { isV2Reflection, getV2SectionCount } from '../../types/aiReflection';
+import type { AIReportType } from '../../types/aiReport';
+import { submitAIContentReport } from '../../services/firebase/aiReport';
+import AIReportModal from './AIReportModal';
 
 // 共通の型を再エクスポート
 export type { AIReflectionData, AIReflectionDataV2 } from '../../types/aiReflection';
@@ -17,6 +20,8 @@ interface AIReflectionCardProps {
   canRegenerate?: boolean;
   /** 再生成中かどうか */
   isRegenerating?: boolean;
+  /** 日記の日付（レポート機能用） */
+  diaryDate?: string;
 }
 
 /**
@@ -68,10 +73,12 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
   onRegenerate,
   canRegenerate = false,
   isRegenerating = false,
+  diaryDate,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // 再生成ボタン押下時
   const handleRegeneratePress = () => {
@@ -82,6 +89,31 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
   const handleConfirmRegenerate = () => {
     setShowConfirmModal(false);
     onRegenerate?.();
+  };
+
+  // レポート送信
+  const handleReportSubmit = async (reportType: AIReportType, detail?: string) => {
+    if (!diaryDate) {
+      throw new Error('日記の日付が指定されていません');
+    }
+
+    // V2形式のリフレクション内容を取得
+    const isV2 = isV2Reflection(reflection);
+    const v2Data = isV2 ? (reflection as AIReflectionDataV2) : null;
+    const v1Data = !isV2 ? (reflection as AIReflectionDataV1) : null;
+
+    await submitAIContentReport({
+      diaryDate,
+      reportType,
+      reportDetail: detail,
+      reflectionContent: {
+        understanding: v2Data?.understanding ?? v1Data?.content,
+        perspective: v2Data?.perspective,
+        tomorrow: v2Data?.tomorrow ?? v1Data?.question,
+      },
+    });
+
+    setShowReportModal(false);
   };
 
   // V2形式かどうかチェック
@@ -144,18 +176,38 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
               PivotLogからの気づき
             </Text>
           </View>
-          {canRegenerate && onRegenerate && !isRegenerating && (
-            <TouchableOpacity
-              onPress={handleRegeneratePress}
-              style={styles.regenerateButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={[styles.regenerateIcon, { color: themeColors.text.secondary }]}>
-                ↻
-              </Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerRight}>
+            {canRegenerate && onRegenerate && !isRegenerating && (
+              <TouchableOpacity
+                onPress={handleRegeneratePress}
+                style={styles.headerButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={[styles.headerButtonIcon, { color: themeColors.text.secondary }]}>
+                  ↻
+                </Text>
+              </TouchableOpacity>
+            )}
+            {diaryDate && (
+              <TouchableOpacity
+                onPress={() => setShowReportModal(true)}
+                style={styles.headerButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={[styles.reportIcon, { color: themeColors.text.tertiary }]}>
+                  ⚠
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+
+        {/* レポートモーダル */}
+        <AIReportModal
+          visible={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          onSubmit={handleReportSubmit}
+        />
 
         {/* 確認モーダル */}
         <Modal
@@ -257,18 +309,38 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
               今日のリフレクション
             </Text>
           </View>
-          {canRegenerate && onRegenerate && !isRegenerating && (
-            <TouchableOpacity
-              onPress={handleRegeneratePress}
-              style={styles.regenerateButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={[styles.regenerateIcon, { color: themeColors.text.secondary }]}>
-                ↻
-              </Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.headerRight}>
+            {canRegenerate && onRegenerate && !isRegenerating && (
+              <TouchableOpacity
+                onPress={handleRegeneratePress}
+                style={styles.headerButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={[styles.headerButtonIcon, { color: themeColors.text.secondary }]}>
+                  ↻
+                </Text>
+              </TouchableOpacity>
+            )}
+            {diaryDate && (
+              <TouchableOpacity
+                onPress={() => setShowReportModal(true)}
+                style={styles.headerButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={[styles.reportIcon, { color: themeColors.text.tertiary }]}>
+                  ⚠
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+
+        {/* レポートモーダル */}
+        <AIReportModal
+          visible={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          onSubmit={handleReportSubmit}
+        />
 
         {/* 確認モーダル */}
         <Modal
@@ -420,18 +492,38 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             PivotLogからの気づき
           </Text>
         </View>
-        {canRegenerate && onRegenerate && !isRegenerating && (
-          <TouchableOpacity
-            onPress={handleRegeneratePress}
-            style={styles.regenerateButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={[styles.regenerateIcon, { color: themeColors.text.secondary }]}>
-              ↻
-            </Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerRight}>
+          {canRegenerate && onRegenerate && !isRegenerating && (
+            <TouchableOpacity
+              onPress={handleRegeneratePress}
+              style={styles.headerButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={[styles.headerButtonIcon, { color: themeColors.text.secondary }]}>
+                ↻
+              </Text>
+            </TouchableOpacity>
+          )}
+          {diaryDate && (
+            <TouchableOpacity
+              onPress={() => setShowReportModal(true)}
+              style={styles.headerButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={[styles.reportIcon, { color: themeColors.text.tertiary }]}>
+                ⚠
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
+
+      {/* レポートモーダル */}
+      <AIReportModal
+        visible={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        onSubmit={handleReportSubmit}
+      />
 
       {/* 確認モーダル */}
       <Modal
@@ -519,6 +611,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   headerIcon: {
     fontSize: 18,
   },
@@ -528,12 +625,15 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
     ...textBase,
   },
-  regenerateButton: {
+  headerButton: {
     padding: spacing.xs,
   },
-  regenerateIcon: {
+  headerButtonIcon: {
     fontSize: 18,
     fontWeight: '300',
+  },
+  reportIcon: {
+    fontSize: 16,
   },
   // モーダル
   modalOverlay: {

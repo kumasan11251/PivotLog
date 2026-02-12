@@ -12,8 +12,12 @@ import {
   deleteAllUserDataFromFirestore,
   getDiariesByMonthFromFirestore,
   getDiariesByDateRangeFromFirestore,
+  saveAIConsentToFirestore,
+  loadAIConsentFromFirestore,
 } from '../services/firebase/firestore';
 import type { AIReflectionData } from '../types/aiReflection';
+import type { AIConsentStatus } from '../types/aiConsent';
+import { CURRENT_CONSENT_VERSION } from '../types/aiConsent';
 
 export interface UserSettings {
   birthday: string; // ISO 8601 format (YYYY-MM-DD)
@@ -47,6 +51,7 @@ const HOME_DISPLAY_KEY = '@pivot_log_home_display';
 const MIGRATION_KEY = '@pivot_log_migrated';
 const ONBOARDING_KEY = '@pivot_log_onboarding_complete';
 const THEME_KEY = '@pivot_log_theme';
+const AI_CONSENT_KEY = '@pivot_log_ai_consent';
 
 /**
  * Firebaseにログイン中かどうかを確認
@@ -473,5 +478,70 @@ export const saveThemeSettings = async (settings: ThemeSettings): Promise<void> 
   } catch (error) {
     console.error('テーマ設定の保存に失敗しました:', error);
     throw error;
+  }
+};
+
+// =============== AI同意状態 ===============
+
+/**
+ * AI機能の同意状態を読み込む
+ */
+export const loadAIConsent = async (): Promise<AIConsentStatus | null> => {
+  try {
+    if (isLoggedIn()) {
+      return await loadAIConsentFromFirestore();
+    } else {
+      const jsonValue = await AsyncStorage.getItem(AI_CONSENT_KEY);
+      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    }
+  } catch (error) {
+    console.error('AI同意状態の読み込みに失敗しました:', error);
+    return null;
+  }
+};
+
+/**
+ * AI機能の同意状態を保存する
+ */
+export const saveAIConsent = async (consent: AIConsentStatus): Promise<void> => {
+  try {
+    const jsonValue = JSON.stringify(consent);
+    await AsyncStorage.setItem(AI_CONSENT_KEY, jsonValue);
+
+    if (isLoggedIn()) {
+      await saveAIConsentToFirestore(consent);
+    }
+  } catch (error) {
+    console.error('AI同意状態の保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * AI機能への同意を記録する
+ */
+export const recordAIConsent = async (): Promise<void> => {
+  const consent: AIConsentStatus = {
+    hasConsented: true,
+    consentedAt: new Date().toISOString(),
+    version: CURRENT_CONSENT_VERSION,
+  };
+  await saveAIConsent(consent);
+};
+
+/**
+ * AI機能に同意済みかチェックする
+ * バージョンが古い場合は再同意が必要
+ */
+export const hasValidAIConsent = async (): Promise<boolean> => {
+  try {
+    const consent = await loadAIConsent();
+    if (!consent) return false;
+    if (!consent.hasConsented) return false;
+    // 現在のバージョンと同意したバージョンを比較
+    if (consent.version < CURRENT_CONSENT_VERSION) return false;
+    return true;
+  } catch {
+    return false;
   }
 };
