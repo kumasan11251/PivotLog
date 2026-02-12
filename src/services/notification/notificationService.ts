@@ -19,7 +19,7 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -115,6 +115,7 @@ export const scheduleDailyReminder = async (
         title: notificationMessage.title,
         body: notificationMessage.body,
         data: { type: 'daily_reminder' },
+        badge: 1,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -232,4 +233,53 @@ export const sendTestNotification = async (): Promise<void> => {
     },
     trigger: null, // 即座に送信
   });
+};
+
+/**
+ * 当日のリマインダーをキャンセルし、翌日から再スケジュール
+ * 日記を書いた後に呼び出す
+ */
+export const cancelTodayReminderAndReschedule = async (): Promise<void> => {
+  try {
+    const settings = await loadReminderSettings();
+
+    // リマインダーが無効なら何もしない
+    if (!settings.enabled) {
+      return;
+    }
+
+    // 通知権限をチェック
+    const hasPermission = await checkNotificationPermissions();
+    if (!hasPermission) {
+      return;
+    }
+
+    // 現在のリマインダーをキャンセル
+    await cancelDailyReminder();
+
+    // 即座に再スケジュール（翌日から有効）
+    await scheduleDailyReminder(settings.hour, settings.minute);
+
+    console.log('当日のリマインダーをキャンセルし、翌日から再スケジュールしました');
+  } catch (error) {
+    console.error('リマインダーの再スケジュールに失敗:', error);
+  }
+};
+
+/**
+ * アプリバッジ数を設定
+ */
+export const setBadgeCount = async (count: number): Promise<void> => {
+  try {
+    await Notifications.setBadgeCountAsync(count);
+  } catch (error) {
+    console.error('バッジ設定に失敗:', error);
+  }
+};
+
+/**
+ * アプリバッジをクリア
+ */
+export const clearBadge = async (): Promise<void> => {
+  await setBadgeCount(0);
 };

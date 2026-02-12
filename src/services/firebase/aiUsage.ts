@@ -6,6 +6,7 @@
 import firestore from '@react-native-firebase/firestore';
 import { COLLECTIONS } from './config';
 import { getCurrentUser } from './auth';
+import { withRetry } from '../../utils/retry';
 import type {
   AIReflectionUsage,
   DiaryReflectionRecord,
@@ -57,12 +58,23 @@ export const getCurrentDate = (): string => {
 export const getAIReflectionUsage = async (): Promise<AIReflectionUsage | null> => {
   try {
     const usageRef = getUserUsageRef();
-    const doc = await usageRef.doc(AI_REFLECTION_USAGE_DOC).get();
 
-    if (Boolean(doc.exists)) {
-      return doc.data() as AIReflectionUsage;
-    }
-    return null;
+    return await withRetry(
+      async () => {
+        const doc = await usageRef.doc(AI_REFLECTION_USAGE_DOC).get();
+        if (Boolean(doc.exists)) {
+          return doc.data() as AIReflectionUsage;
+        }
+        return null;
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Usage] 利用状況取得リトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
   } catch (error) {
     console.error('[Usage] AIリフレクション利用状況の取得に失敗:', error);
     return null;
@@ -223,41 +235,52 @@ export const recordAIReflectionUsage = async (
     const currentMonth = getCurrentYearMonth();
     const now = new Date().toISOString();
 
-    // 現在の利用状況を取得
-    const doc = await usageRef.doc(AI_REFLECTION_USAGE_DOC).get();
-    const currentUsage = Boolean(doc.exists) ? (doc.data() as AIReflectionUsage) : null;
+    await withRetry(
+      async () => {
+        // 現在の利用状況を取得
+        const doc = await usageRef.doc(AI_REFLECTION_USAGE_DOC).get();
+        const currentUsage = Boolean(doc.exists) ? (doc.data() as AIReflectionUsage) : null;
 
-    // 月次カウントを更新
-    const currentMonthlyCount = currentUsage?.monthlyUsage?.[currentMonth]?.count || 0;
+        // 月次カウントを更新
+        const currentMonthlyCount = currentUsage?.monthlyUsage?.[currentMonth]?.count || 0;
 
-    // 日記の再生成カウントを更新
-    const existingRecord = currentUsage?.reflectionHistory?.[diaryDate];
-    const isRegenerate = existingRecord != null;
+        // 日記の再生成カウントを更新
+        const existingRecord = currentUsage?.reflectionHistory?.[diaryDate];
+        const isRegenerate = existingRecord != null;
 
-    const updatedUsage: Partial<AIReflectionUsage> = {
-      monthlyUsage: {
-        ...(currentUsage?.monthlyUsage || {}),
-        [currentMonth]: {
-          count: currentMonthlyCount + 1,
-          lastGeneratedAt: now,
-        },
+        const updatedUsage: Partial<AIReflectionUsage> = {
+          monthlyUsage: {
+            ...(currentUsage?.monthlyUsage || {}),
+            [currentMonth]: {
+              count: currentMonthlyCount + 1,
+              lastGeneratedAt: now,
+            },
+          },
+          reflectionHistory: {
+            ...(currentUsage?.reflectionHistory || {}),
+            [diaryDate]: {
+              generatedAt: isRegenerate
+                ? existingRecord.generatedAt
+                : now,
+              regenerateCount: isRegenerate
+                ? existingRecord.regenerateCount + 1
+                : 1,
+              lastRegeneratedAt: isRegenerate ? now : undefined,
+            },
+          },
+          updatedAt: now,
+        };
+
+        await usageRef.doc(AI_REFLECTION_USAGE_DOC).set(updatedUsage, { merge: true });
       },
-      reflectionHistory: {
-        ...(currentUsage?.reflectionHistory || {}),
-        [diaryDate]: {
-          generatedAt: isRegenerate
-            ? existingRecord.generatedAt
-            : now,
-          regenerateCount: isRegenerate
-            ? existingRecord.regenerateCount + 1
-            : 1,
-          lastRegeneratedAt: isRegenerate ? now : undefined,
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Usage] 利用状況更新リトライ (${attempt}/3):`, error.message);
         },
-      },
-      updatedAt: now,
-    };
-
-    await usageRef.doc(AI_REFLECTION_USAGE_DOC).set(updatedUsage, { merge: true });
+      }
+    );
 
     console.log('[Usage] AIリフレクション利用状況を更新しました');
   } catch (error) {

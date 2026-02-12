@@ -19,12 +19,13 @@ import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
 import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
 import WeeklyInsightScreen from './src/screens/WeeklyInsightScreen';
 import MonthlyInsightScreen from './src/screens/MonthlyInsightScreen';
-import { initializeReminder } from './src/services/notification';
+import { initializeReminder, clearBadge } from './src/services/notification';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { WeeklyInsightProvider } from './src/contexts/WeeklyInsightContext';
 import { MonthlyInsightProvider } from './src/contexts/MonthlyInsightContext';
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
+import { AIReflectionProvider } from './src/contexts/AIReflectionContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
@@ -222,6 +223,9 @@ export default function App() {
 
       // リマインダー通知の場合は日記入力画面へ遷移
       if (data?.type === 'daily_reminder' || data?.type === 'test') {
+        // バッジをクリア
+        clearBadge();
+
         // ナビゲーションの準備ができるまで少し待つ
         setTimeout(() => {
           if (navigationRef.isReady()) {
@@ -253,6 +257,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <SubscriptionProvider>
+          <AIReflectionProvider>
             <WeeklyInsightProvider>
               <MonthlyInsightProvider>
                 <NavigationContainer ref={navigationRef} linking={linking}>
@@ -260,7 +265,8 @@ export default function App() {
                 </NavigationContainer>
               </MonthlyInsightProvider>
             </WeeklyInsightProvider>
-          </SubscriptionProvider>
+          </AIReflectionProvider>
+        </SubscriptionProvider>
         </AuthProvider>
         <ThemedStatusBar />
       </ThemeProvider>

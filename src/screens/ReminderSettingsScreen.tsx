@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import * as IntentLauncher from 'expo-intent-launcher';
+import Constants from 'expo-constants';
 import type { ReminderSettingsScreenNavigationProp } from '../types/navigation';
 import type { ReminderSettings } from '../types/reminder';
 import { DEFAULT_REMINDER_SETTINGS } from '../types/reminder';
@@ -34,8 +36,52 @@ import {
 // 時間選択肢（0-23時）
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => i);
 
-// 分選択肢（0-59分）
-const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, i) => i);
+// 分選択肢（5分刻み: 00, 05, 10, ..., 55）
+const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => i * 5);
+
+// ピッカーアイテムコンポーネント
+interface TimePickerItemProps {
+  value: number;
+  isSelected: boolean;
+  onPress: () => void;
+  suffix: string;
+  themeColors: ReturnType<typeof getColors>;
+  displayValue?: string;
+}
+
+const TimePickerItem: React.FC<TimePickerItemProps> = ({
+  value,
+  isSelected,
+  onPress,
+  suffix,
+  themeColors,
+  displayValue,
+}) => (
+  <TouchableOpacity
+    style={[
+      styles.pickerItem,
+      { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+      isSelected && { backgroundColor: themeColors.primary, borderColor: themeColors.primary },
+    ]}
+    onPress={onPress}
+    activeOpacity={0.7}
+  >
+    <Text style={[
+      styles.pickerItemText,
+      { color: themeColors.text.primary },
+      isSelected && { color: themeColors.text.inverse },
+    ]}>
+      {displayValue ?? value}
+    </Text>
+    <Text style={[
+      styles.pickerItemSuffix,
+      { color: themeColors.text.secondary },
+      isSelected && { color: themeColors.text.inverse },
+    ]}>
+      {suffix}
+    </Text>
+  </TouchableOpacity>
+);
 
 const ReminderSettingsScreen: React.FC = () => {
   const navigation = useNavigation<ReminderSettingsScreenNavigationProp>();
@@ -62,7 +108,8 @@ const ReminderSettingsScreen: React.FC = () => {
       setHasPermission(permission);
       setEnabled(settings.enabled);
       setHour(settings.hour);
-      setMinute(settings.minute);
+      // 分を5分刻みに丸める
+      setMinute(Math.round(settings.minute / 5) * 5);
       setOriginalValues(settings);
     } catch (error) {
       console.error('リマインダー設定の読み込みに失敗:', error);
@@ -90,7 +137,7 @@ const ReminderSettingsScreen: React.FC = () => {
   const hasChanges =
     enabled !== originalValues.enabled ||
     hour !== originalValues.hour ||
-    minute !== originalValues.minute;
+    minute !== Math.round(originalValues.minute / 5) * 5;
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -149,13 +196,7 @@ const ReminderSettingsScreen: React.FC = () => {
             { text: 'キャンセル', style: 'cancel' },
             {
               text: '設定を開く',
-              onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
-                } else {
-                  Linking.openSettings();
-                }
-              },
+              onPress: openNotificationSettings,
             },
           ]
         );
@@ -167,24 +208,74 @@ const ReminderSettingsScreen: React.FC = () => {
     setEnabled(value);
   };
 
-  const handleTimeSelect = (selectedHour: number, selectedMinute: number) => {
+  const handleHourSelect = useCallback((selectedHour: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setHour(selectedHour);
+  }, []);
+
+  const handleMinuteSelect = useCallback((selectedMinute: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setMinute(selectedMinute);
-  };
+  }, []);
 
   const handleTestNotification = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    // 権限がない場合は権限リクエスト
+    if (!hasPermission) {
+      const granted = await requestNotificationPermissions();
+      if (granted) {
+        setHasPermission(true);
+        try {
+          await sendTestNotification();
+          Alert.alert('テスト通知を送信しました', '通知が届くことを確認してください。');
+        } catch {
+          Alert.alert('エラー', 'テスト通知の送信に失敗しました');
+        }
+      } else {
+        Alert.alert(
+          '通知の許可が必要です',
+          '設定アプリから通知を許可してください。',
+          [
+            { text: 'キャンセル', style: 'cancel' },
+            { text: '設定を開く', onPress: openNotificationSettings },
+          ]
+        );
+      }
+      return;
+    }
+
     try {
       await sendTestNotification();
       Alert.alert('テスト通知を送信しました', '通知が届くことを確認してください。');
-    } catch (error) {
+    } catch {
       Alert.alert('エラー', 'テスト通知の送信に失敗しました');
     }
   };
 
   const formatTime = (h: number, m: number): string => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  // 通知設定画面を開く（Android対応改善）
+  const openNotificationSettings = async () => {
+    if (Platform.OS === 'android') {
+      const packageName = Constants.expoConfig?.android?.package;
+      if (packageName) {
+        try {
+          await IntentLauncher.startActivityAsync(
+            IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS,
+            { extra: { 'android.provider.extra.APP_PACKAGE': packageName } }
+          );
+          return;
+        } catch {
+          // フォールバック
+        }
+      }
+      Linking.openSettings();
+    } else {
+      Linking.openURL('app-settings:');
+    }
   };
 
   if (isLoading) {
@@ -279,92 +370,65 @@ const ReminderSettingsScreen: React.FC = () => {
 
             {/* 時刻ピッカー */}
             {showTimePicker && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>時刻を選択</Text>
-                <View style={[styles.pickerContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-                  {/* 時間選択 */}
-                  <View style={styles.pickerColumn}>
-                    <Text style={[styles.pickerLabel, { color: themeColors.text.secondary }]}>時</Text>
-                    <ScrollView
-                      style={styles.pickerScroll}
-                      showsVerticalScrollIndicator={false}
-                      nestedScrollEnabled
-                    >
-                      {HOUR_OPTIONS.map((h) => (
-                        <TouchableOpacity
-                          key={h}
-                          style={[
-                            styles.pickerItem,
-                            hour === h && [styles.pickerItemSelected, { backgroundColor: `${themeColors.primary}15` }],
-                          ]}
-                          onPress={() => handleTimeSelect(h, minute)}
-                        >
-                          <Text
-                            style={[
-                              styles.pickerItemText,
-                              { color: hour === h ? themeColors.primary : themeColors.text.primary },
-                              hour === h && styles.pickerItemTextSelected,
-                            ]}
-                          >
-                            {h}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-
-                  {/* 分選択 */}
-                  <View style={styles.pickerColumn}>
-                    <Text style={[styles.pickerLabel, { color: themeColors.text.secondary }]}>分</Text>
-                    <ScrollView
-                      style={styles.pickerScroll}
-                      showsVerticalScrollIndicator={false}
-                      nestedScrollEnabled
-                    >
-                      {MINUTE_OPTIONS.map((m) => (
-                        <TouchableOpacity
-                          key={m}
-                          style={[
-                            styles.pickerItem,
-                            minute === m && [styles.pickerItemSelected, { backgroundColor: `${themeColors.primary}15` }],
-                          ]}
-                          onPress={() => handleTimeSelect(hour, m)}
-                        >
-                          <Text
-                            style={[
-                              styles.pickerItemText,
-                              { color: minute === m ? themeColors.primary : themeColors.text.primary },
-                              minute === m && styles.pickerItemTextSelected,
-                            ]}
-                          >
-                            {m.toString().padStart(2, '0')}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+              <>
+                {/* 時間選択 */}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>時</Text>
+                  <View style={styles.pickerGrid}>
+                    {HOUR_OPTIONS.map((h) => (
+                      <TimePickerItem
+                        key={h}
+                        value={h}
+                        isSelected={hour === h}
+                        onPress={() => handleHourSelect(h)}
+                        suffix="時"
+                        themeColors={themeColors}
+                      />
+                    ))}
                   </View>
                 </View>
-              </View>
+
+                {/* 分選択 */}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: themeColors.text.secondary }]}>分</Text>
+                  <View style={styles.pickerGrid}>
+                    {MINUTE_OPTIONS.map((m) => (
+                      <TimePickerItem
+                        key={m}
+                        value={m}
+                        isSelected={minute === m}
+                        onPress={() => handleMinuteSelect(m)}
+                        suffix="分"
+                        themeColors={themeColors}
+                        displayValue={m.toString().padStart(2, '0')}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </>
             )}
 
-            {/* テスト通知 */}
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={[styles.testButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
-                onPress={handleTestNotification}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="paper-plane-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.testButtonText, { color: themeColors.primary }]}>
-                  テスト通知を送信
-                </Text>
-              </TouchableOpacity>
-              <Text style={[styles.testButtonHint, { color: themeColors.text.secondary }]}>
-                通知が正しく届くかテストできます
-              </Text>
-            </View>
           </>
         )}
+
+        {/* テスト通知（常時表示） */}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.testButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
+            onPress={handleTestNotification}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="paper-plane-outline" size={20} color={themeColors.primary} />
+            <Text style={[styles.testButtonText, { color: themeColors.primary }]}>
+              テスト通知を送信
+            </Text>
+          </TouchableOpacity>
+          <Text style={[styles.testButtonHint, { color: themeColors.text.secondary }]}>
+            {hasPermission
+              ? '通知が正しく届くかテストできます'
+              : '通知権限を確認・テストできます'}
+          </Text>
+        </View>
 
         {/* 説明 */}
         <View style={styles.section}>
@@ -470,42 +534,30 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 
-  // --- ピッカー ---
-  pickerContainer: {
+  // --- ピッカーグリッド ---
+  pickerGrid: {
     flexDirection: 'row',
-    borderRadius: spacing.borderRadius.large,
-    borderWidth: 1,
-    padding: spacing.md,
-    gap: spacing.lg,
-  },
-  pickerColumn: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  pickerLabel: {
-    fontSize: 12,
-    fontFamily: fonts.family.bold,
-    marginBottom: spacing.sm,
-  },
-  pickerScroll: {
-    maxHeight: 180,
-    width: '100%',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
   },
   pickerItem: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: spacing.borderRadius.small,
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  pickerItemSelected: {
-    borderRadius: spacing.borderRadius.medium,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: 56,
+    justifyContent: 'center',
   },
   pickerItemText: {
-    fontSize: 18,
+    fontSize: 15,
     fontFamily: fonts.family.regular,
   },
-  pickerItemTextSelected: {
-    fontFamily: fonts.family.bold,
+  pickerItemSuffix: {
+    fontSize: 11,
+    fontFamily: fonts.family.regular,
+    marginLeft: 2,
   },
 
   // --- テストボタン ---

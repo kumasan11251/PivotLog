@@ -1,10 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Animated, Alert } from 'react-native';
 import type { AIReflectionData, AIReflectionState } from '../types/aiReflection';
 import type { UsageLimitReason } from '../types/subscription';
-import { getDiaryByDate, saveDiaryEntry, DiaryEntry, loadUserSettings, getRecentDiaryEntries } from '../utils/storage';
-import { generateReflection } from '../services/ai';
-import { calculateCurrentAge, calculateTimeLeft } from '../utils/timeCalculations';
+import { getDiaryByDate } from '../utils/storage';
+import { useAIReflectionContext } from '../contexts/AIReflectionContext';
 
 interface UseAIReflectionProps {
   dateString: string;
@@ -39,31 +38,51 @@ interface UseAIReflectionReturn {
 
 /**
  * AIリフレクション機能を管理するカスタムフック
+ * Contextを活用して画面遷移しても生成状態を保持する
  */
 export const useAIReflection = ({
   dateString,
   formState,
   onLimitReached,
 }: UseAIReflectionProps): UseAIReflectionReturn => {
-  const [reflectionState, setReflectionState] = useState<ExtendedAIReflectionState>('idle');
+  // Contextから状態と関数を取得
+  const {
+    getGenerationStatus,
+    getGenerationTask,
+    startGeneration,
+    subscribeToCompletion,
+  } = useAIReflectionContext();
+
+  // ローカル表示用の状態
   const [reflection, setReflection] = useState<AIReflectionData | null>(null);
   const [lastLimitReason, setLastLimitReason] = useState<UsageLimitReason | null>(null);
+  const [localError, setLocalError] = useState<boolean>(false);
   const fadeAnim = useMemo(() => new Animated.Value(0), []);
+
+  // Contextから現在の生成状態を取得
+  const contextStatus = getGenerationStatus(dateString);
+  const contextTask = getGenerationTask(dateString);
 
   // リフレクションをリセット
   const resetReflection = useCallback(() => {
     setReflection(null);
-    setReflectionState('idle');
+    setLastLimitReason(null);
+    setLocalError(false);
     fadeAnim.setValue(0);
   }, [fadeAnim]);
 
   // 保存済みのリフレクションを読み込む
   const loadSavedReflection = useCallback(async () => {
+    // 生成中の場合は何もしない（コールバックで結果を受け取る）
+    if (contextStatus === 'generating') {
+      return;
+    }
+
     try {
       const diary = await getDiaryByDate(dateString);
       if (diary?.aiReflection) {
         setReflection(diary.aiReflection);
-        setReflectionState('loaded');
+        setLocalError(false);
         fadeAnim.setValue(1); // 保存済みは即座に表示
       } else {
         resetReflection();
@@ -72,190 +91,80 @@ export const useAIReflection = ({
       console.error('リフレクションの読み込みに失敗:', error);
       resetReflection();
     }
-  }, [dateString, fadeAnim, resetReflection]);
+  }, [dateString, fadeAnim, resetReflection, contextStatus]);
 
-  // AIリフレクションを取得する
-  const getReflection = useCallback(async () => {
-    setReflectionState('loading');
-    fadeAnim.setValue(0);
+  // 生成完了時のコールバックを登録
+  useEffect(() => {
+    const unsubscribe = subscribeToCompletion(dateString, (result, error, limitReason) => {
+      if (result) {
+        setReflection(result);
+        setLocalError(false);
 
-    try {
-      // ユーザー設定を読み込んで年齢と残り時間を計算
-      const settings = await loadUserSettings();
-      let currentAge = 30; // デフォルト値
-      let remainingYears = 50;
-      let remainingDays = 18250;
-
-      if (settings) {
-        currentAge = calculateCurrentAge(settings.birthday);
-        const timeLeft = calculateTimeLeft(settings.birthday, settings.targetLifespan);
-        remainingYears = Math.floor(timeLeft.totalYears);
-        remainingDays = Math.floor(timeLeft.totalDays);
-      }
-
-      // Phase 2: 直近3日分の日記を取得
-      const recentDiaries = await getRecentDiaryEntries(dateString, 3);
-      const recentEntries = recentDiaries.map((diary) => ({
-        date: diary.date,
-        goodTime: diary.goodTime,
-        wastedTime: diary.wastedTime,
-        tomorrow: diary.tomorrow,
-      }));
-
-      // AIサービスを使ってリフレクションを生成
-      const newReflection = await generateReflection({
-        goodTime: formState.goodTime,
-        wastedTime: formState.wastedTime,
-        tomorrow: formState.tomorrow,
-        currentAge,
-        remainingYears,
-        remainingDays,
-        diaryDate: dateString, // 利用制限チェック用に日付を追加
-        recentEntries: recentEntries.length > 0 ? recentEntries : undefined, // Phase 2
-      });
-
-      // 先にリフレクションを表示（保存に失敗しても表示はする）
-      setReflection(newReflection);
-      setReflectionState('loaded');
-
-      // フェードインアニメーション
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-
-      // 日記にリフレクションを保存（バックグラウンドで実行、エラーでも続行）
-      try {
-        const existingDiary = await getDiaryByDate(dateString);
-        if (existingDiary) {
-          const updatedDiary: DiaryEntry = {
-            ...existingDiary,
-            aiReflection: newReflection,
-            updatedAt: new Date().toISOString(),
-          };
-          await saveDiaryEntry(updatedDiary);
-        } else {
-          // 日記がまだ保存されていない場合は新規作成
-          const newDiary: DiaryEntry = {
-            id: dateString,
-            date: dateString,
-            goodTime: formState.goodTime.trim(),
-            wastedTime: formState.wastedTime.trim(),
-            tomorrow: formState.tomorrow.trim(),
-            aiReflection: newReflection,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          await saveDiaryEntry(newDiary);
-        }
-      } catch (saveError) {
-        // 保存エラーはログに記録するが、ユーザーにはエラーを表示しない
-        console.error('リフレクションの保存に失敗（表示は継続）:', saveError);
-      }
-    } catch (error) {
-      console.error('リフレクションの取得に失敗:', error);
-
-      // エラーの種類に応じた処理
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorObj = error as { details?: { code?: UsageLimitReason } };
-
-      // 利用制限エラーの検出
-      if (errorObj.details?.code) {
-        const limitReason = errorObj.details.code;
+        // フェードインアニメーション
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      } else if (limitReason) {
         setLastLimitReason(limitReason);
-        setReflectionState('limit_reached');
+        setLocalError(true);
 
         // コールバックを呼び出し
         if (onLimitReached) {
           onLimitReached(limitReason);
         }
 
-        // 利用制限エラーの場合は特別なハンドリング
-        switch (limitReason) {
-          case 'MONTHLY_LIMIT_REACHED':
-            Alert.alert(
-              '今月の利用上限に達しました',
-              '無料プランでは月5回までAIリフレクションを利用できます。プレミアムプランで無制限にご利用いただけます。',
-              [
-                { text: '閉じる', style: 'cancel' },
-                // TODO: プレミアムプランへの導線を追加
-                // { text: '詳しく見る', onPress: () => navigation.navigate('Premium') },
-              ]
-            );
-            break;
-
-          case 'REGENERATE_NOT_ALLOWED':
-            Alert.alert(
-              '再生成はプレミアム機能です',
-              '無料プランでは同じ日記のAIリフレクションを再生成することはできません。',
-              [{ text: '閉じる', style: 'cancel' }]
-            );
-            break;
-
-          case 'DAILY_LIMIT_REACHED':
-            Alert.alert(
-              '本日の利用上限に達しました',
-              '明日以降に再度お試しください。',
-              [{ text: '閉じる', style: 'cancel' }]
-            );
-            break;
-
-          case 'FEATURE_NOT_AVAILABLE':
-            Alert.alert(
-              'プレミアム機能',
-              'AIリフレクションはプレミアムプランでご利用いただけます。',
-              [{ text: '閉じる', style: 'cancel' }]
-            );
-            break;
-
-          default:
-            Alert.alert('エラー', errorMessage);
-        }
-
-        return;
+        // 利用制限エラーのアラート表示
+        showLimitAlert(limitReason);
+      } else if (error) {
+        setLocalError(true);
+        Alert.alert('エラーが発生しました', 'AIの生成に失敗しました。もう一度お試しください。');
       }
+    });
 
-      // その他のエラー
-      // resource-exhausted エラーメッセージをパースして利用制限を検出
-      if (errorMessage.includes('今月のAIリフレクション利用上限')) {
-        setLastLimitReason('MONTHLY_LIMIT_REACHED');
-        setReflectionState('limit_reached');
-        Alert.alert(
-          '今月の利用上限に達しました',
-          '無料プランでは月5回までAIリフレクションを利用できます。',
-          [{ text: '閉じる', style: 'cancel' }]
-        );
-        return;
-      }
+    return unsubscribe;
+  }, [dateString, subscribeToCompletion, fadeAnim, onLimitReached]);
 
-      if (errorMessage.includes('同じ日記の再生成')) {
-        setLastLimitReason('REGENERATE_NOT_ALLOWED');
-        setReflectionState('limit_reached');
-        Alert.alert(
-          '再生成はプレミアム機能です',
-          '無料プランでは同じ日記のAIリフレクションを再生成することはできません。',
-          [{ text: '閉じる', style: 'cancel' }]
-        );
-        return;
-      }
+  // AIリフレクションを取得する
+  const getReflection = useCallback(async () => {
+    fadeAnim.setValue(0);
+    setLocalError(false);
+    setLastLimitReason(null);
 
-      if (errorMessage.includes('本日の利用上限')) {
-        setLastLimitReason('DAILY_LIMIT_REACHED');
-        setReflectionState('limit_reached');
-        Alert.alert(
-          '本日の利用上限に達しました',
-          '明日以降に再度お試しください。',
-          [{ text: '閉じる', style: 'cancel' }]
-        );
-        return;
-      }
-
-      // 通常のエラー
-      Alert.alert('エラーが発生しました', 'AIの生成に失敗しました。もう一度お試しください。');
-      setReflectionState('error');
+    try {
+      await startGeneration({ dateString, formState });
+    } catch (error) {
+      // エラーは subscribeToCompletion のコールバックで処理される
+      console.error('リフレクション生成の開始に失敗:', error);
     }
-  }, [dateString, formState, fadeAnim, onLimitReached]);
+  }, [dateString, formState, fadeAnim, startGeneration]);
+
+  // reflectionStateはContextの状態とローカル状態から導出
+  const reflectionState: ExtendedAIReflectionState = useMemo(() => {
+    // Contextで生成中ならloading
+    if (contextStatus === 'generating') {
+      return 'loading';
+    }
+
+    // エラーまたは利用制限
+    if (contextStatus === 'error' && contextTask?.limitReason) {
+      return 'limit_reached';
+    }
+    if (localError && lastLimitReason) {
+      return 'limit_reached';
+    }
+    if (contextStatus === 'error' || localError) {
+      return 'error';
+    }
+
+    // リフレクションがあればloaded
+    if (reflection) {
+      return 'loaded';
+    }
+
+    return 'idle';
+  }, [contextStatus, contextTask, reflection, localError, lastLimitReason]);
 
   return {
     reflectionState,
@@ -267,3 +176,45 @@ export const useAIReflection = ({
     lastLimitReason,
   };
 };
+
+/**
+ * 利用制限エラーのアラートを表示
+ */
+function showLimitAlert(limitReason: UsageLimitReason): void {
+  switch (limitReason) {
+    case 'MONTHLY_LIMIT_REACHED':
+      Alert.alert(
+        '今月の利用上限に達しました',
+        '無料プランでは月5回までAIリフレクションを利用できます。プレミアムプランで無制限にご利用いただけます。',
+        [{ text: '閉じる', style: 'cancel' }]
+      );
+      break;
+
+    case 'REGENERATE_NOT_ALLOWED':
+      Alert.alert(
+        '再生成はプレミアム機能です',
+        '無料プランでは同じ日記のAIリフレクションを再生成することはできません。',
+        [{ text: '閉じる', style: 'cancel' }]
+      );
+      break;
+
+    case 'DAILY_LIMIT_REACHED':
+      Alert.alert(
+        '本日の利用上限に達しました',
+        '明日以降に再度お試しください。',
+        [{ text: '閉じる', style: 'cancel' }]
+      );
+      break;
+
+    case 'FEATURE_NOT_AVAILABLE':
+      Alert.alert(
+        'プレミアム機能',
+        'AIリフレクションはプレミアムプランでご利用いただけます。',
+        [{ text: '閉じる', style: 'cancel' }]
+      );
+      break;
+
+    default:
+      Alert.alert('エラー', 'AIの生成に失敗しました。もう一度お試しください。');
+  }
+}

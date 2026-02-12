@@ -5,6 +5,7 @@
 import firestore from '@react-native-firebase/firestore';
 import { COLLECTIONS } from './config';
 import { getCurrentUser } from './auth';
+import { withRetry } from '../../utils/retry';
 import type { AIReflectionData } from '../../types/aiReflection';
 
 // 型定義
@@ -51,12 +52,24 @@ export const saveUserSettingsToFirestore = async (
 ): Promise<void> => {
   try {
     const userDoc = getUserDocRef();
-    await userDoc.collection(COLLECTIONS.SETTINGS).doc('user').set(
-      {
-        ...settings,
-        updatedAt: new Date().toISOString(),
+
+    await withRetry(
+      async () => {
+        await userDoc.collection(COLLECTIONS.SETTINGS).doc('user').set(
+          {
+            ...settings,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
       },
-      { merge: true }
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 設定保存リトライ (${attempt}/3):`, error.message);
+        },
+      }
     );
   } catch (error) {
     console.error('設定の保存に失敗しました:', error);
@@ -70,13 +83,21 @@ export const saveUserSettingsToFirestore = async (
 export const loadUserSettingsFromFirestore = async (): Promise<UserSettings | null> => {
   try {
     const userDoc = getUserDocRef();
-    const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('user').get();
-    const docData = doc.data();
 
-    if (docData) {
-      return docData as UserSettings;
-    }
-    return null;
+    return await withRetry(
+      async () => {
+        const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('user').get();
+        const docData = doc.data();
+        return docData ? (docData as UserSettings) : null;
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 設定読み込みリトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
   } catch (error) {
     console.error('設定の読み込みに失敗しました:', error);
     return null;
@@ -189,12 +210,23 @@ export const saveDiaryEntryToFirestore = async (
     const userDoc = getUserDocRef();
     const now = new Date().toISOString();
 
-    await userDoc.collection(COLLECTIONS.DIARIES).doc(entry.id).set(
-      {
-        ...entry,
-        updatedAt: now,
+    await withRetry(
+      async () => {
+        await userDoc.collection(COLLECTIONS.DIARIES).doc(entry.id).set(
+          {
+            ...entry,
+            updatedAt: now,
+          },
+          { merge: true }
+        );
       },
-      { merge: true }
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 日記保存リトライ (${attempt}/3):`, error.message);
+        },
+      }
     );
   } catch (error) {
     console.error('日記の保存に失敗しました:', error);
@@ -208,12 +240,23 @@ export const saveDiaryEntryToFirestore = async (
 export const loadDiaryEntriesFromFirestore = async (): Promise<DiaryEntry[]> => {
   try {
     const userDoc = getUserDocRef();
-    const snapshot = await userDoc
-      .collection(COLLECTIONS.DIARIES)
-      .orderBy('date', 'desc')
-      .get();
 
-    return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+    return await withRetry(
+      async () => {
+        const snapshot = await userDoc
+          .collection(COLLECTIONS.DIARIES)
+          .orderBy('date', 'desc')
+          .get();
+        return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 日記一覧読み込みリトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
   } catch (error) {
     console.error('日記の読み込みに失敗しました:', error);
     return [];
@@ -228,13 +271,21 @@ export const getDiaryByDateFromFirestore = async (
 ): Promise<DiaryEntry | null> => {
   try {
     const userDoc = getUserDocRef();
-    const doc = await userDoc.collection(COLLECTIONS.DIARIES).doc(date).get();
-    const docData = doc.data();
 
-    if (docData) {
-      return docData as DiaryEntry;
-    }
-    return null;
+    return await withRetry(
+      async () => {
+        const doc = await userDoc.collection(COLLECTIONS.DIARIES).doc(date).get();
+        const docData = doc.data();
+        return docData ? (docData as DiaryEntry) : null;
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 日記取得リトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
   } catch (error) {
     console.error('日記の取得に失敗しました:', error);
     return null;
@@ -295,14 +346,24 @@ export const getDiariesByMonthFromFirestore = async (
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
-    const snapshot = await userDoc
-      .collection(COLLECTIONS.DIARIES)
-      .where('date', '>=', startDate)
-      .where('date', '<=', endDate)
-      .orderBy('date', 'desc')
-      .get();
-
-    return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+    return await withRetry(
+      async () => {
+        const snapshot = await userDoc
+          .collection(COLLECTIONS.DIARIES)
+          .where('date', '>=', startDate)
+          .where('date', '<=', endDate)
+          .orderBy('date', 'desc')
+          .get();
+        return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 月別日記取得リトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
   } catch (error) {
     console.error('月別日記の取得に失敗しました:', error);
     return [];
@@ -464,14 +525,25 @@ export const getDiariesByDateRangeFromFirestore = async (
 ): Promise<DiaryEntry[]> => {
   try {
     const userDoc = getUserDocRef();
-    const snapshot = await userDoc
-      .collection(COLLECTIONS.DIARIES)
-      .where('date', '>=', startDate)
-      .where('date', '<=', endDate)
-      .orderBy('date', 'asc')
-      .get();
 
-    return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+    return await withRetry(
+      async () => {
+        const snapshot = await userDoc
+          .collection(COLLECTIONS.DIARIES)
+          .where('date', '>=', startDate)
+          .where('date', '<=', endDate)
+          .orderBy('date', 'asc')
+          .get();
+        return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 期間指定日記取得リトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
   } catch (error) {
     console.error('期間指定日記の取得に失敗しました:', error);
     return [];

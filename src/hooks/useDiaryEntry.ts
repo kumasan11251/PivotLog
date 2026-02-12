@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { DiaryEntryScreenNavigationProp, RootStackParamList } from '../types/navigation';
-import { saveDiaryEntry, getDiaryByDate, deleteDiaryEntry, DiaryEntry } from '../utils/storage';
+import { saveDiaryEntry, getDiaryByDate, deleteDiaryEntry, DiaryEntry, loadUserSettings } from '../utils/storage';
 import {
   PLACEHOLDERS,
   ENCOURAGEMENT_MESSAGES,
   getDailyElement,
 } from '../constants/diaryEntry';
-import { formatDateToString } from '../utils/dateUtils';
+import { formatDateToString, getEffectiveToday } from '../utils/dateUtils';
+import { cancelTodayReminderAndReschedule, clearBadge } from '../services/notification';
 import * as Haptics from 'expo-haptics';
 
 type DiaryEntryScreenRouteProp = RouteProp<RootStackParamList, 'DiaryEntry'>;
@@ -223,6 +224,15 @@ export const useDiaryEntry = (): UseDiaryEntryReturn => {
       };
 
       await saveDiaryEntry(entry);
+
+      // 今日の日記を保存した場合、当日のリマインダーをキャンセルしバッジをクリア
+      // dayStartHourを考慮した「今日」の判定
+      const userSettings = await loadUserSettings();
+      const effectiveToday = getEffectiveToday(userSettings?.dayStartHour ?? 0);
+      if (dateString === effectiveToday) {
+        await cancelTodayReminderAndReschedule();
+        await clearBadge();
+      }
 
       // 保存成功後、初期値を更新
       setInitialFormState({
