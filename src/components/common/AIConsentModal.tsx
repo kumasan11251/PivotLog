@@ -49,14 +49,14 @@ const AIConsentModal: React.FC<AIConsentModalProps> = ({
             <View style={styles.header}>
               <Text style={styles.headerIcon}>{'AI'}</Text>
               <Text style={[styles.title, { color: themeColors.text.primary }]}>
-                AIリフレクション機能について
+                今日の気づき機能について
               </Text>
             </View>
 
             {/* 説明文 */}
             <View style={styles.content}>
               <Text style={[styles.description, { color: themeColors.text.primary }]}>
-                この機能では、あなたの日記の内容をAI（Google Gemini）で分析し、気づきやリフレクションを生成します。
+                この機能では、あなたの日記の内容をAI（Google Gemini）で分析し、気づきを生成します。
               </Text>
 
               <View style={[styles.infoBox, { backgroundColor: `${themeColors.primary}10` }]}>

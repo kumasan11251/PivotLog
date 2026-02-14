@@ -49,7 +49,7 @@ export const MonthlyInsightBanner: React.FC<MonthlyInsightBannerProps> = ({
         </View>
         <View style={styles.content}>
           <Text style={[styles.title, { color: themeColors.text.primary }]}>
-            月間インサイトを生成中...
+            月間ふりかえりを生成中...
           </Text>
           <Text style={[styles.subtitle, { color: themeColors.text.secondary }]}>
             {entryCount}日分の記録を分析しています
@@ -74,7 +74,7 @@ export const MonthlyInsightBanner: React.FC<MonthlyInsightBannerProps> = ({
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text style={[styles.title, { color: themeColors.text.primary }]}>
-              月間インサイト
+              月間ふりかえり
             </Text>
             <View style={[styles.badge, { backgroundColor: themeColors.primary }]}>
               <Text style={[styles.badgeText, { color: themeColors.text.inverse }]}>
@@ -107,7 +107,7 @@ export const MonthlyInsightBanner: React.FC<MonthlyInsightBannerProps> = ({
         </View>
         <View style={styles.content}>
           <Text style={[styles.title, { color: themeColors.primary }]}>
-            先月の月間インサイトを生成
+            先月の月間ふりかえりを生成
           </Text>
           <Text style={[styles.subtitle, { color: themeColors.text.secondary }]}>
             {entryCount}日分の記録をAIが分析します
@@ -132,7 +132,7 @@ export const MonthlyInsightBanner: React.FC<MonthlyInsightBannerProps> = ({
       </View>
       <View style={styles.content}>
         <Text style={[styles.title, { color: themeColors.text.secondary }]}>
-          月間インサイト
+          月間ふりかえり
         </Text>
         <Text style={[styles.subtitle, { color: themeColors.text.secondary }]}>
           あと{MIN_ENTRIES_FOR_MONTHLY_INSIGHT - entryCount}日分の記録で生成可能

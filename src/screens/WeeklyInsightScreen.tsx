@@ -11,8 +11,10 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { useWeeklyInsight, isLastWeek, MIN_ENTRIES_FOR_INSIGHT, DEV_MODE_ALLOW_REGENERATE } from '../hooks/useWeeklyInsight';
+import { useWeeklyInsight, isLastWeek, MIN_ENTRIES_FOR_INSIGHT } from '../hooks/useWeeklyInsight';
 import { WeeklyInsightCard, WeekSelector, InsightHistoryList } from '../components/insight';
+import { WeeklyInsightCardV2 } from '../components/insight/WeeklyInsightCardV2';
+import { isWeeklyInsightV2 } from '../types/weeklyInsight';
 import type { RootStackParamList } from '../types/navigation';
 
 type WeeklyInsightScreenRouteProp = RouteProp<RootStackParamList, 'WeeklyInsight'>;
@@ -105,7 +107,7 @@ const WeeklyInsightScreen: React.FC = () => {
           <ActivityIndicator size="large" color={themeColors.primary} />
           <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
             {isLoadingFromCache
-              ? '保存されたインサイトを読み込み中...'
+              ? '保存されたふりかえりを読み込み中...'
               : 'AIが1週間の記録を分析しています...'}
           </Text>
           {!isLoadingFromCache && (
@@ -123,7 +125,7 @@ const WeeklyInsightScreen: React.FC = () => {
         <View style={styles.centerContainer}>
           <Ionicons name="alert-circle" size={48} color={themeColors.error} />
           <Text style={[styles.errorText, { color: themeColors.text.primary }]}>
-            インサイトの生成に失敗しました
+            ふりかえりの生成に失敗しました
           </Text>
           <Text style={[styles.errorSubtext, { color: themeColors.text.secondary }]}>
             {error}
@@ -149,7 +151,7 @@ const WeeklyInsightScreen: React.FC = () => {
             記録が足りません
           </Text>
           <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-            週間インサイトを生成するには、{'\n'}
+            週間ふりかえりを生成するには、{'\n'}
             1週間に最低{MIN_ENTRIES_FOR_INSIGHT}日分の記録が必要です。
           </Text>
           <Text style={[styles.emptySubtext, { color: themeColors.text.secondary }]}>
@@ -174,9 +176,14 @@ const WeeklyInsightScreen: React.FC = () => {
 
     // インサイトあり
     if (insight) {
+      // V2かV1かで表示を分岐
+      const InsightCard = isWeeklyInsightV2(insight)
+        ? () => <WeeklyInsightCardV2 insight={insight} />
+        : () => <WeeklyInsightCard insight={insight} />;
+
       return (
         <View style={{ flex: 1 }}>
-          <WeeklyInsightCard insight={insight} />
+          <InsightCard />
 
           {/* 開発用: 再生成・削除ボタン */}
           {canRegenerate && (
@@ -213,7 +220,7 @@ const WeeklyInsightScreen: React.FC = () => {
             <Ionicons name="sparkles" size={40} color={themeColors.primary} />
           </View>
           <Text style={[styles.readyTitle, { color: themeColors.text.primary }]}>
-            週間インサイトを生成
+            週間ふりかえりを生成
           </Text>
           <Text style={[styles.readyText, { color: themeColors.text.secondary }]}>
             {currentWeekInfo.startDate.replace(/-/g, '/')} 〜 {currentWeekInfo.endDate.replace(/-/g, '/')}
@@ -228,7 +235,7 @@ const WeeklyInsightScreen: React.FC = () => {
           >
             <Ionicons name="analytics" size={20} color={themeColors.text.inverse} />
             <Text style={[styles.generateButtonText, { color: themeColors.text.inverse }]}>
-              インサイトを生成
+              ふりかえりを生成
             </Text>
           </TouchableOpacity>
         </View>
@@ -240,10 +247,10 @@ const WeeklyInsightScreen: React.FC = () => {
       <View style={styles.centerContainer}>
         <Ionicons name="analytics-outline" size={48} color={themeColors.text.secondary} />
         <Text style={[styles.emptyTitle, { color: themeColors.text.primary }]}>
-          この週のインサイトはありません
+          この週のふりかえりはありません
         </Text>
         <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-          インサイトを生成するには{'\n'}
+          ふりかえりを生成するには{'\n'}
           {MIN_ENTRIES_FOR_INSIGHT}日以上の記録が必要です
         </Text>
         <Text style={[styles.emptySubtext, { color: themeColors.text.secondary }]}>
@@ -274,7 +281,7 @@ const WeeklyInsightScreen: React.FC = () => {
           <Ionicons name="close" size={24} color={themeColors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>
-          週間インサイト
+          週間ふりかえり
         </Text>
         <TouchableOpacity onPress={handleOpenHistory} style={styles.historyIconButton}>
           <Ionicons name="time-outline" size={22} color={themeColors.text.primary} />

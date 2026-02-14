@@ -44,7 +44,7 @@ export const WeeklyInsightBanner: React.FC<WeeklyInsightBannerProps> = ({
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="small" color={themeColors.primary} />
           <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
-            週間インサイトを生成中...
+            週間ふりかえりを生成中...
           </Text>
         </View>
       );
@@ -60,7 +60,7 @@ export const WeeklyInsightBanner: React.FC<WeeklyInsightBannerProps> = ({
             </View>
             <View style={styles.headerText}>
               <Text style={[styles.title, { color: themeColors.text.primary }]}>
-                先週のインサイト
+                先週のふりかえり
               </Text>
               <Text style={[styles.subtitle, { color: themeColors.text.secondary }]}>
                 {entryCount}日分の記録を分析
@@ -87,7 +87,7 @@ export const WeeklyInsightBanner: React.FC<WeeklyInsightBannerProps> = ({
           </View>
           <View style={styles.headerText}>
             <Text style={[styles.title, { color: themeColors.text.primary }]}>
-              週間インサイトを見る
+              週間ふりかえりを見る
             </Text>
             <Text style={[styles.subtitle, { color: themeColors.text.secondary }]}>
               先週の{entryCount}日分の記録をAIが分析します
@@ -110,7 +110,7 @@ export const WeeklyInsightBanner: React.FC<WeeklyInsightBannerProps> = ({
         </View>
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: themeColors.text.primary }]}>
-            週間インサイト
+            週間ふりかえり
           </Text>
           <Text style={[styles.subtitle, { color: themeColors.text.secondary }]}>
             タップして過去の週を分析

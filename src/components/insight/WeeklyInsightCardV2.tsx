@@ -1,5 +1,6 @@
 /**
- * WeeklyInsightCard - 週次インサイト詳細表示カード
+ * WeeklyInsightCardV2 - 週次インサイトV2詳細表示カード
+ * 3セクション構成：意図追跡 + パターン + アクション
  */
 
 import React from 'react';
@@ -7,17 +8,13 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { IntentionToActionCard } from './IntentionToActionCard';
 import { InsightPatternCard } from './InsightPatternCard';
-import type { WeeklyInsightData } from '../../types/weeklyInsight';
+import { ActionSuggestionCard } from './ActionSuggestionCard';
+import type { WeeklyInsightDataV2 } from '../../types/weeklyInsight';
 
-// サマリーの背景色
-const SUMMARY_BG = {
-  light: '#F9F9F9',
-  dark: '#1A1A1A',
-} as const;
-
-interface WeeklyInsightCardProps {
-  insight: WeeklyInsightData;
+interface WeeklyInsightCardV2Props {
+  insight: WeeklyInsightDataV2;
 }
 
 /**
@@ -30,10 +27,12 @@ function formatDateRange(startDate: string, endDate: string): string {
   return `${startYear}年${startMonth}月${startDay}日 〜 ${endMonth}月${endDay}日`;
 }
 
-export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({ insight }) => {
+export const WeeklyInsightCardV2: React.FC<WeeklyInsightCardV2Props> = ({ insight }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
-  const summaryBgColor = isDark ? SUMMARY_BG.dark : SUMMARY_BG.light;
+
+  // 意図追跡で達成があるかどうか
+  const hasAchievements = insight.intentionToAction.achieved.length > 0;
 
   return (
     <ScrollView
@@ -61,35 +60,26 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({ insight })
         </View>
       </View>
 
-      {/* サマリー */}
-      <View style={[styles.summaryContainer, { backgroundColor: summaryBgColor }]}>
-        <Text style={[styles.summaryText, { color: themeColors.text.primary }]}>
-          {insight.summary}
-        </Text>
-      </View>
+      {/* セクション1: 想いを行動に変えた瞬間（達成がある場合のみ） */}
+      {hasAchievements && (
+        <IntentionToActionCard intentionToAction={insight.intentionToAction} />
+      )}
 
-      {/* パターン一覧 */}
+      {/* セクション2: 発見されたパターン */}
       <View style={styles.patternsSection}>
-        <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
-          発見されたパターン
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="bulb" size={18} color={themeColors.primary} />
+          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
+            見つかったパターン
+          </Text>
+        </View>
         {insight.patterns.map((pattern, index) => (
           <InsightPatternCard key={index} pattern={pattern} />
         ))}
       </View>
 
-      {/* 問いかけ */}
-      <View style={[styles.questionContainer, { backgroundColor: `${themeColors.primary}15`, borderColor: themeColors.primary }]}>
-        <View style={styles.questionHeader}>
-          <Ionicons name="chatbubble-ellipses" size={18} color={themeColors.primary} />
-          <Text style={[styles.questionLabel, { color: themeColors.primary }]}>
-            来週への問いかけ
-          </Text>
-        </View>
-        <Text style={[styles.questionText, { color: themeColors.text.primary }]}>
-          {insight.question}
-        </Text>
-      </View>
+      {/* セクション3: 来週へのアクション */}
+      <ActionSuggestionCard actionSuggestion={insight.actionSuggestion} />
 
       {/* 生成情報 */}
       <Text style={[styles.generatedAt, { color: themeColors.text.secondary }]}>
@@ -149,50 +139,24 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     fontWeight: '500',
   },
-  summaryContainer: {
-    padding: spacing.md,
-    borderRadius: 12,
-    marginBottom: spacing.lg,
-  },
-  summaryText: {
-    fontSize: 15,
-    fontFamily: fonts.family.regular,
-    lineHeight: 24,
-  },
   patternsSection: {
     marginBottom: spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     fontSize: 16,
     fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    marginBottom: spacing.md,
-  },
-  questionContainer: {
-    padding: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: spacing.md,
-  },
-  questionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  questionLabel: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    marginLeft: spacing.xs,
-  },
-  questionText: {
-    fontSize: 15,
-    fontFamily: fonts.family.regular,
-    lineHeight: 22,
+    fontWeight: '600',
+    marginLeft: spacing.sm,
   },
   generatedAt: {
     fontSize: 11,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
+    marginTop: spacing.md,
   },
 });

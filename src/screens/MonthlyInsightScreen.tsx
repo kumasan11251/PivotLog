@@ -54,7 +54,7 @@ const MonthlyInsightScreen: React.FC = () => {
     canRegenerate,
   } = useMonthlyInsight({ initialMonthKey });
 
-  // 初期化時にインサイト履歴を読み込み
+  // 初期化時にふりかえり履歴を読み込み
   useEffect(() => {
     loadRecentInsights();
   }, [loadRecentInsights]);
@@ -109,7 +109,7 @@ const MonthlyInsightScreen: React.FC = () => {
           <ActivityIndicator size="large" color={themeColors.primary} />
           <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
             {isLoadingFromCache
-              ? '保存されたインサイトを読み込み中...'
+              ? '保存されたふりかえりを読み込み中...'
               : 'AIが1ヶ月の記録を分析しています...'}
           </Text>
           {!isLoadingFromCache && (
@@ -127,7 +127,7 @@ const MonthlyInsightScreen: React.FC = () => {
         <View style={styles.centerContainer}>
           <Ionicons name="alert-circle" size={48} color={themeColors.error} />
           <Text style={[styles.errorText, { color: themeColors.text.primary }]}>
-            インサイトの生成に失敗しました
+            ふりかえりの生成に失敗しました
           </Text>
           <Text style={[styles.errorSubtext, { color: themeColors.text.secondary }]}>
             {error}
@@ -153,7 +153,7 @@ const MonthlyInsightScreen: React.FC = () => {
             記録が足りません
           </Text>
           <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-            月間インサイトを生成するには、{'\n'}
+            月間ふりかえりを生成するには、{'\n'}
             1ヶ月に最低{MIN_ENTRIES_FOR_MONTHLY_INSIGHT}日分の記録が必要です。
           </Text>
           <Text style={[styles.emptySubtext, { color: themeColors.text.secondary }]}>
@@ -216,7 +216,7 @@ const MonthlyInsightScreen: React.FC = () => {
             <Ionicons name="sparkles" size={40} color={themeColors.primary} />
           </View>
           <Text style={[styles.readyTitle, { color: themeColors.text.primary }]}>
-            月間インサイトを生成
+            月間ふりかえりを生成
           </Text>
           <Text style={[styles.readyText, { color: themeColors.text.secondary }]}>
             {currentMonthInfo.startDate.replace(/-/g, '/')} 〜 {currentMonthInfo.endDate.replace(/-/g, '/')}
@@ -231,7 +231,7 @@ const MonthlyInsightScreen: React.FC = () => {
           >
             <Ionicons name="analytics" size={20} color={themeColors.text.inverse} />
             <Text style={[styles.generateButtonText, { color: themeColors.text.inverse }]}>
-              インサイトを生成
+              ふりかえりを生成
             </Text>
           </TouchableOpacity>
         </View>
@@ -243,10 +243,10 @@ const MonthlyInsightScreen: React.FC = () => {
       <View style={styles.centerContainer}>
         <Ionicons name="analytics-outline" size={48} color={themeColors.text.secondary} />
         <Text style={[styles.emptyTitle, { color: themeColors.text.primary }]}>
-          この月のインサイトはありません
+          この月のふりかえりはありません
         </Text>
         <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-          インサイトを生成するには{'\n'}
+          ふりかえりを生成するには{'\n'}
           {MIN_ENTRIES_FOR_MONTHLY_INSIGHT}日以上の記録が必要です
         </Text>
         <Text style={[styles.emptySubtext, { color: themeColors.text.secondary }]}>
@@ -294,7 +294,7 @@ const MonthlyInsightScreen: React.FC = () => {
           <Ionicons name="close" size={24} color={themeColors.text.primary} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>
-          月間インサイト
+          月間ふりかえり
         </Text>
         <TouchableOpacity onPress={handleOpenHistory} style={styles.historyIconButton}>
           <Ionicons name="time-outline" size={22} color={themeColors.text.primary} />
@@ -324,7 +324,7 @@ const MonthlyInsightScreen: React.FC = () => {
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: themeColors.border }]}>
             <Text style={[styles.modalTitle, { color: themeColors.text.primary }]}>
-              インサイト履歴
+              ふりかえり履歴
             </Text>
             <TouchableOpacity onPress={() => setHistoryVisible(false)}>
               <Ionicons name="close" size={24} color={themeColors.text.primary} />
@@ -335,7 +335,7 @@ const MonthlyInsightScreen: React.FC = () => {
             <View style={styles.emptyHistory}>
               <Ionicons name="calendar-outline" size={48} color={themeColors.text.secondary} />
               <Text style={[styles.emptyHistoryText, { color: themeColors.text.secondary }]}>
-                まだインサイト履歴がありません
+                まだふりかえり履歴がありません
               </Text>
             </View>
           ) : (

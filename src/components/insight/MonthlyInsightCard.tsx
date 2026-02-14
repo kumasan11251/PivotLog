@@ -84,7 +84,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({ insight 
         </View>
         <View style={styles.headerText}>
           <Text style={[styles.title, { color: themeColors.text.primary }]}>
-            月間インサイト
+            月間ふりかえり
           </Text>
           <Text style={[styles.dateRange, { color: themeColors.text.secondary }]}>
             {formatDateRange(insight.monthStartDate, insight.monthEndDate)}

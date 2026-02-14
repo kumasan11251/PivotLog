@@ -412,7 +412,7 @@ export const deleteAllUserDataFromFirestore = async (): Promise<void> => {
 // =============== 週次インサイト ===============
 
 /**
- * 週次インサイトのデータ構造（Firestore用）
+ * 週次インサイトのデータ構造（Firestore用・V1）
  */
 export interface WeeklyInsightDocument {
   weekKey: string; // YYYY-Www形式 (例: 2026-W04)
@@ -426,10 +426,31 @@ export interface WeeklyInsightDocument {
     description: string;
     examples?: Array<{ date: string; quote: string }>;
     frequency?: number;
+    insight?: string; // V2のみ
   }>;
   question: string;
   generatedAt: string;
   modelVersion?: string;
+  // V2 追加フィールド
+  schemaVersion?: 2;
+  intentionToAction?: {
+    achieved: Array<{
+      intentionDate: string;
+      intention: string;
+      achievedDate: string;
+      achievement: string;
+    }>;
+    successAnalysis: string;
+    celebration: string;
+  };
+  actionSuggestion?: {
+    mainSuggestion: {
+      action: string;
+      reason: string;
+      suggestedTiming: string;
+    };
+    keepDoing?: string;
+  };
 }
 
 /**

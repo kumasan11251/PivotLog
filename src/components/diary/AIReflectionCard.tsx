@@ -173,7 +173,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
           <View style={styles.headerLeft}>
             <Text style={styles.headerIcon}>✨</Text>
             <Text style={[styles.headerText, { color: themeColors.primary }]}>
-              PivotLogからの気づき
+              今日の気づき
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -306,7 +306,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
           <View style={styles.headerLeft}>
             <Text style={styles.headerIcon}>✨</Text>
             <Text style={[styles.headerText, { color: themeColors.primary }]}>
-              今日のリフレクション
+              今日の気づき
             </Text>
           </View>
           <View style={styles.headerRight}>

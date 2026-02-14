@@ -175,6 +175,71 @@ export async function generateWeeklyInsightViaCloudFunctions(
 }
 
 /**
+ * 週次インサイトV2生成レスポンスの型
+ */
+export interface WeeklyInsightV2Response {
+  intentionToAction: {
+    achieved: Array<{
+      intentionDate: string;
+      intention: string;
+      achievedDate: string;
+      achievement: string;
+    }>;
+    successAnalysis: string;
+    celebration: string;
+  };
+  patterns: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples: Array<{ date: string; quote: string }>;
+    insight: string;
+  }>;
+  actionSuggestion: {
+    mainSuggestion: {
+      action: string;
+      reason: string;
+      suggestedTiming: string;
+    };
+    keepDoing?: string;
+  };
+  generatedAt: string;
+  modelVersion: string;
+  schemaVersion: 2;
+}
+
+/**
+ * Cloud Functions経由で週次インサイトV2を生成
+ *
+ * @param request - 週次インサイト生成リクエスト
+ * @returns 週次インサイトV2レスポンス
+ * @throws エラー時は例外をスロー
+ */
+export async function generateWeeklyInsightV2ViaCloudFunctions(
+  request: GenerateWeeklyInsightRequest
+): Promise<WeeklyInsightV2Response> {
+  try {
+    // 東京リージョンのFunctionを呼び出す
+    const generateWeeklyInsightV2 = functions()
+      .app.functions('asia-northeast1')
+      .httpsCallable('generateWeeklyInsightV2');
+
+    const result = await generateWeeklyInsightV2(request);
+    return result.data as WeeklyInsightV2Response;
+  } catch (error: unknown) {
+    console.error('[CloudFunctions] generateWeeklyInsightV2 error:', error);
+
+    // Firebase Functions エラーの詳細を取得
+    if (error && typeof error === 'object' && 'code' in error) {
+      const functionsError = error as { code: string; message: string };
+      throw new Error(`Cloud Functions error: ${functionsError.code} - ${functionsError.message}`);
+    }
+
+    throw error;
+  }
+}
+
+/**
  * 月次インサイト生成リクエストの型
  */
 export interface GenerateMonthlyInsightRequest {

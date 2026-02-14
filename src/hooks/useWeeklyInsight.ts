@@ -14,11 +14,18 @@ import {
   WeeklyInsightDocument,
 } from '../services/firebase/firestore';
 import {
-  generateWeeklyInsightViaCloudFunctions,
+  generateWeeklyInsightV2ViaCloudFunctions,
   GenerateWeeklyInsightRequest,
 } from '../services/firebase/functions';
 import { useWeeklyInsightContext } from '../contexts/WeeklyInsightContext';
-import type { WeeklyInsightData, WeeklyInsightState } from '../types/weeklyInsight';
+import type {
+  WeeklyInsightData,
+  WeeklyInsightDataV2,
+  WeeklyInsightState,
+} from '../types/weeklyInsight';
+
+/** V1またはV2のインサイトデータ */
+type WeeklyInsightUnion = WeeklyInsightData | WeeklyInsightDataV2;
 
 // ユーティリティ関数を再エクスポート（後方互換性のため）
 export {
@@ -58,8 +65,8 @@ interface UseWeeklyInsightOptions {
 }
 
 interface UseWeeklyInsightReturn {
-  /** 現在表示中のインサイトデータ */
-  insight: WeeklyInsightData | null;
+  /** 現在表示中のインサイトデータ（V1またはV2） */
+  insight: WeeklyInsightUnion | null;
   /** 最近のインサイト一覧 */
   recentInsights: WeeklyInsightDocument[];
   /** 読み込み/生成状態 */
@@ -117,7 +124,7 @@ export const useWeeklyInsight = (
     getGeneratedInsight,
   } = useWeeklyInsightContext();
 
-  const [insight, setInsight] = useState<WeeklyInsightData | null>(null);
+  const [insight, setInsight] = useState<WeeklyInsightUnion | null>(null);
   const [recentInsights, setRecentInsights] = useState<WeeklyInsightDocument[]>([]);
   const [state, setState] = useState<WeeklyInsightState>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -270,19 +277,41 @@ export const useWeeklyInsight = (
 
       if (cachedInsight) {
         if (isMountedRef.current) {
-          setInsight({
-            weekStartDate: cachedInsight.weekStartDate,
-            weekEndDate: cachedInsight.weekEndDate,
-            entryCount: cachedInsight.entryCount,
-            summary: cachedInsight.summary,
-            patterns: cachedInsight.patterns.map(p => ({
-              ...p,
-              type: p.type as WeeklyInsightData['patterns'][0]['type'],
-            })),
-            question: cachedInsight.question,
-            generatedAt: cachedInsight.generatedAt,
-            modelVersion: cachedInsight.modelVersion,
-          });
+          // V2キャッシュの場合
+          if (cachedInsight.schemaVersion === 2 && cachedInsight.intentionToAction && cachedInsight.actionSuggestion) {
+            setInsight({
+              weekStartDate: cachedInsight.weekStartDate,
+              weekEndDate: cachedInsight.weekEndDate,
+              entryCount: cachedInsight.entryCount,
+              intentionToAction: cachedInsight.intentionToAction,
+              patterns: cachedInsight.patterns.map(p => ({
+                type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+                title: p.title,
+                description: p.description,
+                examples: p.examples || [],
+                insight: p.insight || '',
+              })),
+              actionSuggestion: cachedInsight.actionSuggestion,
+              generatedAt: cachedInsight.generatedAt,
+              modelVersion: cachedInsight.modelVersion,
+              schemaVersion: 2,
+            });
+          } else {
+            // V1キャッシュの場合（後方互換性）
+            setInsight({
+              weekStartDate: cachedInsight.weekStartDate,
+              weekEndDate: cachedInsight.weekEndDate,
+              entryCount: cachedInsight.entryCount,
+              summary: cachedInsight.summary,
+              patterns: cachedInsight.patterns.map(p => ({
+                ...p,
+                type: p.type as WeeklyInsightData['patterns'][0]['type'],
+              })),
+              question: cachedInsight.question,
+              generatedAt: cachedInsight.generatedAt,
+              modelVersion: cachedInsight.modelVersion,
+            });
+          }
           setIsCurrentWeekCached(true);
           setState('loaded');
         }
@@ -336,19 +365,41 @@ export const useWeeklyInsight = (
 
       if (cachedInsight) {
         if (isMountedRef.current) {
-          setInsight({
-            weekStartDate: cachedInsight.weekStartDate,
-            weekEndDate: cachedInsight.weekEndDate,
-            entryCount: cachedInsight.entryCount,
-            summary: cachedInsight.summary,
-            patterns: cachedInsight.patterns.map(p => ({
-              ...p,
-              type: p.type as WeeklyInsightData['patterns'][0]['type'],
-            })),
-            question: cachedInsight.question,
-            generatedAt: cachedInsight.generatedAt,
-            modelVersion: cachedInsight.modelVersion,
-          });
+          // V2キャッシュの場合
+          if (cachedInsight.schemaVersion === 2 && cachedInsight.intentionToAction && cachedInsight.actionSuggestion) {
+            setInsight({
+              weekStartDate: cachedInsight.weekStartDate,
+              weekEndDate: cachedInsight.weekEndDate,
+              entryCount: cachedInsight.entryCount,
+              intentionToAction: cachedInsight.intentionToAction,
+              patterns: cachedInsight.patterns.map(p => ({
+                type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+                title: p.title,
+                description: p.description,
+                examples: p.examples || [],
+                insight: p.insight || '',
+              })),
+              actionSuggestion: cachedInsight.actionSuggestion,
+              generatedAt: cachedInsight.generatedAt,
+              modelVersion: cachedInsight.modelVersion,
+              schemaVersion: 2,
+            });
+          } else {
+            // V1キャッシュの場合（後方互換性）
+            setInsight({
+              weekStartDate: cachedInsight.weekStartDate,
+              weekEndDate: cachedInsight.weekEndDate,
+              entryCount: cachedInsight.entryCount,
+              summary: cachedInsight.summary,
+              patterns: cachedInsight.patterns.map(p => ({
+                ...p,
+                type: p.type as WeeklyInsightData['patterns'][0]['type'],
+              })),
+              question: cachedInsight.question,
+              generatedAt: cachedInsight.generatedAt,
+              modelVersion: cachedInsight.modelVersion,
+            });
+          }
           setIsCurrentWeekCached(true);
           setState('loaded');
         }
@@ -402,19 +453,41 @@ export const useWeeklyInsight = (
 
       if (cachedInsight) {
         if (isMountedRef.current) {
-          setInsight({
-            weekStartDate: cachedInsight.weekStartDate,
-            weekEndDate: cachedInsight.weekEndDate,
-            entryCount: cachedInsight.entryCount,
-            summary: cachedInsight.summary,
-            patterns: cachedInsight.patterns.map(p => ({
-              ...p,
-              type: p.type as WeeklyInsightData['patterns'][0]['type'],
-            })),
-            question: cachedInsight.question,
-            generatedAt: cachedInsight.generatedAt,
-            modelVersion: cachedInsight.modelVersion,
-          });
+          // V2キャッシュの場合
+          if (cachedInsight.schemaVersion === 2 && cachedInsight.intentionToAction && cachedInsight.actionSuggestion) {
+            setInsight({
+              weekStartDate: cachedInsight.weekStartDate,
+              weekEndDate: cachedInsight.weekEndDate,
+              entryCount: cachedInsight.entryCount,
+              intentionToAction: cachedInsight.intentionToAction,
+              patterns: cachedInsight.patterns.map(p => ({
+                type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+                title: p.title,
+                description: p.description,
+                examples: p.examples || [],
+                insight: p.insight || '',
+              })),
+              actionSuggestion: cachedInsight.actionSuggestion,
+              generatedAt: cachedInsight.generatedAt,
+              modelVersion: cachedInsight.modelVersion,
+              schemaVersion: 2,
+            });
+          } else {
+            // V1キャッシュの場合（後方互換性）
+            setInsight({
+              weekStartDate: cachedInsight.weekStartDate,
+              weekEndDate: cachedInsight.weekEndDate,
+              entryCount: cachedInsight.entryCount,
+              summary: cachedInsight.summary,
+              patterns: cachedInsight.patterns.map(p => ({
+                ...p,
+                type: p.type as WeeklyInsightData['patterns'][0]['type'],
+              })),
+              question: cachedInsight.question,
+              generatedAt: cachedInsight.generatedAt,
+              modelVersion: cachedInsight.modelVersion,
+            });
+          }
           setState('loaded');
         }
       } else {
@@ -474,7 +547,7 @@ export const useWeeklyInsight = (
       const currentAge = calculateCurrentAge(settings.birthday);
       const timeLeft = calculateTimeLeft(settings.birthday, settings.targetLifespan);
 
-      // Cloud Functionsでインサイトを生成
+      // Cloud FunctionsでV2インサイトを生成
       const request: GenerateWeeklyInsightRequest = {
         entries: entries.map(e => ({
           date: e.date,
@@ -489,27 +562,42 @@ export const useWeeklyInsight = (
         weekEndDate: currentWeekInfo.endDate,
       };
 
-      const response = await generateWeeklyInsightViaCloudFunctions(request);
+      const response = await generateWeeklyInsightV2ViaCloudFunctions(request);
 
-      // 結果を整形
-      const newInsight: WeeklyInsightData = {
+      // V2結果を整形
+      const newInsight: WeeklyInsightDataV2 = {
         weekStartDate: currentWeekInfo.startDate,
         weekEndDate: currentWeekInfo.endDate,
         entryCount: entries.length,
-        summary: response.summary,
+        intentionToAction: response.intentionToAction,
         patterns: response.patterns.map(p => ({
-          ...p,
-          type: p.type as WeeklyInsightData['patterns'][0]['type'],
+          type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+          title: p.title,
+          description: p.description,
+          examples: p.examples,
+          insight: p.insight,
         })),
-        question: response.question,
+        actionSuggestion: response.actionSuggestion,
         generatedAt: response.generatedAt,
         modelVersion: response.modelVersion,
+        schemaVersion: 2,
       };
 
-      // Firestoreに保存（上書き）
+      // Firestoreに保存（V2形式で上書き）
       await saveWeeklyInsightToFirestore({
         weekKey: currentWeekKey,
-        ...newInsight,
+        weekStartDate: newInsight.weekStartDate,
+        weekEndDate: newInsight.weekEndDate,
+        entryCount: newInsight.entryCount,
+        // V2ではsummary/questionは使わないが、ドキュメント型の互換性のために空文字をセット
+        summary: '',
+        question: '',
+        patterns: newInsight.patterns,
+        intentionToAction: newInsight.intentionToAction,
+        actionSuggestion: newInsight.actionSuggestion,
+        generatedAt: newInsight.generatedAt,
+        modelVersion: newInsight.modelVersion,
+        schemaVersion: 2,
       });
 
       if (isMountedRef.current) {

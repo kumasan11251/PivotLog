@@ -12,10 +12,10 @@ import {
   saveWeeklyInsightToFirestore,
 } from '../services/firebase/firestore';
 import {
-  generateWeeklyInsightViaCloudFunctions,
+  generateWeeklyInsightV2ViaCloudFunctions,
   GenerateWeeklyInsightRequest,
 } from '../services/firebase/functions';
-import type { WeeklyInsightData } from '../types/weeklyInsight';
+import type { WeeklyInsightData, WeeklyInsightDataV2 } from '../types/weeklyInsight';
 import {
   getWeekInfoFromKey,
   MIN_ENTRIES_FOR_INSIGHT,
@@ -32,6 +32,9 @@ interface GenerationTask {
   completedAt?: number;
 }
 
+/** V1またはV2のインサイトデータ */
+type WeeklyInsightUnion = WeeklyInsightData | WeeklyInsightDataV2;
+
 interface WeeklyInsightContextType {
   /** 各週の生成状態 */
   generationTasks: Map<string, GenerationTask>;
@@ -40,9 +43,9 @@ interface WeeklyInsightContextType {
   /** インサイト生成を開始（バックグラウンド実行） */
   startGeneration: (weekKey: string) => Promise<void>;
   /** 生成完了時のコールバックを登録 */
-  subscribeToCompletion: (weekKey: string, callback: (insight: WeeklyInsightData | null, error?: string) => void) => () => void;
+  subscribeToCompletion: (weekKey: string, callback: (insight: WeeklyInsightUnion | null, error?: string) => void) => () => void;
   /** 生成結果を取得（キャッシュから） */
-  getGeneratedInsight: (weekKey: string) => Promise<WeeklyInsightData | null>;
+  getGeneratedInsight: (weekKey: string) => Promise<WeeklyInsightUnion | null>;
 }
 
 const WeeklyInsightContext = createContext<WeeklyInsightContextType | null>(null);
@@ -56,10 +59,10 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
   const [generationTasks, setGenerationTasks] = useState<Map<string, GenerationTask>>(new Map());
 
   // コールバック登録用のRef（再レンダリング時に失われないように）
-  const completionCallbacksRef = useRef<Map<string, Set<(insight: WeeklyInsightData | null, error?: string) => void>>>(new Map());
+  const completionCallbacksRef = useRef<Map<string, Set<(insight: WeeklyInsightUnion | null, error?: string) => void>>>(new Map());
 
   // 進行中のPromiseを保持（重複実行防止）
-  const activeGenerationsRef = useRef<Map<string, Promise<WeeklyInsightData | null>>>(new Map());
+  const activeGenerationsRef = useRef<Map<string, Promise<WeeklyInsightUnion | null>>>(new Map());
 
   // 特定の週の生成状態を取得
   const getGenerationStatus = useCallback((weekKey: string): GenerationStatus => {
@@ -78,7 +81,7 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
   }, []);
 
   // 完了コールバックを呼び出す
-  const notifyCompletion = useCallback((weekKey: string, insight: WeeklyInsightData | null, error?: string) => {
+  const notifyCompletion = useCallback((weekKey: string, insight: WeeklyInsightUnion | null, error?: string) => {
     const callbacks = completionCallbacksRef.current.get(weekKey);
     if (callbacks) {
       callbacks.forEach(cb => {
@@ -109,11 +112,35 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
     // 生成開始
     updateTask(weekKey, { status: 'generating', startedAt: Date.now(), error: undefined });
 
-    const generationPromise = (async (): Promise<WeeklyInsightData | null> => {
+    const generationPromise = (async (): Promise<WeeklyInsightUnion | null> => {
       try {
         // まずキャッシュを確認
         const cached = await getWeeklyInsightFromFirestore(weekKey);
         if (cached) {
+          // V2キャッシュの場合
+          if (cached.schemaVersion === 2 && cached.intentionToAction && cached.actionSuggestion) {
+            const insightV2: WeeklyInsightDataV2 = {
+              weekStartDate: cached.weekStartDate,
+              weekEndDate: cached.weekEndDate,
+              entryCount: cached.entryCount,
+              intentionToAction: cached.intentionToAction,
+              patterns: cached.patterns.map(p => ({
+                type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+                title: p.title,
+                description: p.description,
+                examples: p.examples || [],
+                insight: p.insight || '',
+              })),
+              actionSuggestion: cached.actionSuggestion,
+              generatedAt: cached.generatedAt,
+              modelVersion: cached.modelVersion,
+              schemaVersion: 2,
+            };
+            updateTask(weekKey, { status: 'completed', completedAt: Date.now() });
+            notifyCompletion(weekKey, insightV2);
+            return insightV2;
+          }
+          // V1キャッシュの場合（後方互換性）
           const insight: WeeklyInsightData = {
             weekStartDate: cached.weekStartDate,
             weekEndDate: cached.weekEndDate,
@@ -160,7 +187,7 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
         const currentAge = calculateCurrentAge(settings.birthday);
         const timeLeft = calculateTimeLeft(settings.birthday, settings.targetLifespan);
 
-        // Cloud Functionsで生成
+        // Cloud FunctionsでV2インサイトを生成
         const request: GenerateWeeklyInsightRequest = {
           entries: entries.map(e => ({
             date: e.date,
@@ -175,27 +202,42 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
           weekEndDate: weekInfo.endDate,
         };
 
-        const response = await generateWeeklyInsightViaCloudFunctions(request);
+        const response = await generateWeeklyInsightV2ViaCloudFunctions(request);
 
-        // 結果を整形
-        const newInsight: WeeklyInsightData = {
+        // V2結果を整形
+        const newInsight: WeeklyInsightDataV2 = {
           weekStartDate: weekInfo.startDate,
           weekEndDate: weekInfo.endDate,
           entryCount: entries.length,
-          summary: response.summary,
+          intentionToAction: response.intentionToAction,
           patterns: response.patterns.map(p => ({
-            ...p,
-            type: p.type as WeeklyInsightData['patterns'][0]['type'],
+            type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+            title: p.title,
+            description: p.description,
+            examples: p.examples,
+            insight: p.insight,
           })),
-          question: response.question,
+          actionSuggestion: response.actionSuggestion,
           generatedAt: response.generatedAt,
           modelVersion: response.modelVersion,
+          schemaVersion: 2,
         };
 
-        // Firestoreに保存
+        // Firestoreに保存（V2形式）
         await saveWeeklyInsightToFirestore({
           weekKey,
-          ...newInsight,
+          weekStartDate: newInsight.weekStartDate,
+          weekEndDate: newInsight.weekEndDate,
+          entryCount: newInsight.entryCount,
+          // V2ではsummary/questionは使わないが、ドキュメント型の互換性のために空文字をセット
+          summary: '',
+          question: '',
+          patterns: newInsight.patterns,
+          intentionToAction: newInsight.intentionToAction,
+          actionSuggestion: newInsight.actionSuggestion,
+          generatedAt: newInsight.generatedAt,
+          modelVersion: newInsight.modelVersion,
+          schemaVersion: 2,
         });
 
         updateTask(weekKey, { status: 'completed', completedAt: Date.now() });
@@ -224,7 +266,7 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
   // 完了コールバックを登録
   const subscribeToCompletion = useCallback((
     weekKey: string,
-    callback: (insight: WeeklyInsightData | null, error?: string) => void
+    callback: (insight: WeeklyInsightUnion | null, error?: string) => void
   ): (() => void) => {
     if (!completionCallbacksRef.current.has(weekKey)) {
       completionCallbacksRef.current.set(weekKey, new Set());
@@ -244,10 +286,32 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
   }, []);
 
   // 生成結果を取得（キャッシュから）
-  const getGeneratedInsight = useCallback(async (weekKey: string): Promise<WeeklyInsightData | null> => {
+  const getGeneratedInsight = useCallback(async (weekKey: string): Promise<WeeklyInsightUnion | null> => {
     const cached = await getWeeklyInsightFromFirestore(weekKey);
     if (!cached) return null;
 
+    // V2キャッシュの場合
+    if (cached.schemaVersion === 2 && cached.intentionToAction && cached.actionSuggestion) {
+      return {
+        weekStartDate: cached.weekStartDate,
+        weekEndDate: cached.weekEndDate,
+        entryCount: cached.entryCount,
+        intentionToAction: cached.intentionToAction,
+        patterns: cached.patterns.map(p => ({
+          type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+          title: p.title,
+          description: p.description,
+          examples: p.examples || [],
+          insight: p.insight || '',
+        })),
+        actionSuggestion: cached.actionSuggestion,
+        generatedAt: cached.generatedAt,
+        modelVersion: cached.modelVersion,
+        schemaVersion: 2,
+      };
+    }
+
+    // V1キャッシュの場合（後方互換性）
     return {
       weekStartDate: cached.weekStartDate,
       weekEndDate: cached.weekEndDate,

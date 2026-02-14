@@ -1,5 +1,5 @@
 /**
- * InsightHistoryList - インサイト履歴一覧コンポーネント
+ * InsightHistoryList - ふりかえり履歴一覧コンポーネント
  *
  * 過去に生成されたインサイトの一覧を表示するモーダル風UI
  */
@@ -176,7 +176,7 @@ export const InsightHistoryList: React.FC<InsightHistoryListProps> = ({
         履歴がありません
       </Text>
       <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-        週間インサイトを生成すると{'\n'}ここに表示されます
+        週間ふりかえりを生成すると{'\n'}ここに表示されます
       </Text>
     </View>
   );
@@ -197,7 +197,7 @@ export const InsightHistoryList: React.FC<InsightHistoryListProps> = ({
             <Ionicons name="close" size={24} color={themeColors.text.primary} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>
-            インサイト履歴
+            ふりかえり履歴
           </Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -206,7 +206,7 @@ export const InsightHistoryList: React.FC<InsightHistoryListProps> = ({
         <View style={[styles.descriptionContainer, descriptionBgStyle]}>
           <Ionicons name="information-circle-outline" size={16} color={themeColors.text.secondary} />
           <Text style={[styles.descriptionText, { color: themeColors.text.secondary }]}>
-            過去に生成したインサイトを選択して再度閲覧できます
+            過去に生成したふりかえりを選択して再度閲覧できます
           </Text>
         </View>
 

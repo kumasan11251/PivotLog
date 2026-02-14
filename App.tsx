@@ -111,6 +111,9 @@ function MainNavigator() {
 
         // リマインダー通知を初期化（設定済みの場合は再スケジュール）
         await initializeReminder();
+
+        // アプリ起動時にバッジをクリア
+        await clearBadge();
       } catch (error) {
         console.error('初期化エラー:', error);
         setIsSetupComplete(false);

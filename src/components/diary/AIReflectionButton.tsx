@@ -39,12 +39,12 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   // ボタンテキスト（初回生成のみ表示されるので、再生成関連のテキストは不要）
   const buttonText = useMemo(() => {
     if (isFeatureLocked) {
-      return 'PivotLogからの気づきを受け取る';
+      return '気づきを受け取る';
     }
     if (isLimitReached) {
       return '利用上限に達しました';
     }
-    return 'PivotLogからの気づきを受け取る';
+    return '気づきを受け取る';
   }, [isLimitReached, isFeatureLocked]);
 
   const buttonBackgroundColor = isButtonDisabled

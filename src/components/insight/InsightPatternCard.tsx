@@ -7,10 +7,10 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
-import type { InsightPattern, InsightPatternType } from '../../types/weeklyInsight';
+import type { InsightPattern, InsightPatternType, InsightPatternV2 } from '../../types/weeklyInsight';
 
 interface InsightPatternCardProps {
-  pattern: InsightPattern;
+  pattern: InsightPattern | InsightPatternV2;
 }
 
 /**
@@ -56,7 +56,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern 
         <Text style={[styles.title, { color: themeColors.text.primary }]}>
           {pattern.title}
         </Text>
-        {pattern.frequency && pattern.frequency > 1 && (
+        {'frequency' in pattern && pattern.frequency && pattern.frequency > 1 && (
           <View style={[styles.frequencyBadge, { backgroundColor: bgColor }]}>
             <Text style={[styles.frequencyText, { color }]}>
               {pattern.frequency}回
@@ -87,6 +87,13 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern 
             </View>
           ))}
         </View>
+      )}
+
+      {/* 深掘り（V2のみ） */}
+      {'insight' in pattern && pattern.insight && (
+        <Text style={[styles.insightText, { color: themeColors.text.secondary }]}>
+          {pattern.insight}
+        </Text>
       )}
     </View>
   );
@@ -159,5 +166,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.family.regular,
     fontStyle: 'italic',
+  },
+  insightText: {
+    fontSize: 13,
+    fontFamily: fonts.family.regular,
+    fontStyle: 'italic',
+    lineHeight: 20,
+    marginTop: spacing.sm,
   },
 });

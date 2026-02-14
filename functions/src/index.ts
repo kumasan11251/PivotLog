@@ -2063,6 +2063,607 @@ export const generateWeeklyInsight = onCall(
 );
 
 // ============================================================
+// 週次インサイト V2（想い→行動の可視化）
+// ============================================================
+
+/**
+ * 週間インサイトV2用システムプロンプト
+ * 3セクション構成：意図追跡 + パターン + アクション
+ */
+const WEEKLY_INSIGHT_SYSTEM_PROMPT_V2 = `あなたは「PivotLog」の週間リフレクションパートナーです。
+
+【PivotLogとは】
+人生の有限性を意識するライフログアプリ。ユーザーは毎日3つの問いに答えています：
+- ✨ 今日、時間を使えてよかったこと
+- 💭 今日、時間の使い方で後悔していること
+- 🌅 明日、大切にしたいこと
+
+【週間インサイトV2の核心価値】
+「明日大切にしたいこと」に書いた想いが、実際の行動に繋がっている瞬間を発見し、祝福する。
+これは週間単位だからこそできる追跡です。日次では早すぎ、月次では遅すぎます。
+
+【重要：時制について】
+ユーザーは「その週が終わった後」にインサイトを見ます。「今週」「来週」ではなく「この週」「次の週」と表現してください。
+
+【3セクションの役割】
+
+■ セクション1: intentionToAction（想いを行動に変えた瞬間）
+- 「明日大切にしたいこと」→ その後の「良かったこと」への繋がりを見つける
+- 翌日だけでなく、週内のどこかで実現していればOK
+- 完全一致ではなく「意味的な繋がり」を見る
+  例: 「家族との時間を大切に」→「子供と公園で遊んだ」= マッチ
+  例: 「早起きしたい」→「朝の時間を有効活用」= マッチ
+  例: 「健康に気をつける」→「野菜を多めに食べた」= マッチ
+- achievedには達成した意図のみ（未達成は表示しない）
+- successAnalysis: なぜ達成できたかを分析（80-100字）。再現性を高めるヒントを
+- celebration: 祝福のコメント（50-80字）。数を強調せず、流れの良さを褒める
+- 達成が0件の場合: achieved配列を空に、successAnalysisとcelebrationは空文字
+
+■ セクション2: patterns（発見されたパターン）
+- 2つ必ず生成
+- 各パターンは100-150字でしっかり説明
+- 必ず引用（examples）を2つ含める
+- insight: なぜこのパターンが生まれるかの深掘り
+- 達成が0件の場合は、パターンをより充実させる（120-180字）
+
+■ セクション3: actionSuggestion（来週へのアクション）
+- 日記に書かれていた「やりたいこと」から自然に提案
+- mainSuggestion.action: 具体的なアクション
+- mainSuggestion.reason: なぜこのアクションが効果的か（50-80字）
+- mainSuggestion.suggestedTiming: 具体的なタイミング（「水曜の朝」など）
+- keepDoing: この週で良かった習慣があれば（任意）
+
+【トーン】
+- 温かく、親しみを込めて
+- 「〜ですね」「〜かもしれませんね」
+- 批判・説教は絶対にしない
+- 「未達成」「できなかった」という言葉は使わない
+- スコアや数字で評価しない
+
+【絶対に避けること】
+- 「今週」「来週」という時制表現
+- パーセンテージや達成率の言及
+- 未達成の意図のリストアップ
+- examplesのないpattern`;
+
+/**
+ * 週間インサイトV2のレスポンス型
+ */
+interface WeeklyInsightResponseV2 {
+  intentionToAction: {
+    achieved: Array<{
+      intentionDate: string;
+      intention: string;
+      achievedDate: string;
+      achievement: string;
+    }>;
+    successAnalysis: string;
+    celebration: string;
+  };
+  patterns: Array<{
+    type: string;
+    title: string;
+    description: string;
+    examples: Array<{ date: string; quote: string }>;
+    insight: string;
+  }>;
+  actionSuggestion: {
+    mainSuggestion: {
+      action: string;
+      reason: string;
+      suggestedTiming: string;
+    };
+    keepDoing?: string;
+  };
+  generatedAt: string;
+  modelVersion: string;
+  schemaVersion: 2;
+}
+
+/**
+ * 週全体での意図→行動の追跡を分析（V2用）
+ * 翌日だけでなく、週内のどこかで実現していれば検出
+ */
+function analyzeIntentionToActionV2(entries: GenerateWeeklyInsightRequest['entries']): {
+  potentialMatches: Array<{
+    intentionDate: string;
+    intention: string;
+    achievedDate: string;
+    achievement: string;
+    matchScore: number;
+  }>;
+  allTomorrows: Array<{ date: string; tomorrow: string }>;
+} {
+  const potentialMatches: Array<{
+    intentionDate: string;
+    intention: string;
+    achievedDate: string;
+    achievement: string;
+    matchScore: number;
+  }> = [];
+
+  const allTomorrows: Array<{ date: string; tomorrow: string }> = [];
+
+  // 全ての「明日大切にしたいこと」を収集
+  for (const entry of entries) {
+    if (entry.tomorrow && entry.tomorrow.length > 3) {
+      allTomorrows.push({ date: entry.date, tomorrow: entry.tomorrow });
+    }
+  }
+
+  // 各「明日大切にしたいこと」に対して、その後の「良かったこと」を検索
+  for (const { date: intentionDate, tomorrow } of allTomorrows) {
+    const intentionDateObj = new Date(intentionDate);
+
+    for (const entry of entries) {
+      const entryDateObj = new Date(entry.date);
+      const daysDiff = Math.floor((entryDateObj.getTime() - intentionDateObj.getTime()) / (1000 * 60 * 60 * 24));
+
+      // 意図の翌日から7日以内の良かったことを対象
+      if (daysDiff > 0 && daysDiff <= 7 && entry.goodTime && entry.goodTime.length > 3) {
+        // 意味的な類似性をチェック
+        const matchScore = calculateSemanticSimilarity(tomorrow, entry.goodTime);
+
+        if (matchScore > 0.3) {
+          potentialMatches.push({
+            intentionDate,
+            intention: tomorrow,
+            achievedDate: entry.date,
+            achievement: entry.goodTime,
+            matchScore,
+          });
+        }
+      }
+    }
+  }
+
+  // スコア順にソートして上位を返す
+  potentialMatches.sort((a, b) => b.matchScore - a.matchScore);
+
+  return { potentialMatches: potentialMatches.slice(0, 5), allTomorrows };
+}
+
+/**
+ * 簡易的な意味的類似性計算
+ */
+function calculateSemanticSimilarity(intention: string, goodTime: string): number {
+  // キーワードベースのマッチング
+  const intentionWords = intention.toLowerCase().split(/[\s、。,．・]/);
+  const goodTimeWords = goodTime.toLowerCase().split(/[\s、。,．・]/);
+
+  // 共通キーワードを探す
+  let matchCount = 0;
+  for (const iWord of intentionWords) {
+    if (iWord.length <= 1) continue;
+    for (const gWord of goodTimeWords) {
+      if (gWord.length <= 1) continue;
+      if (iWord.includes(gWord) || gWord.includes(iWord)) {
+        matchCount++;
+        break;
+      }
+    }
+  }
+
+  // 関連キーワードのマッピング
+  const relatedKeywords: { [key: string]: string[] } = {
+    '早起き': ['朝', '起き', '午前', '6時', '7時'],
+    '運動': ['散歩', 'ジム', 'ランニング', '体', '歩'],
+    '読書': ['本', '読', 'ページ'],
+    '家族': ['子ども', '妻', '夫', '親', '息子', '娘'],
+    '健康': ['野菜', '運動', '睡眠', '体調'],
+    '勉強': ['学', '読', '練習', '覚え'],
+    '休': ['ゆっくり', 'リラックス', '寝', 'のんびり'],
+  };
+
+  for (const [key, related] of Object.entries(relatedKeywords)) {
+    const hasIntentionKey = intention.includes(key) || related.some(r => intention.includes(r));
+    const hasGoodTimeKey = goodTime.includes(key) || related.some(r => goodTime.includes(r));
+    if (hasIntentionKey && hasGoodTimeKey) {
+      matchCount += 2;
+    }
+  }
+
+  // スコアを正規化（0-1）
+  const totalWords = Math.max(intentionWords.filter(w => w.length > 1).length, 1);
+  return Math.min(matchCount / totalWords, 1);
+}
+
+/**
+ * 週次インサイトV2用ユーザープロンプトを生成
+ */
+function generateWeeklyInsightV2UserPrompt(request: GenerateWeeklyInsightRequest): string {
+  const { entries, currentAge, remainingYears, remainingDays, weekStartDate, weekEndDate } = request;
+
+  // 日記エントリーを整形
+  const entriesText = entries
+    .map((entry, index) => {
+      const date = new Date(entry.date);
+      const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+      return `【${entry.date}（${dayOfWeek}）】Day ${index + 1}
+✨ 良かったこと: ${entry.goodTime || '（記入なし）'}
+💭 後悔していること: ${entry.wastedTime || '（記入なし）'}
+🌅 明日大切にしたいこと: ${entry.tomorrow || '（記入なし）'}`;
+    })
+    .join('\n\n');
+
+  // 意図→行動の分析
+  const { potentialMatches, allTomorrows } = analyzeIntentionToActionV2(entries);
+
+  let intentionHint = '';
+  if (potentialMatches.length > 0) {
+    intentionHint = `【意図→行動の候補（AIが最終判断）】
+以下の繋がりが見つかりました。意味的に繋がっていると判断できるものをachievedに含めてください：
+${potentialMatches.map(m => `- 「${m.intention.slice(0, 30)}」(${m.intentionDate}) → 「${m.achievement.slice(0, 30)}」(${m.achievedDate})`).join('\n')}`;
+  } else {
+    intentionHint = `【意図→行動の候補】
+明確なマッチは見つかりませんでしたが、以下の「明日大切にしたいこと」が書かれていました。意味的に繋がる「良かったこと」があれば、achievedに含めてください：
+${allTomorrows.slice(0, 3).map(t => `- 「${t.tomorrow.slice(0, 40)}」(${t.date})`).join('\n')}
+
+繋がりが見つからない場合は、achieved配列を空にしてください。`;
+  }
+
+  // 深い分析のためのヒント
+  const analysisHints = generateAnalysisHints(entries);
+
+  return `【このユーザーについて】
+${currentAge}歳。人生の目標を${currentAge + Math.round(remainingYears)}歳に設定。
+残り約${Math.round(remainingYears)}年（${remainingDays.toLocaleString()}日）。
+
+【この週の期間】
+${weekStartDate.replace(/-/g, '/')} 〜 ${weekEndDate.replace(/-/g, '/')}
+記録日数: ${entries.length}日分
+
+【この週の日記】
+${entriesText}
+
+${intentionHint}
+
+【深い分析のためのヒント】
+${analysisHints}
+
+【あなたへのお願い】
+
+1. intentionToActionでは：
+   - 上記の候補から、意味的に繋がっていると判断できるものをachievedに含めてください
+   - 厳密な一致ではなく、意図が実現したと言えるかどうかで判断
+   - 達成が見つかった場合、successAnalysisで「なぜ達成できたか」を分析（80-100字）
+   - celebrationは数を強調せず、流れの良さを自然に褒める（50-80字）
+   - 達成が0件の場合は、achieved配列を空に、successAnalysisとcelebrationは空文字
+
+2. patternsでは：
+   - 2つ必ず生成
+   - 各100-150字でしっかり説明
+   - 引用（examples）を2つ必ず含める
+   - insightで「なぜこのパターンが生まれるか」を深掘り
+   - 達成が0件の場合は、より充実した内容に（120-180字）
+
+3. actionSuggestionでは：
+   - 日記の「明日大切にしたいこと」から自然に提案
+   - なぜ効果的かの理由を50-80字で
+   - 具体的なタイミング（「水曜の朝」「週末の午後」など）
+   - この週で良かった習慣があればkeepDoingに`;
+}
+
+/**
+ * 週次インサイトV2生成エンドポイント
+ */
+export const generateWeeklyInsightV2 = onCall(
+  {
+    secrets: [geminiApiKey],
+    region: 'asia-northeast1',
+    memory: '256MiB',
+    timeoutSeconds: 120,
+  },
+  async (request) => {
+    // 認証チェック
+    if (!request.auth) {
+      throw new HttpsError(
+        'unauthenticated',
+        '認証が必要です。ログインしてから再度お試しください。'
+      );
+    }
+
+    const data = request.data as GenerateWeeklyInsightRequest;
+
+    // 入力バリデーション
+    if (!data || typeof data !== 'object') {
+      throw new HttpsError('invalid-argument', '無効なリクエストデータです。');
+    }
+
+    const { entries, currentAge, remainingYears, remainingDays } = data;
+
+    // 必須フィールドのチェック
+    if (
+      !Array.isArray(entries) ||
+      entries.length === 0 ||
+      typeof currentAge !== 'number' ||
+      typeof remainingYears !== 'number' ||
+      typeof remainingDays !== 'number'
+    ) {
+      throw new HttpsError('invalid-argument', '必要な情報が不足しています。');
+    }
+
+    // 最低記録数のチェック
+    if (entries.length < 3) {
+      throw new HttpsError(
+        'failed-precondition',
+        '週次インサイトを生成するには、最低3日分の記録が必要です。'
+      );
+    }
+
+    const apiKey = geminiApiKey.value();
+
+    if (!apiKey) {
+      console.error('GEMINI_API_KEY is not configured');
+      return generateFallbackWeeklyInsightV2(data);
+    }
+
+    try {
+      const userPrompt = generateWeeklyInsightV2UserPrompt(data);
+      const combinedPrompt = `${WEEKLY_INSIGHT_SYSTEM_PROMPT_V2}\n\n---\n\n${userPrompt}`;
+
+      console.log('[generateWeeklyInsightV2] Calling Gemini API...');
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_GEMINI_MODEL}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: combinedPrompt }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.8,
+              maxOutputTokens: 8192,
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'object',
+                properties: {
+                  intentionToAction: {
+                    type: 'object',
+                    properties: {
+                      achieved: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            intentionDate: { type: 'string' },
+                            intention: { type: 'string' },
+                            achievedDate: { type: 'string' },
+                            achievement: { type: 'string' },
+                          },
+                          required: ['intentionDate', 'intention', 'achievedDate', 'achievement'],
+                        },
+                      },
+                      successAnalysis: { type: 'string' },
+                      celebration: { type: 'string' },
+                    },
+                    required: ['achieved', 'successAnalysis', 'celebration'],
+                  },
+                  patterns: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        type: {
+                          type: 'string',
+                          enum: ['positive_theme', 'growth_area', 'time_awareness', 'relationship', 'self_care', 'work_life', 'intention_action'],
+                        },
+                        title: { type: 'string' },
+                        description: { type: 'string' },
+                        examples: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              date: { type: 'string' },
+                              quote: { type: 'string' },
+                            },
+                            required: ['date', 'quote'],
+                          },
+                        },
+                        insight: { type: 'string' },
+                      },
+                      required: ['type', 'title', 'description', 'examples', 'insight'],
+                    },
+                  },
+                  actionSuggestion: {
+                    type: 'object',
+                    properties: {
+                      mainSuggestion: {
+                        type: 'object',
+                        properties: {
+                          action: { type: 'string' },
+                          reason: { type: 'string' },
+                          suggestedTiming: { type: 'string' },
+                        },
+                        required: ['action', 'reason', 'suggestedTiming'],
+                      },
+                      keepDoing: { type: 'string' },
+                    },
+                    required: ['mainSuggestion'],
+                  },
+                },
+                required: ['intentionToAction', 'patterns', 'actionSuggestion'],
+              },
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[generateWeeklyInsightV2] Gemini API error:', response.status, errorText);
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      const finishReason = responseData.candidates?.[0]?.finishReason;
+      console.log('[generateWeeklyInsightV2] Finish reason:', finishReason);
+
+      const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!content) {
+        console.error('[generateWeeklyInsightV2] Empty response from Gemini');
+        return generateFallbackWeeklyInsightV2(data);
+      }
+
+      console.log('[generateWeeklyInsightV2] Response length:', content.length, 'chars');
+
+      const parsed = parseWeeklyInsightV2Response(content);
+
+      if (!parsed) {
+        console.error('[generateWeeklyInsightV2] Failed to parse response');
+        return generateFallbackWeeklyInsightV2(data);
+      }
+
+      const result: WeeklyInsightResponseV2 = {
+        intentionToAction: parsed.intentionToAction,
+        patterns: parsed.patterns,
+        actionSuggestion: parsed.actionSuggestion,
+        generatedAt: new Date().toISOString(),
+        modelVersion: DEFAULT_GEMINI_MODEL,
+        schemaVersion: 2,
+      };
+
+      console.log('[generateWeeklyInsightV2] Success');
+      return result;
+    } catch (error) {
+      console.error('[generateWeeklyInsightV2] Error:', error);
+      return generateFallbackWeeklyInsightV2(data);
+    }
+  }
+);
+
+/**
+ * 週次インサイトV2のレスポンスをパース
+ */
+function parseWeeklyInsightV2Response(response: string): {
+  intentionToAction: WeeklyInsightResponseV2['intentionToAction'];
+  patterns: WeeklyInsightResponseV2['patterns'];
+  actionSuggestion: WeeklyInsightResponseV2['actionSuggestion'];
+} | null {
+  try {
+    const cleanedResponse = response
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+
+    const parsed = JSON.parse(cleanedResponse);
+
+    if (!parsed || !parsed.intentionToAction || !Array.isArray(parsed.patterns) || !parsed.actionSuggestion) {
+      return null;
+    }
+
+    return {
+      intentionToAction: {
+        achieved: Array.isArray(parsed.intentionToAction.achieved)
+          ? parsed.intentionToAction.achieved.map((a: Record<string, unknown>) => ({
+              intentionDate: String(a.intentionDate || ''),
+              intention: String(a.intention || ''),
+              achievedDate: String(a.achievedDate || ''),
+              achievement: String(a.achievement || ''),
+            }))
+          : [],
+        successAnalysis: String(parsed.intentionToAction.successAnalysis || ''),
+        celebration: String(parsed.intentionToAction.celebration || ''),
+      },
+      patterns: parsed.patterns.map((p: Record<string, unknown>) => ({
+        type: String(p.type || 'positive_theme'),
+        title: String(p.title || ''),
+        description: String(p.description || ''),
+        examples: Array.isArray(p.examples)
+          ? p.examples.map((e: Record<string, unknown>) => ({
+              date: String(e.date || ''),
+              quote: String(e.quote || ''),
+            }))
+          : [],
+        insight: String(p.insight || ''),
+      })),
+      actionSuggestion: {
+        mainSuggestion: {
+          action: String(parsed.actionSuggestion?.mainSuggestion?.action || ''),
+          reason: String(parsed.actionSuggestion?.mainSuggestion?.reason || ''),
+          suggestedTiming: String(parsed.actionSuggestion?.mainSuggestion?.suggestedTiming || ''),
+        },
+        keepDoing: parsed.actionSuggestion?.keepDoing ? String(parsed.actionSuggestion.keepDoing) : undefined,
+      },
+    };
+  } catch (error) {
+    console.error('[parseWeeklyInsightV2Response] Parse error:', error);
+    return null;
+  }
+}
+
+/**
+ * V2フォールバック生成
+ */
+function generateFallbackWeeklyInsightV2(request: GenerateWeeklyInsightRequest): WeeklyInsightResponseV2 {
+  const { entries, weekStartDate, weekEndDate } = request;
+
+  // 最も良かったことを探す
+  const bestEntry = entries.reduce((best, entry) => {
+    if (!best || (entry.goodTime && entry.goodTime.length > (best.goodTime?.length || 0))) {
+      return entry;
+    }
+    return best;
+  }, entries[0]);
+
+  // 人間関係に関連するキーワードがあるか
+  const allGoodTimes = entries.map(e => e.goodTime).join(' ');
+  const hasPeopleTheme = /妻|夫|子ども|友人|家族|親|同僚/.test(allGoodTimes);
+
+  return {
+    intentionToAction: {
+      achieved: [],
+      successAnalysis: '',
+      celebration: '',
+    },
+    patterns: [
+      {
+        type: hasPeopleTheme ? 'relationship' : 'positive_theme',
+        title: hasPeopleTheme ? '人との繋がり' : '日々の小さな喜び',
+        description: hasPeopleTheme
+          ? `この週の日記には、大切な人と過ごす時間への喜びが綴られています。「${bestEntry.goodTime?.slice(0, 30) || ''}」のように、誰かとの時間があなたの幸福の大きな源泉のようです。`
+          : `この週は${entries.length}日分の振り返りを記録できました。「${bestEntry.goodTime?.slice(0, 30) || ''}」のように、日々の中に喜びを見つけられていますね。`,
+        examples: [
+          { date: bestEntry.date, quote: bestEntry.goodTime?.slice(0, 50) || '' },
+          ...(entries[1]?.goodTime ? [{ date: entries[1].date, quote: entries[1].goodTime.slice(0, 50) }] : []),
+        ],
+        insight: hasPeopleTheme
+          ? '人との繋がりに喜びを感じるのは、あなたが「関係性」を大切にしている証拠かもしれませんね。'
+          : '記録を続けられていること自体が、日々を大切にしたいという願いの表れです。',
+      },
+      {
+        type: 'time_awareness',
+        title: '振り返りの習慣',
+        description: `${weekStartDate}から${weekEndDate}の間、${entries.length}日分の振り返りを続けられました。この習慣が、あなたの時間への意識を高めているのではないでしょうか。`,
+        examples: [
+          { date: entries[0].date, quote: entries[0].goodTime?.slice(0, 50) || '' },
+        ],
+        insight: '毎日を言葉にすることで、時間の流れをより鮮明に感じられるようになります。',
+      },
+    ],
+    actionSuggestion: {
+      mainSuggestion: {
+        action: '次の週も、1日の終わりに3つの問いに答える時間を作ってみませんか',
+        reason: '振り返りの習慣が、日々の選択をより意識的なものにしてくれます',
+        suggestedTiming: '毎晩寝る前の5分',
+      },
+      keepDoing: entries.length >= 5 ? '毎日の振り返り習慣' : undefined,
+    },
+    generatedAt: new Date().toISOString(),
+    modelVersion: 'fallback',
+    schemaVersion: 2,
+  };
+}
+
+// ============================================================
 // 月次インサイト生成
 // ============================================================
 
