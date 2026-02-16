@@ -5,9 +5,10 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, FlatList, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,12 +17,6 @@ import { MonthlyInsightCard, MonthSelector } from '../components/insight';
 import type { RootStackParamList } from '../types/navigation';
 import type { MonthlyInsightDocument } from '../services/firebase/firestore';
 
-// 開発用カラー定数
-const DEV_COLORS = {
-  regenerate: '#FFA726',
-  delete: '#F44336',
-} as const;
-
 type MonthlyInsightScreenRouteProp = RouteProp<RootStackParamList, 'MonthlyInsight'>;
 
 const MonthlyInsightScreen: React.FC = () => {
@@ -29,6 +24,7 @@ const MonthlyInsightScreen: React.FC = () => {
   const route = useRoute<MonthlyInsightScreenRouteProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+  const { isPremium } = useSubscription();
 
   const { monthKey: initialMonthKey } = route.params || {};
   const [historyVisible, setHistoryVisible] = useState(false);
@@ -49,10 +45,18 @@ const MonthlyInsightScreen: React.FC = () => {
     goToNextMonth,
     canGoToNextMonth,
     isCurrentMonthCached,
-    regenerateCurrentMonthInsight,
-    deleteCurrentMonthCache,
-    canRegenerate,
   } = useMonthlyInsight({ initialMonthKey });
+
+  // プレミアムチェック（フォールバック保護）
+  useEffect(() => {
+    if (!isPremium) {
+      Alert.alert(
+        'プレミアム機能',
+        'この機能はプレミアムプランでご利用いただけます。',
+        [{ text: '閉じる', onPress: () => navigation.goBack() }]
+      );
+    }
+  }, [isPremium, navigation]);
 
   // 初期化時にふりかえり履歴を読み込み
   useEffect(() => {
@@ -74,16 +78,6 @@ const MonthlyInsightScreen: React.FC = () => {
   // 生成ハンドラ
   const handleGenerate = () => {
     loadOrGenerateCurrentMonthInsight();
-  };
-
-  // [開発用] 再生成ハンドラ
-  const handleRegenerate = () => {
-    regenerateCurrentMonthInsight();
-  };
-
-  // [開発用] キャッシュ削除ハンドラ
-  const handleDeleteCache = () => {
-    deleteCurrentMonthCache();
   };
 
   // 履歴から月を選択
@@ -180,30 +174,6 @@ const MonthlyInsightScreen: React.FC = () => {
       return (
         <View style={styles.insightContainer}>
           <MonthlyInsightCard insight={insight} />
-
-          {/* 開発用: 再生成・削除ボタン */}
-          {canRegenerate && (
-            <View style={styles.devButtonRow}>
-              <TouchableOpacity
-                style={styles.devRegenerateButtonOrange}
-                onPress={handleRegenerate}
-              >
-                <Ionicons name="refresh" size={18} color={DEV_COLORS.regenerate} />
-                <Text style={styles.devRegenerateTextOrange}>
-                  [DEV] 再生成
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.devRegenerateButtonRed}
-                onPress={handleDeleteCache}
-              >
-                <Ionicons name="trash" size={18} color={DEV_COLORS.delete} />
-                <Text style={styles.devRegenerateTextRed}>
-                  [DEV] 削除
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       );
     }
@@ -498,44 +468,6 @@ const styles = StyleSheet.create({
   },
   insightContainer: {
     flex: 1,
-  },
-  devButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  devRegenerateButtonOrange: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#FFA726',
-  },
-  devRegenerateButtonRed: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F44336',
-  },
-  devRegenerateTextOrange: {
-    marginLeft: spacing.xs,
-    fontSize: 12,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    color: '#FFA726',
-  },
-  devRegenerateTextRed: {
-    marginLeft: spacing.xs,
-    fontSize: 12,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    color: '#F44336',
   },
   // モーダル関連
   modalContainer: {

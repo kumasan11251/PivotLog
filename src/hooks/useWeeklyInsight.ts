@@ -3,21 +3,14 @@
  */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { loadUserSettings } from '../utils/storage';
-import { calculateCurrentAge, calculateTimeLeft } from '../utils/timeCalculations';
 import {
   getDiariesByDateRangeFromFirestore,
   getWeeklyInsightFromFirestore,
-  saveWeeklyInsightToFirestore,
-  deleteWeeklyInsightFromFirestore,
   getRecentWeeklyInsightsFromFirestore,
   WeeklyInsightDocument,
 } from '../services/firebase/firestore';
-import {
-  generateWeeklyInsightV2ViaCloudFunctions,
-  GenerateWeeklyInsightRequest,
-} from '../services/firebase/functions';
 import { useWeeklyInsightContext } from '../contexts/WeeklyInsightContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import type {
   WeeklyInsightData,
   WeeklyInsightDataV2,
@@ -52,10 +45,6 @@ import {
   isWeekBeforeCurrent,
   type WeekInfo,
 } from '../utils/weekUtils';
-
-// 開発モード: trueにするとインサイトの再生成が可能になる
-// リリース時はfalseに戻す
-export const DEV_MODE_ALLOW_REGENERATE = true;
 
 interface UseWeeklyInsightOptions {
   /** 自動で先週のインサイトを読み込むか */
@@ -103,11 +92,9 @@ interface UseWeeklyInsightReturn {
   lastWeekEntryCount: number;
   /** 先週のインサイトを読み込み/生成（後方互換性） */
   loadOrGenerateLastWeekInsight: () => Promise<void>;
-  /** [開発用] インサイトを再生成（キャッシュを無視） */
+  /** インサイトを再生成（キャッシュを無視） */
   regenerateCurrentWeekInsight: () => Promise<void>;
-  /** [開発用] 現在の週のキャッシュを削除 */
-  deleteCurrentWeekCache: () => Promise<void>;
-  /** [開発用] 再生成が許可されているか */
+  /** 再生成が許可されているか（プレミアムユーザーかつキャッシュ済み） */
   canRegenerate: boolean;
 }
 
@@ -120,9 +107,13 @@ export const useWeeklyInsight = (
   const {
     getGenerationStatus,
     startGeneration,
+    regenerateGeneration,
     subscribeToCompletion,
     getGeneratedInsight,
   } = useWeeklyInsightContext();
+
+  // サブスクリプション状態を取得
+  const { isPremium } = useSubscription();
 
   const [insight, setInsight] = useState<WeeklyInsightUnion | null>(null);
   const [recentInsights, setRecentInsights] = useState<WeeklyInsightDocument[]>([]);
@@ -515,95 +506,33 @@ export const useWeeklyInsight = (
     }
   }, []);
 
-  // [開発用] インサイトを再生成（キャッシュを無視）
+  // インサイトを再生成（Context経由でバックグラウンド管理）
   const regenerateCurrentWeekInsight = useCallback(async () => {
-    if (!DEV_MODE_ALLOW_REGENERATE) {
-      console.warn('再生成は開発モードでのみ利用可能です');
-      return;
-    }
-
     setState('loading');
     setError(null);
 
     try {
-      // キャッシュを無視して直接生成
-      const entries = await getDiariesByDateRangeFromFirestore(
-        currentWeekInfo.startDate,
-        currentWeekInfo.endDate
-      );
+      // Context経由で再生成を開始（バックグラウンド管理される）
+      await regenerateGeneration(currentWeekKey);
 
-      if (entries.length < MIN_ENTRIES_FOR_INSIGHT) {
-        setState('insufficient_data');
-        setError(`週次インサイトの生成には${MIN_ENTRIES_FOR_INSIGHT}日以上の記録が必要です。この週は${entries.length}日分の記録でした。`);
-        return;
-      }
-
-      // ユーザー設定を読み込み
-      const settings = await loadUserSettings();
-      if (!settings) {
-        throw new Error('設定が見つかりません');
-      }
-
-      const currentAge = calculateCurrentAge(settings.birthday);
-      const timeLeft = calculateTimeLeft(settings.birthday, settings.targetLifespan);
-
-      // Cloud FunctionsでV2インサイトを生成
-      const request: GenerateWeeklyInsightRequest = {
-        entries: entries.map(e => ({
-          date: e.date,
-          goodTime: e.goodTime,
-          wastedTime: e.wastedTime,
-          tomorrow: e.tomorrow,
-        })),
-        currentAge,
-        remainingYears: timeLeft.totalYears,
-        remainingDays: timeLeft.totalDays,
-        weekStartDate: currentWeekInfo.startDate,
-        weekEndDate: currentWeekInfo.endDate,
-      };
-
-      const response = await generateWeeklyInsightV2ViaCloudFunctions(request);
-
-      // V2結果を整形
-      const newInsight: WeeklyInsightDataV2 = {
-        weekStartDate: currentWeekInfo.startDate,
-        weekEndDate: currentWeekInfo.endDate,
-        entryCount: entries.length,
-        intentionToAction: response.intentionToAction,
-        patterns: response.patterns.map(p => ({
-          type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
-          title: p.title,
-          description: p.description,
-          examples: p.examples,
-          insight: p.insight,
-        })),
-        actionSuggestion: response.actionSuggestion,
-        generatedAt: response.generatedAt,
-        modelVersion: response.modelVersion,
-        schemaVersion: 2,
-      };
-
-      // Firestoreに保存（V2形式で上書き）
-      await saveWeeklyInsightToFirestore({
-        weekKey: currentWeekKey,
-        weekStartDate: newInsight.weekStartDate,
-        weekEndDate: newInsight.weekEndDate,
-        entryCount: newInsight.entryCount,
-        // V2ではsummary/questionは使わないが、ドキュメント型の互換性のために空文字をセット
-        summary: '',
-        question: '',
-        patterns: newInsight.patterns,
-        intentionToAction: newInsight.intentionToAction,
-        actionSuggestion: newInsight.actionSuggestion,
-        generatedAt: newInsight.generatedAt,
-        modelVersion: newInsight.modelVersion,
-        schemaVersion: 2,
-      });
-
+      // 生成完了後、キャッシュから取得
       if (isMountedRef.current) {
-        setInsight(newInsight);
-        setIsCurrentWeekCached(true);
-        setState('loaded');
+        const generatedInsight = await getGeneratedInsight(currentWeekKey);
+        if (generatedInsight) {
+          setInsight(generatedInsight);
+          setIsCurrentWeekCached(true);
+          setState('loaded');
+        } else {
+          // 生成に失敗した場合
+          const status = getGenerationStatus(currentWeekKey);
+          if (status === 'error') {
+            setState('error');
+            setError('週次インサイトの再生成に失敗しました');
+          } else {
+            setState('insufficient_data');
+            setError(`週次インサイトの生成には${MIN_ENTRIES_FOR_INSIGHT}日以上の記録が必要です。`);
+          }
+        }
       }
     } catch (err) {
       console.error('週次インサイトの再生成に失敗:', err);
@@ -612,24 +541,7 @@ export const useWeeklyInsight = (
         setState('error');
       }
     }
-  }, [currentWeekKey, currentWeekInfo]);
-
-  // [開発用] 現在の週のキャッシュを削除
-  const deleteCurrentWeekCache = useCallback(async () => {
-    if (!DEV_MODE_ALLOW_REGENERATE) {
-      console.warn('キャッシュ削除は開発モードでのみ利用可能です');
-      return;
-    }
-
-    try {
-      await deleteWeeklyInsightFromFirestore(currentWeekKey);
-      setInsight(null);
-      setIsCurrentWeekCached(false);
-      setState('idle');
-    } catch (err) {
-      console.error('キャッシュの削除に失敗:', err);
-    }
-  }, [currentWeekKey]);
+  }, [currentWeekKey, regenerateGeneration, getGeneratedInsight, getGenerationStatus]);
 
   // 週が変更されたら記録数を確認
   useEffect(() => {
@@ -664,9 +576,8 @@ export const useWeeklyInsight = (
     // 後方互換性
     lastWeekEntryCount: currentWeekKey === lastWeekInfo.weekKey ? currentWeekEntryCount : 0,
     loadOrGenerateLastWeekInsight,
-    // 開発用
+    // 再生成機能（プレミアム限定）
     regenerateCurrentWeekInsight,
-    deleteCurrentWeekCache,
-    canRegenerate: DEV_MODE_ALLOW_REGENERATE && isCurrentWeekCached,
+    canRegenerate: isPremium && isCurrentWeekCached,
   };
 };

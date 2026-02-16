@@ -42,6 +42,8 @@ interface WeeklyInsightContextType {
   getGenerationStatus: (weekKey: string) => GenerationStatus;
   /** インサイト生成を開始（バックグラウンド実行） */
   startGeneration: (weekKey: string) => Promise<void>;
+  /** インサイトを再生成（キャッシュを無視して強制的に生成） */
+  regenerateGeneration: (weekKey: string) => Promise<void>;
   /** 生成完了時のコールバックを登録 */
   subscribeToCompletion: (weekKey: string, callback: (insight: WeeklyInsightUnion | null, error?: string) => void) => () => void;
   /** 生成結果を取得（キャッシュから） */
@@ -263,6 +265,122 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
     await generationPromise;
   }, [generationTasks, updateTask, notifyCompletion]);
 
+  // インサイトを再生成（キャッシュを無視して強制的に生成）
+  const regenerateGeneration = useCallback(async (weekKey: string): Promise<void> => {
+    // 既に生成中の場合は、そのPromiseを待つ
+    const activeGeneration = activeGenerationsRef.current.get(weekKey);
+    if (activeGeneration) {
+      await activeGeneration;
+      return;
+    }
+
+    // 再生成開始（キャッシュの状態に関係なく開始）
+    updateTask(weekKey, { status: 'generating', startedAt: Date.now(), error: undefined });
+
+    const generationPromise = (async (): Promise<WeeklyInsightUnion | null> => {
+      try {
+        // 週情報を取得
+        const weekInfo = getWeekInfoFromKey(weekKey);
+
+        // 日記エントリを取得
+        const entries = await getDiariesByDateRangeFromFirestore(
+          weekInfo.startDate,
+          weekInfo.endDate
+        );
+
+        if (entries.length < MIN_ENTRIES_FOR_INSIGHT) {
+          const errorMsg = `週次インサイトの生成には${MIN_ENTRIES_FOR_INSIGHT}日以上の記録が必要です。この週は${entries.length}日分の記録でした。`;
+          updateTask(weekKey, { status: 'error', error: errorMsg, completedAt: Date.now() });
+          notifyCompletion(weekKey, null, errorMsg);
+          return null;
+        }
+
+        // ユーザー設定を取得
+        const settings = await loadUserSettings();
+        if (!settings) {
+          const errorMsg = '設定が見つかりません';
+          updateTask(weekKey, { status: 'error', error: errorMsg, completedAt: Date.now() });
+          notifyCompletion(weekKey, null, errorMsg);
+          return null;
+        }
+
+        const currentAge = calculateCurrentAge(settings.birthday);
+        const timeLeft = calculateTimeLeft(settings.birthday, settings.targetLifespan);
+
+        // Cloud FunctionsでV2インサイトを生成（キャッシュを無視）
+        const request: GenerateWeeklyInsightRequest = {
+          entries: entries.map(e => ({
+            date: e.date,
+            goodTime: e.goodTime,
+            wastedTime: e.wastedTime,
+            tomorrow: e.tomorrow,
+          })),
+          currentAge,
+          remainingYears: timeLeft.totalYears,
+          remainingDays: timeLeft.totalDays,
+          weekStartDate: weekInfo.startDate,
+          weekEndDate: weekInfo.endDate,
+        };
+
+        const response = await generateWeeklyInsightV2ViaCloudFunctions(request);
+
+        // V2結果を整形
+        const newInsight: WeeklyInsightDataV2 = {
+          weekStartDate: weekInfo.startDate,
+          weekEndDate: weekInfo.endDate,
+          entryCount: entries.length,
+          intentionToAction: response.intentionToAction,
+          patterns: response.patterns.map(p => ({
+            type: p.type as WeeklyInsightDataV2['patterns'][0]['type'],
+            title: p.title,
+            description: p.description,
+            examples: p.examples,
+            insight: p.insight,
+          })),
+          actionSuggestion: response.actionSuggestion,
+          generatedAt: response.generatedAt,
+          modelVersion: response.modelVersion,
+          schemaVersion: 2,
+        };
+
+        // Firestoreに保存（V2形式で上書き）
+        await saveWeeklyInsightToFirestore({
+          weekKey,
+          weekStartDate: newInsight.weekStartDate,
+          weekEndDate: newInsight.weekEndDate,
+          entryCount: newInsight.entryCount,
+          summary: '',
+          question: '',
+          patterns: newInsight.patterns,
+          intentionToAction: newInsight.intentionToAction,
+          actionSuggestion: newInsight.actionSuggestion,
+          generatedAt: newInsight.generatedAt,
+          modelVersion: newInsight.modelVersion,
+          schemaVersion: 2,
+        });
+
+        updateTask(weekKey, { status: 'completed', completedAt: Date.now() });
+        notifyCompletion(weekKey, newInsight);
+        return newInsight;
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : '週次インサイトの再生成に失敗しました';
+        console.error('週次インサイトの再生成に失敗:', err);
+        updateTask(weekKey, { status: 'error', error: errorMsg, completedAt: Date.now() });
+        notifyCompletion(weekKey, null, errorMsg);
+        return null;
+      } finally {
+        // 完了後にマップから削除
+        activeGenerationsRef.current.delete(weekKey);
+      }
+    })();
+
+    // 進行中のPromiseを保持
+    activeGenerationsRef.current.set(weekKey, generationPromise);
+
+    // 完了を待つ
+    await generationPromise;
+  }, [updateTask, notifyCompletion]);
+
   // 完了コールバックを登録
   const subscribeToCompletion = useCallback((
     weekKey: string,
@@ -331,6 +449,7 @@ export const WeeklyInsightProvider: React.FC<WeeklyInsightProviderProps> = ({ ch
     generationTasks,
     getGenerationStatus,
     startGeneration,
+    regenerateGeneration,
     subscribeToCompletion,
     getGeneratedInsight,
   };

@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
+import { View, StyleSheet, FlatList, ScrollView, Alert } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -33,6 +34,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+  const { isPremium } = useSubscription();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isYearMonthPickerVisible, setYearMonthPickerVisible] = useState(false);
@@ -97,14 +99,28 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   );
 
   const handleNavigateToWeeklyInsight = useCallback(() => {
-    // 週選択機能があるので常にナビゲート可能
+    if (!isPremium) {
+      Alert.alert(
+        'プレミアム機能',
+        '週間ふりかえりはプレミアムプランでご利用いただけます。1週間の記録をAIが分析し、時間の使い方のパターンを発見します。',
+        [{ text: '閉じる', style: 'cancel' }]
+      );
+      return;
+    }
     navigation.navigate('WeeklyInsight', {});
-  }, [navigation]);
+  }, [navigation, isPremium]);
 
   const handleNavigateToMonthlyInsight = useCallback(() => {
-    // 月選択機能があるので常にナビゲート可能
+    if (!isPremium) {
+      Alert.alert(
+        'プレミアム機能',
+        '月間ふりかえりはプレミアムプランでご利用いただけます。1ヶ月の記録をAIが分析し、長期的な傾向やパターンを発見します。',
+        [{ text: '閉じる', style: 'cancel' }]
+      );
+      return;
+    }
     navigation.navigate('MonthlyInsight', {});
-  }, [navigation]);
+  }, [navigation, isPremium]);
 
   // 日記削除ハンドラー
   const handleDeleteDiary = useCallback(
@@ -221,6 +237,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
         hasMonthlyInsight={isCurrentMonthCached}
         canGenerateMonthly={canGenerateMonthlyInsight}
         onMonthlyPress={handleNavigateToMonthlyInsight}
+        isPremium={isPremium}
       />
 
       {viewMode === 'list' ? (

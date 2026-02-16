@@ -57,12 +57,13 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
 
   // ヒントテキストを決定
   const hintText = useMemo(() => {
-    if (isFeatureLocked) {
-      return 'プレミアムプランで利用できます';
-    }
-
+    // 日記未入力時は無料・プレミアム問わずヒントを表示
     if (disabled && !isLimitReached) {
       return '日記を入力すると気づきを受け取れます';
+    }
+
+    if (isFeatureLocked) {
+      return null;
     }
 
     // 残り回数の表示（無料ユーザーのみ）
@@ -90,21 +91,26 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
         disabled={isButtonDisabled}
         activeOpacity={0.7}
       >
-        <Text style={styles.icon}>✨</Text>
-        <Text
-          style={[
-            styles.buttonText,
-            { color: themeColors.primary },
-            isButtonDisabled && { color: themeColors.text.secondary },
-          ]}
-        >
-          {buttonText}
-        </Text>
-        {isFeatureLocked && (
-          <View style={[styles.proBadge, { backgroundColor: themeColors.primary }]}>
-            <Text style={styles.proBadgeText}>PRO</Text>
-          </View>
-        )}
+        <View style={styles.leftSection}>
+          <Text style={styles.icon}>✨</Text>
+        </View>
+        <View style={styles.centerSection}>
+          <Text
+            style={[
+              styles.buttonText,
+              { color: themeColors.primary },
+              isButtonDisabled && { color: themeColors.text.secondary },
+            ]}
+          >
+            {buttonText}
+          </Text>
+          {isFeatureLocked && (
+            <View style={[styles.proBadge, { backgroundColor: themeColors.primary }]}>
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.rightSection} />
       </TouchableOpacity>
 
       {hintText && (
@@ -130,9 +136,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
+  leftSection: {
+    flex: 1,
+    alignItems: 'flex-end',
+    paddingRight: spacing.sm,
+  },
+  centerSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rightSection: {
+    flex: 1,
+  },
   icon: {
     fontSize: 18,
-    marginRight: spacing.sm,
   },
   buttonText: {
     fontSize: fonts.size.label,

@@ -5,9 +5,10 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -24,6 +25,7 @@ const WeeklyInsightScreen: React.FC = () => {
   const route = useRoute<WeeklyInsightScreenRouteProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+  const { isPremium } = useSubscription();
 
   const { weekKey: initialWeekKey } = route.params || {};
   const [historyVisible, setHistoryVisible] = useState(false);
@@ -45,9 +47,19 @@ const WeeklyInsightScreen: React.FC = () => {
     canGoToNextWeek,
     isCurrentWeekCached,
     regenerateCurrentWeekInsight,
-    deleteCurrentWeekCache,
     canRegenerate,
   } = useWeeklyInsight({ initialWeekKey });
+
+  // プレミアムチェック（フォールバック保護）
+  useEffect(() => {
+    if (!isPremium) {
+      Alert.alert(
+        'プレミアム機能',
+        'この機能はプレミアムプランでご利用いただけます。',
+        [{ text: '閉じる', onPress: () => navigation.goBack() }]
+      );
+    }
+  }, [isPremium, navigation]);
 
   // 初期化時にインサイト履歴を読み込み
   useEffect(() => {
@@ -73,14 +85,9 @@ const WeeklyInsightScreen: React.FC = () => {
     loadOrGenerateCurrentWeekInsight();
   };
 
-  // [開発用] 再生成ハンドラ
+  // 再生成ハンドラ
   const handleRegenerate = () => {
     regenerateCurrentWeekInsight();
-  };
-
-  // [開発用] キャッシュ削除ハンドラ
-  const handleDeleteCache = () => {
-    deleteCurrentWeekCache();
   };
 
   // 履歴から週を選択
@@ -177,38 +184,21 @@ const WeeklyInsightScreen: React.FC = () => {
     // インサイトあり
     if (insight) {
       // V2かV1かで表示を分岐
-      const InsightCard = isWeeklyInsightV2(insight)
-        ? () => <WeeklyInsightCardV2 insight={insight} />
-        : () => <WeeklyInsightCard insight={insight} />;
-
-      return (
-        <View style={{ flex: 1 }}>
-          <InsightCard />
-
-          {/* 開発用: 再生成・削除ボタン */}
-          {canRegenerate && (
-            <View style={styles.devButtonRow}>
-              <TouchableOpacity
-                style={[styles.devRegenerateButton, { borderColor: '#FFA726' }]}
-                onPress={handleRegenerate}
-              >
-                <Ionicons name="refresh" size={18} color="#FFA726" />
-                <Text style={[styles.devRegenerateText, { color: '#FFA726' }]}>
-                  [DEV] 再生成
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.devRegenerateButton, { borderColor: '#F44336' }]}
-                onPress={handleDeleteCache}
-              >
-                <Ionicons name="trash" size={18} color="#F44336" />
-                <Text style={[styles.devRegenerateText, { color: '#F44336' }]}>
-                  [DEV] 削除
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+      // 再生成中はローディング画面が表示されるため、ここでは常にfalse
+      return isWeeklyInsightV2(insight) ? (
+        <WeeklyInsightCardV2
+          insight={insight}
+          onRegenerate={handleRegenerate}
+          canRegenerate={canRegenerate}
+          isRegenerating={false}
+        />
+      ) : (
+        <WeeklyInsightCard
+          insight={insight}
+          onRegenerate={handleRegenerate}
+          canRegenerate={canRegenerate}
+          isRegenerating={false}
+        />
       );
     }
 
@@ -462,28 +452,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     fontWeight: '600',
     marginLeft: spacing.sm,
-  },
-  devButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  devRegenerateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.lg,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-  },
-  devRegenerateText: {
-    fontSize: 14,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    marginLeft: spacing.xs,
   },
 });
 

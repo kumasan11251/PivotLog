@@ -24,6 +24,8 @@ interface CompactInsightButtonsProps {
   hasMonthlyInsight: boolean;
   canGenerateMonthly: boolean;
   onMonthlyPress: () => void;
+  // プレミアム状態
+  isPremium: boolean;
 }
 
 export const CompactInsightButtons: React.FC<CompactInsightButtonsProps> = ({
@@ -37,6 +39,7 @@ export const CompactInsightButtons: React.FC<CompactInsightButtonsProps> = ({
   hasMonthlyInsight,
   canGenerateMonthly,
   onMonthlyPress,
+  isPremium,
 }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
@@ -97,12 +100,17 @@ export const CompactInsightButtons: React.FC<CompactInsightButtonsProps> = ({
                 {hasWeeklyInsight ? '確認' : canGenerateWeekly ? `${weeklyEntryCount}日分` : '過去を見る'}
               </Text>
             </View>
-            {showGenerateBadge && (
+            {!isPremium && (
+              <View style={[styles.proBadge, { backgroundColor: themeColors.primary }]}>
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </View>
+            )}
+            {isPremium && showGenerateBadge && (
               <View style={[styles.badge, { backgroundColor: themeColors.primary }]}>
                 <Text style={[styles.badgeText, { color: themeColors.text.inverse }]}>生成</Text>
               </View>
             )}
-            {!showGenerateBadge && (
+            {isPremium && !showGenerateBadge && (
               <Ionicons name="chevron-forward" size={16} color={themeColors.text.secondary} />
             )}
           </>
@@ -167,12 +175,17 @@ export const CompactInsightButtons: React.FC<CompactInsightButtonsProps> = ({
                 {hasMonthlyInsight ? '確認' : canGenerateMonthly ? `${monthlyEntryCount}日分` : '過去を見る'}
               </Text>
             </View>
-            {showGenerateBadge && (
+            {!isPremium && (
+              <View style={[styles.proBadge, { backgroundColor: themeColors.primary }]}>
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </View>
+            )}
+            {isPremium && showGenerateBadge && (
               <View style={[styles.badge, { backgroundColor: themeColors.primary }]}>
                 <Text style={[styles.badgeText, { color: themeColors.text.inverse }]}>生成</Text>
               </View>
             )}
-            {!showGenerateBadge && (
+            {isPremium && !showGenerateBadge && (
               <Ionicons name="chevron-forward" size={16} color={themeColors.text.secondary} />
             )}
           </>
@@ -238,5 +251,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: fonts.family.regular,
     fontWeight: '600',
+  },
+  proBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: spacing.xs,
+  },
+  proBadgeText: {
+    fontSize: 9,
+    fontFamily: fonts.family.regular,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
