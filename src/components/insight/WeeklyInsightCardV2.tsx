@@ -153,16 +153,6 @@ export const WeeklyInsightCardV2: React.FC<WeeklyInsightCardV2Props> = ({
       {/* セクション3: 来週へのアクション */}
       <ActionSuggestionCard actionSuggestion={insight.actionSuggestion} />
 
-      {/* 生成情報 */}
-      <Text style={[styles.generatedAt, { color: themeColors.text.secondary }]}>
-        {new Date(insight.generatedAt).toLocaleDateString('ja-JP', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}に生成
-      </Text>
     </ScrollView>
   );
 };
@@ -172,13 +162,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   iconContainer: {
     width: 48,
@@ -212,7 +202,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   patternsSection: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -224,12 +214,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     fontWeight: '600',
     marginLeft: spacing.sm,
-  },
-  generatedAt: {
-    fontSize: 11,
-    fontFamily: fonts.family.regular,
-    textAlign: 'center',
-    marginTop: spacing.md,
   },
   regenerateButton: {
     padding: spacing.xs,

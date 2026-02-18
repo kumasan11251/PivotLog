@@ -108,8 +108,8 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
   },
   header: {
     flexDirection: 'row',
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   dateLabel: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: fonts.family.regular,
     width: 40,
     marginRight: spacing.xs,

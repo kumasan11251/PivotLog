@@ -69,11 +69,15 @@ export const CompactInsightButtons: React.FC<CompactInsightButtonsProps> = ({
           },
         ]}
         onPress={onWeeklyPress}
-        disabled={isLoading}
         activeOpacity={0.7}
       >
         {isLoading ? (
-          <ActivityIndicator size="small" color={themeColors.primary} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={themeColors.primary} />
+            <Text style={[styles.loadingText, { color: themeColors.primary }]}>
+              生成中
+            </Text>
+          </View>
         ) : (
           <>
             <View style={[styles.iconWrapper, { backgroundColor: `${themeColors.primary}20` }]}>
@@ -144,11 +148,15 @@ export const CompactInsightButtons: React.FC<CompactInsightButtonsProps> = ({
           },
         ]}
         onPress={onMonthlyPress}
-        disabled={isLoading}
         activeOpacity={0.7}
       >
         {isLoading ? (
-          <ActivityIndicator size="small" color={themeColors.primary} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={themeColors.primary} />
+            <Text style={[styles.loadingText, { color: themeColors.primary }]}>
+              生成中
+            </Text>
+          </View>
         ) : (
           <>
             <View style={[styles.iconWrapper, { backgroundColor: `${themeColors.primary}20` }]}>
@@ -263,5 +271,17 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  loadingText: {
+    fontSize: 12,
+    fontFamily: fonts.family.regular,
+    fontWeight: '500',
+    marginLeft: spacing.xs,
   },
 });

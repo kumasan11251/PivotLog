@@ -3,6 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 すべて日本語で回答してください。
+判断を求める場合は、必ず「AskUserQuestion」ツールを使用すること。
 
 ## プロジェクト概要
 

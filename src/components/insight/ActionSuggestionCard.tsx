@@ -15,10 +15,6 @@ const SECTION_BG = {
   dark: '#251A1A',
 } as const;
 
-const TIMING_BG = {
-  light: '#ECFDF5',
-  dark: '#1A2520',
-} as const;
 
 interface ActionSuggestionCardProps {
   actionSuggestion: WeeklyActionSuggestion;
@@ -30,7 +26,6 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
   const bgColor = isDark ? SECTION_BG.dark : SECTION_BG.light;
-  const timingBgColor = isDark ? TIMING_BG.dark : TIMING_BG.light;
 
   const { mainSuggestion, keepDoing } = actionSuggestion;
 
@@ -56,16 +51,6 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
             {mainSuggestion.reason}
           </Text>
         )}
-
-        {/* タイミング */}
-        {mainSuggestion.suggestedTiming && (
-          <View style={[styles.timingContainer, { backgroundColor: timingBgColor }]}>
-            <Ionicons name="arrow-forward" size={14} color={themeColors.primary} />
-            <Text style={[styles.timingText, { color: themeColors.primary }]}>
-              {mainSuggestion.suggestedTiming}
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* 継続したいこと */}
@@ -74,12 +59,9 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
           <Text style={[styles.keepDoingLabel, { color: themeColors.text.secondary }]}>
             続けたいこと:
           </Text>
-          <View style={styles.keepDoingItem}>
-            <Ionicons name="checkmark-circle" size={16} color={themeColors.primary} />
-            <Text style={[styles.keepDoingText, { color: themeColors.text.primary }]}>
-              {keepDoing}
-            </Text>
-          </View>
+          <Text style={[styles.keepDoingText, { color: themeColors.text.primary }]}>
+            {keepDoing}
+          </Text>
         </View>
       )}
     </View>
@@ -89,8 +71,8 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
   },
   header: {
     flexDirection: 'row',
@@ -118,20 +100,6 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: spacing.sm,
   },
-  timingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  timingText: {
-    fontSize: 14,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    marginLeft: spacing.xs,
-  },
   keepDoingContainer: {
     borderTopWidth: 1,
     paddingTop: spacing.md,
@@ -142,13 +110,9 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     marginBottom: spacing.xs,
   },
-  keepDoingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   keepDoingText: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    marginLeft: spacing.xs,
+    lineHeight: 22,
   },
 });

@@ -110,8 +110,8 @@ function formatDateShort(dateStr: string): string {
 const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
   },
   header: {
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   exampleDate: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: fonts.family.regular,
     marginBottom: 2,
   },

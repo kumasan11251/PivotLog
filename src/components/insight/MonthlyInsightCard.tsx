@@ -315,16 +315,6 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({ insight 
         </Text>
       </View>
 
-      {/* 生成情報 */}
-      <Text style={[styles.generatedAt, { color: themeColors.text.secondary }]}>
-        {new Date(insight.generatedAt).toLocaleDateString('ja-JP', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}に生成
-      </Text>
     </ScrollView>
   );
 };
@@ -737,10 +727,4 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // 生成情報
-  generatedAt: {
-    fontSize: 11,
-    fontFamily: fonts.family.regular,
-    textAlign: 'center',
-  },
 });

@@ -163,16 +163,6 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({
         </Text>
       </View>
 
-      {/* 生成情報 */}
-      <Text style={[styles.generatedAt, { color: themeColors.text.secondary }]}>
-        {new Date(insight.generatedAt).toLocaleDateString('ja-JP', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}に生成
-      </Text>
     </ScrollView>
   );
 };
@@ -182,13 +172,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   iconContainer: {
     width: 48,
@@ -224,7 +214,7 @@ const styles = StyleSheet.create({
   summaryContainer: {
     padding: spacing.md,
     borderRadius: 12,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   summaryText: {
     fontSize: 15,
@@ -232,7 +222,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   patternsSection: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   sectionTitle: {
     fontSize: 16,
@@ -261,11 +251,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: fonts.family.regular,
     lineHeight: 22,
-  },
-  generatedAt: {
-    fontSize: 11,
-    fontFamily: fonts.family.regular,
-    textAlign: 'center',
   },
   regenerateButton: {
     padding: spacing.xs,

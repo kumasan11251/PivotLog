@@ -29,6 +29,7 @@ const WeeklyInsightScreen: React.FC = () => {
 
   const { weekKey: initialWeekKey } = route.params || {};
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const {
     insight,
@@ -67,10 +68,10 @@ const WeeklyInsightScreen: React.FC = () => {
   }, [loadRecentInsights]);
 
   // 週が変更されたらキャッシュを確認して読み込み
-  // state === 'idle' の場合のみ実行（二重実行防止）
+  // selectWeek 後は state === 'loading' になるので、それも含める
   // バックグラウンド生成中の場合はhookのuseEffectで状態が同期される
   useEffect(() => {
-    if (isCurrentWeekCached && !insight && state === 'idle') {
+    if (isCurrentWeekCached && !insight && (state === 'idle' || state === 'loading')) {
       loadInsightForWeek(currentWeekInfo.weekKey);
     }
   }, [isCurrentWeekCached, insight, loadInsightForWeek, currentWeekInfo.weekKey, state]);
@@ -86,8 +87,13 @@ const WeeklyInsightScreen: React.FC = () => {
   };
 
   // 再生成ハンドラ
-  const handleRegenerate = () => {
-    regenerateCurrentWeekInsight();
+  const handleRegenerate = async () => {
+    setIsRegenerating(true);
+    try {
+      await regenerateCurrentWeekInsight();
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   // 履歴から週を選択
@@ -107,17 +113,20 @@ const WeeklyInsightScreen: React.FC = () => {
   const renderContent = () => {
     // ローディング中
     if (state === 'loading') {
-      // キャッシュからの読み込みか新規生成かで表示を変える
-      const isLoadingFromCache = isCurrentWeekCached;
+      // 再生成中、キャッシュからの読み込み、新規生成で表示を変える
+      const isLoadingFromCache = isCurrentWeekCached && !isRegenerating;
+      const loadingMessage = isRegenerating
+        ? 'ふりかえりを再生成中...'
+        : isLoadingFromCache
+          ? '保存されたふりかえりを読み込み中...'
+          : 'AIが1週間の記録を分析しています...';
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={themeColors.primary} />
           <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
-            {isLoadingFromCache
-              ? '保存されたふりかえりを読み込み中...'
-              : 'AIが1週間の記録を分析しています...'}
+            {loadingMessage}
           </Text>
-          {!isLoadingFromCache && (
+          {!isLoadingFromCache && !isRegenerating && (
             <Text style={[styles.loadingSubtext, { color: themeColors.text.secondary }]}>
               時間の使い方のパターンを発見中
             </Text>

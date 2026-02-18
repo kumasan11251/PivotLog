@@ -305,7 +305,6 @@ const DiaryEntryScreen: React.FC = () => {
                     onRegenerate={handleGetAIReflection}
                     canRegenerate={canRegenerate}
                     isRegenerating={false}
-                    diaryDate={dateString}
                   />
                 )}
 

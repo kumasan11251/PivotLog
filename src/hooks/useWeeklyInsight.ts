@@ -182,6 +182,7 @@ export const useWeeklyInsight = (
 
     // 生成中の場合
     if (generationStatus === 'generating') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 外部生成状態に応じたUI同期。subscribeToCompletionで完了を購読し、状態遷移を管理している
       setState('loading');
 
       // 完了コールバックを登録
@@ -228,25 +229,13 @@ export const useWeeklyInsight = (
   // 週を選択
   const selectWeek = useCallback((weekKey: string) => {
     setCurrentWeekKey(weekKey);
-    setInsight(null);
-    setState('idle');
+    // insight は新しいデータがロードされるまで保持（ちらつき防止）
+    // loadInsightForWeek で必要に応じてクリアされる
+    setState('loading'); // loading に変更（idle だと一瞬「データなし」が表示される）
     setError(null);
     setCurrentWeekEntryCount(0); // 新しい週の記録数はcheckCurrentWeekEntriesで再取得される
     setIsCurrentWeekCached(false); // キャッシュ状態もリセット
   }, []);
-
-  // 前の週に移動
-  const goToPreviousWeek = useCallback(() => {
-    const prevKey = getPreviousWeekKey(currentWeekKey);
-    selectWeek(prevKey);
-  }, [currentWeekKey, selectWeek]);
-
-  // 次の週に移動
-  const goToNextWeek = useCallback(() => {
-    if (!canGoToNextWeek) return;
-    const nextKey = getNextWeekKey(currentWeekKey);
-    selectWeek(nextKey);
-  }, [currentWeekKey, canGoToNextWeek, selectWeek]);
 
   // 現在選択中の週のインサイトを読み込み/生成
   const loadOrGenerateCurrentWeekInsight = useCallback(async () => {
@@ -496,6 +485,21 @@ export const useWeeklyInsight = (
     }
   }, [getGenerationStatus]);
 
+  // 前の週に移動
+  const goToPreviousWeek = useCallback(() => {
+    const prevKey = getPreviousWeekKey(currentWeekKey);
+    selectWeek(prevKey);
+    loadInsightForWeek(prevKey); // キャッシュ確認と状態遷移
+  }, [currentWeekKey, selectWeek, loadInsightForWeek]);
+
+  // 次の週に移動
+  const goToNextWeek = useCallback(() => {
+    if (!canGoToNextWeek) return;
+    const nextKey = getNextWeekKey(currentWeekKey);
+    selectWeek(nextKey);
+    loadInsightForWeek(nextKey); // キャッシュ確認と状態遷移
+  }, [currentWeekKey, canGoToNextWeek, selectWeek, loadInsightForWeek]);
+
   // 最近のインサイト一覧を読み込み
   const loadRecentInsights = useCallback(async () => {
     try {
@@ -545,12 +549,14 @@ export const useWeeklyInsight = (
 
   // 週が変更されたら記録数を確認
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 週変更に応じたFirestoreからのデータフェッチ。setStateはawait後に呼ばれる
     checkCurrentWeekEntries();
   }, [checkCurrentWeekEntries]);
 
   // autoLoadLastWeekが有効な場合、自動で読み込み
   useEffect(() => {
     if (autoLoadLastWeek && currentWeekEntryCount >= MIN_ENTRIES_FOR_INSIGHT) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 条件付き初期データロード。同期的なsetState('loading')はUX上必要な即時フィードバック
       loadOrGenerateLastWeekInsight();
     }
   }, [autoLoadLastWeek, currentWeekEntryCount, loadOrGenerateLastWeekInsight]);

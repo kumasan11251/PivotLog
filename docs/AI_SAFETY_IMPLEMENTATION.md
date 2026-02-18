@@ -15,16 +15,6 @@ AI機能の初回使用時に同意モーダルを表示し、ユーザーから
 - `src/services/firebase/firestore.ts` - Firestore同期
 - `src/screens/DiaryEntryScreen.tsx` - 同意チェックの統合
 
-### 1.2 ユーザーレポート機能（Google Play対応）
-
-不適切なAI応答をユーザーが報告できる機能を実装しました。
-
-**関連ファイル:**
-- `src/types/aiReport.ts` - レポートの型定義
-- `src/components/diary/AIReportModal.tsx` - レポートモーダル
-- `src/services/firebase/aiReport.ts` - Firestore保存
-- `src/components/diary/AIReflectionCard.tsx` - レポートボタン
-
 ---
 
 ## 2. Firestoreセキュリティルール
@@ -43,15 +33,6 @@ service cloud.firestore {
       // AI同意状態
       match /settings/aiConsent {
         allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-
-      // AIコンテンツレポート
-      match /aiReports/{reportId} {
-        // ユーザーは自分のレポートのみ作成・読み取り可能
-        allow create: if request.auth != null && request.auth.uid == userId;
-        allow read: if request.auth != null && request.auth.uid == userId;
-        // 更新・削除は不可（管理者のみCloud Functions経由で操作）
-        allow update, delete: if false;
       }
     }
   }
@@ -157,8 +138,8 @@ This app provides AI reflection features powered by Google Gemini API.
    - Data encrypted in transit: Yes
 
 2. **AI-generated content policy** への対応:
-   - ユーザーレポート機能を実装済み
    - 不適切なコンテンツのフィルタリング（Gemini API標準機能）
+   - プライバシーポリシーにAI生成コンテンツに関する注意事項を記載
 
 ---
 

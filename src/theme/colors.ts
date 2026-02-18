@@ -33,7 +33,7 @@ export const lightColors: ColorPalette = {
   // テキストカラー
   text: {
     primary: '#2C2C2C', // メインテキスト
-    secondary: '#999', // サブテキスト・ラベル
+    secondary: '#777777', // サブテキスト・ラベル（WCAG AAA準拠）
     inverse: '#FFFFFF', // ボタン内のテキストなど
   },
 
@@ -67,7 +67,7 @@ export const darkColors: ColorPalette = {
   // テキストカラー
   text: {
     primary: '#F5F5F5', // メインテキスト
-    secondary: '#A0A0A0', // サブテキスト・ラベル
+    secondary: '#B8B8B8', // サブテキスト・ラベル（WCAG AAA準拠）
     inverse: '#1E1E1E', // ボタン内のテキストなど
   },
 
