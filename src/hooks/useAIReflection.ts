@@ -185,7 +185,7 @@ function showLimitAlert(limitReason: UsageLimitReason): void {
     case 'MONTHLY_LIMIT_REACHED':
       Alert.alert(
         '今月の利用上限に達しました',
-        '無料プランでは月5回までAIリフレクションを利用できます。プレミアムプランで無制限にご利用いただけます。',
+        'AIリフレクションの今月の利用上限に達しました。プレミアムプランにアップグレードすると制限が緩和されます。',
         [{ text: '閉じる', style: 'cancel' }]
       );
       break;
