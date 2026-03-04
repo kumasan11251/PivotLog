@@ -60,9 +60,11 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
               />
             )}
           </View>
-          <Text style={[styles.charCount, { color: themeColors.text.secondary }]}>
-            {value.length}/{MAX_CHARS}
-          </Text>
+          {MAX_CHARS - value.length <= 20 && (
+            <Text style={[styles.charCount, { color: themeColors.text.secondary }]}>
+              残り{MAX_CHARS - value.length}文字
+            </Text>
+          )}
         </View>
         <View
           style={[
@@ -79,7 +81,7 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
             onFocus={onFocus}
             onBlur={onBlur}
             placeholder={placeholder}
-            placeholderTextColor={themeColors.text.secondary}
+            placeholderTextColor={themeColors.text.placeholder}
             multiline
             textAlignVertical="top"
             maxLength={MAX_CHARS}

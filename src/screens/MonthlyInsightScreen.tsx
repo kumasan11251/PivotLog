@@ -4,18 +4,18 @@
  * 月選択ナビゲーションと履歴表示機能を持つフル機能のインサイト画面
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, FlatList, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { useMonthlyInsight, MIN_ENTRIES_FOR_MONTHLY_INSIGHT, getMonthDisplayFull } from '../hooks/useMonthlyInsight';
-import { MonthlyInsightCard, MonthSelector } from '../components/insight';
+import { useMonthlyInsight, MIN_ENTRIES_FOR_MONTHLY_INSIGHT } from '../hooks/useMonthlyInsight';
+import { MonthlyInsightCard, MonthSelector, InsightHistoryList } from '../components/insight';
+import { monthlyToHistoryItem } from '../utils/insightHistoryAdapters';
 import type { RootStackParamList } from '../types/navigation';
-import type { MonthlyInsightDocument } from '../services/firebase/firestore';
 
 type MonthlyInsightScreenRouteProp = RouteProp<RootStackParamList, 'MonthlyInsight'>;
 
@@ -45,6 +45,8 @@ const MonthlyInsightScreen: React.FC = () => {
     goToNextMonth,
     canGoToNextMonth,
     isCurrentMonthCached,
+    regenerateCurrentMonthInsight,
+    canRegenerate,
   } = useMonthlyInsight({ initialMonthKey });
 
   // プレミアムチェック（フォールバック保護）
@@ -64,8 +66,9 @@ const MonthlyInsightScreen: React.FC = () => {
   }, [loadRecentInsights]);
 
   // 月が変更されたらキャッシュを確認して読み込み
+  // selectMonth 後は state === 'loading' になるので、それも含める
   useEffect(() => {
-    if (isCurrentMonthCached && !insight && state === 'idle') {
+    if (isCurrentMonthCached && !insight && (state === 'idle' || state === 'loading')) {
       loadInsightForMonth(currentMonthInfo.monthKey);
     }
   }, [isCurrentMonthCached, insight, loadInsightForMonth, currentMonthInfo.monthKey, state]);
@@ -80,11 +83,21 @@ const MonthlyInsightScreen: React.FC = () => {
     loadOrGenerateCurrentMonthInsight();
   };
 
+  // 再生成ハンドラ
+  const handleRegenerate = async () => {
+    await regenerateCurrentMonthInsight();
+  };
+
+  // 履歴アイテムを変換
+  const historyItems = useMemo(
+    () => recentInsights.map(monthlyToHistoryItem),
+    [recentInsights]
+  );
+
   // 履歴から月を選択
   const handleSelectFromHistory = useCallback((monthKey: string) => {
     selectMonth(monthKey);
     loadInsightForMonth(monthKey);
-    setHistoryVisible(false);
   }, [selectMonth, loadInsightForMonth]);
 
   // 履歴を開く
@@ -97,16 +110,19 @@ const MonthlyInsightScreen: React.FC = () => {
   const renderContent = () => {
     // ローディング中
     if (state === 'loading') {
-      const isLoadingFromCache = isCurrentMonthCached;
+      const isRegeneration = isCurrentMonthCached && insight !== null;
+      const isLoadingFromCache = isCurrentMonthCached && !isRegeneration;
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={themeColors.primary} />
           <Text style={[styles.loadingText, { color: themeColors.text.secondary }]}>
-            {isLoadingFromCache
-              ? '保存されたふりかえりを読み込み中...'
-              : 'AIが1ヶ月の記録を分析しています...'}
+            {isRegeneration
+              ? 'ふりかえりを再生成中...'
+              : isLoadingFromCache
+                ? '保存されたふりかえりを読み込み中...'
+                : 'AIが1ヶ月の記録を分析しています...'}
           </Text>
-          {!isLoadingFromCache && (
+          {!isRegeneration && !isLoadingFromCache && (
             <Text style={[styles.loadingSubtext, { color: themeColors.text.secondary }]}>
               月間のパターンと成長を発見中
             </Text>
@@ -173,7 +189,11 @@ const MonthlyInsightScreen: React.FC = () => {
     if (insight) {
       return (
         <View style={styles.insightContainer}>
-          <MonthlyInsightCard insight={insight} />
+          <MonthlyInsightCard
+            insight={insight}
+            onRegenerate={handleRegenerate}
+            canRegenerate={canRegenerate}
+          />
         </View>
       );
     }
@@ -238,24 +258,6 @@ const MonthlyInsightScreen: React.FC = () => {
     );
   };
 
-  // 履歴アイテムのレンダリング
-  const renderHistoryItem = ({ item }: { item: MonthlyInsightDocument }) => (
-    <TouchableOpacity
-      style={[styles.historyItem, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
-      onPress={() => handleSelectFromHistory(item.monthKey)}
-    >
-      <View style={styles.historyItemContent}>
-        <Text style={[styles.historyItemMonth, { color: themeColors.text.primary }]}>
-          {getMonthDisplayFull(item.monthKey)}
-        </Text>
-        <Text style={[styles.historyItemCount, { color: themeColors.text.secondary }]}>
-          {item.entryCount}日分の記録
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={themeColors.text.secondary} />
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
       {/* ヘッダー */}
@@ -285,39 +287,15 @@ const MonthlyInsightScreen: React.FC = () => {
       </View>
 
       {/* 履歴モーダル */}
-      <Modal
+      <InsightHistoryList
         visible={historyVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setHistoryVisible(false)}
-      >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: themeColors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: themeColors.border }]}>
-            <Text style={[styles.modalTitle, { color: themeColors.text.primary }]}>
-              ふりかえり履歴
-            </Text>
-            <TouchableOpacity onPress={() => setHistoryVisible(false)}>
-              <Ionicons name="close" size={24} color={themeColors.text.primary} />
-            </TouchableOpacity>
-          </View>
-
-          {recentInsights.length === 0 ? (
-            <View style={styles.emptyHistory}>
-              <Ionicons name="calendar-outline" size={48} color={themeColors.text.secondary} />
-              <Text style={[styles.emptyHistoryText, { color: themeColors.text.secondary }]}>
-                まだふりかえり履歴がありません
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={recentInsights}
-              renderItem={renderHistoryItem}
-              keyExtractor={(item) => item.monthKey}
-              contentContainerStyle={styles.historyList}
-            />
-          )}
-        </SafeAreaView>
-      </Modal>
+        onClose={() => setHistoryVisible(false)}
+        items={historyItems}
+        onSelectItem={handleSelectFromHistory}
+        currentKey={currentMonthInfo.monthKey}
+        emptyDescription={'月間ふりかえりを生成すると\nここに表示されます'}
+        emptyIconName="calendar-outline"
+      />
     </SafeAreaView>
   );
 };
@@ -468,59 +446,6 @@ const styles = StyleSheet.create({
   },
   insightContainer: {
     flex: 1,
-  },
-  // モーダル関連
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontFamily: fonts.family.regular,
-    fontWeight: '600',
-  },
-  historyList: {
-    padding: spacing.md,
-  },
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: spacing.sm,
-  },
-  historyItemContent: {
-    flex: 1,
-  },
-  historyItemMonth: {
-    fontSize: 15,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-  },
-  historyItemCount: {
-    fontSize: 12,
-    fontFamily: fonts.family.regular,
-    marginTop: 2,
-  },
-  emptyHistory: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  emptyHistoryText: {
-    marginTop: spacing.md,
-    fontSize: 14,
-    fontFamily: fonts.family.regular,
-    textAlign: 'center',
   },
 });
 

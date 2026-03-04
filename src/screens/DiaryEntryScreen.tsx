@@ -70,6 +70,7 @@ const DiaryEntryScreen: React.FC = () => {
     getReflection,
     loadSavedReflection,
     resetReflection: _resetReflection, // 将来使用予定
+    errorMessage: aiErrorMessage,
   } = useAIReflection({ dateString, formState });
 
   // ローカルにリフレクションがあるかどうか
@@ -305,6 +306,19 @@ const DiaryEntryScreen: React.FC = () => {
                     onRegenerate={handleGetAIReflection}
                     canRegenerate={canRegenerate}
                     isRegenerating={false}
+                  />
+                )}
+
+                {/* エラー時: エラーメッセージ + 再生成ボタン */}
+                {aiReflectionState === 'error' && (
+                  <AIReflectionButton
+                    onPress={handleGetAIReflection}
+                    disabled={!hasDiaryContent}
+                    remainingThisMonth={remainingThisMonth}
+                    isPremium={isPremium}
+                    isLimitReached={!canGenerate}
+                    isFeatureLocked={!isPremium}
+                    errorMessage={aiErrorMessage}
                   />
                 )}
 

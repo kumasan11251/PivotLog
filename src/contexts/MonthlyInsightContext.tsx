@@ -4,7 +4,7 @@
  * 画面遷移後も生成を継続し、完了したら状態を通知する
  */
 
-import React, { createContext, useContext, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { loadUserSettings } from '../utils/storage';
 import { calculateCurrentAge, calculateTimeLeft } from '../utils/timeCalculations';
 import {
@@ -42,6 +42,8 @@ interface MonthlyInsightContextValue {
   getGenerationStatus: (monthKey: string) => GenerationStatus;
   /** 月次インサイトの生成を開始（バックグラウンドで実行） */
   startGeneration: (monthKey: string) => Promise<void>;
+  /** インサイトを再生成（キャッシュを無視して強制的に生成） */
+  regenerateGeneration: (monthKey: string) => Promise<void>;
   /** 生成完了時のコールバックを登録 */
   subscribeToCompletion: (monthKey: string, callback: CompletionCallback) => () => void;
   /** 生成済みインサイトを取得 */
@@ -72,7 +74,7 @@ interface MonthlyInsightProviderProps {
 
 export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ children }) => {
   // 生成タスクの状態管理
-  const tasksRef = useRef<Map<string, GenerationTask>>(new Map());
+  const [generationTasks, setGenerationTasks] = useState<Map<string, GenerationTask>>(new Map());
   // 生成中のPromiseを保持（重複実行防止）
   const generationPromisesRef = useRef<Map<string, Promise<MonthlyInsightData | null>>>(new Map());
   // 生成済みインサイトのキャッシュ
@@ -85,11 +87,12 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
   // ========================================
 
   const updateTask = useCallback((monthKey: string, update: Partial<GenerationTask>) => {
-    const current = tasksRef.current.get(monthKey) || {
-      status: 'idle',
-      startedAt: Date.now(),
-    };
-    tasksRef.current.set(monthKey, { ...current, ...update });
+    setGenerationTasks(prev => {
+      const newMap = new Map(prev);
+      const existing = newMap.get(monthKey) || { status: 'idle', startedAt: Date.now() };
+      newMap.set(monthKey, { ...existing, ...update });
+      return newMap;
+    });
   }, []);
 
   const notifyCompletion = useCallback((monthKey: string, insight: MonthlyInsightData | null, error?: string) => {
@@ -104,9 +107,9 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
   // ========================================
 
   const getGenerationStatus = useCallback((monthKey: string): GenerationStatus => {
-    const task = tasksRef.current.get(monthKey);
+    const task = generationTasks.get(monthKey);
     return task?.status || 'idle';
-  }, []);
+  }, [generationTasks]);
 
   const startGeneration = useCallback(async (monthKey: string): Promise<void> => {
     // 既に生成中の場合は既存のPromiseを待つ
@@ -116,9 +119,17 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
       return;
     }
 
+    // 既に完了している場合はスキップ
+    const currentStatus = generationTasks.get(monthKey)?.status;
+    if (currentStatus === 'completed') {
+      return;
+    }
+
+    // 生成開始
+    updateTask(monthKey, { status: 'generating', startedAt: Date.now(), error: undefined });
+
     // 新しい生成タスクを開始
     const generationPromise = (async (): Promise<MonthlyInsightData | null> => {
-      updateTask(monthKey, { status: 'generating', startedAt: Date.now() });
 
       try {
         // まずキャッシュを確認
@@ -236,6 +247,108 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
 
     generationPromisesRef.current.set(monthKey, generationPromise);
     await generationPromise;
+  }, [generationTasks, updateTask, notifyCompletion]);
+
+  // インサイトを再生成（キャッシュを無視して強制的に生成）
+  const regenerateGeneration = useCallback(async (monthKey: string): Promise<void> => {
+    // 既に生成中の場合は、そのPromiseを待つ
+    const existingPromise = generationPromisesRef.current.get(monthKey);
+    if (existingPromise) {
+      await existingPromise;
+      return;
+    }
+
+    // 再生成開始（キャッシュの状態に関係なく開始）
+    updateTask(monthKey, { status: 'generating', startedAt: Date.now(), error: undefined });
+
+    const generationPromise = (async (): Promise<MonthlyInsightData | null> => {
+      try {
+        // 月情報を取得
+        const monthInfo = getMonthInfoFromKey(monthKey);
+
+        // 日記エントリを取得
+        const entries = await getDiariesByDateRangeFromFirestore(
+          monthInfo.startDate,
+          monthInfo.endDate
+        );
+
+        if (entries.length < MIN_ENTRIES_FOR_MONTHLY_INSIGHT) {
+          const errorMsg = `月次インサイトの生成には${MIN_ENTRIES_FOR_MONTHLY_INSIGHT}日以上の記録が必要です。この月は${entries.length}日分の記録でした。`;
+          updateTask(monthKey, { status: 'error', error: errorMsg, completedAt: Date.now() });
+          notifyCompletion(monthKey, null, errorMsg);
+          return null;
+        }
+
+        // ユーザー設定を取得
+        const settings = await loadUserSettings();
+        if (!settings) {
+          const errorMsg = '設定が見つかりません';
+          updateTask(monthKey, { status: 'error', error: errorMsg, completedAt: Date.now() });
+          notifyCompletion(monthKey, null, errorMsg);
+          return null;
+        }
+
+        const currentAge = calculateCurrentAge(settings.birthday);
+        const timeLeft = calculateTimeLeft(settings.birthday, settings.targetLifespan);
+
+        // Cloud Functionsで生成（キャッシュを無視）
+        const request: GenerateMonthlyInsightRequest = {
+          entries: entries.map(e => ({
+            date: e.date,
+            goodTime: e.goodTime,
+            wastedTime: e.wastedTime,
+            tomorrow: e.tomorrow,
+          })),
+          currentAge,
+          remainingYears: timeLeft.years + timeLeft.months / 12,
+          remainingDays: timeLeft.totalDays,
+          monthStartDate: monthInfo.startDate,
+          monthEndDate: monthInfo.endDate,
+          yearMonth: monthKey,
+        };
+
+        const response = await generateMonthlyInsightViaCloudFunctions(request);
+
+        const insight: MonthlyInsightData = {
+          monthStartDate: monthInfo.startDate,
+          monthEndDate: monthInfo.endDate,
+          entryCount: entries.length,
+          lifeContextSummary: response.lifeContextSummary,
+          storyline: response.storyline,
+          valueDiscovery: response.valueDiscovery,
+          highlights: response.highlights,
+          letterToFutureSelf: response.letterToFutureSelf,
+          growth: response.growth,
+          question: response.question,
+          generatedAt: response.generatedAt,
+          modelVersion: response.modelVersion,
+          summary: response.summary || response.lifeContextSummary,
+          themes: response.themes,
+        };
+
+        // Firestoreに保存（上書き）
+        await saveMonthlyInsightToFirestore({
+          monthKey,
+          ...insight,
+        });
+
+        insightCacheRef.current.set(monthKey, insight);
+        updateTask(monthKey, { status: 'completed', completedAt: Date.now() });
+        notifyCompletion(monthKey, insight);
+        return insight;
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : '月次インサイトの再生成に失敗しました';
+        console.error('月次インサイトの再生成に失敗:', error);
+        updateTask(monthKey, { status: 'error', error: errorMsg, completedAt: Date.now() });
+        notifyCompletion(monthKey, null, errorMsg);
+        return null;
+      } finally {
+        generationPromisesRef.current.delete(monthKey);
+      }
+    })();
+
+    generationPromisesRef.current.set(monthKey, generationPromise);
+    await generationPromise;
   }, [updateTask, notifyCompletion]);
 
   const subscribeToCompletion = useCallback((monthKey: string, callback: CompletionCallback): (() => void) => {
@@ -291,6 +404,7 @@ export const MonthlyInsightProvider: React.FC<MonthlyInsightProviderProps> = ({ 
   const contextValue: MonthlyInsightContextValue = {
     getGenerationStatus,
     startGeneration,
+    regenerateGeneration,
     subscribeToCompletion,
     getGeneratedInsight,
   };

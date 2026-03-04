@@ -14,6 +14,8 @@ interface AIReflectionButtonProps {
   isLimitReached?: boolean;
   /** 機能がロックされているか（プレミアム専用） */
   isFeatureLocked?: boolean;
+  /** エラーメッセージ（エラー時に表示） */
+  errorMessage?: string | null;
 }
 
 /**
@@ -27,6 +29,7 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   isPremium = false,
   isLimitReached = false,
   isFeatureLocked = false,
+  errorMessage,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
@@ -38,14 +41,14 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
 
   // ボタンテキスト（初回生成のみ表示されるので、再生成関連のテキストは不要）
   const buttonText = useMemo(() => {
-    if (isFeatureLocked) {
-      return '気づきを受け取る';
+    if (errorMessage) {
+      return 'もう一度試す';
     }
     if (isLimitReached) {
       return '利用上限に達しました';
     }
     return '気づきを受け取る';
-  }, [isLimitReached, isFeatureLocked]);
+  }, [isLimitReached, errorMessage]);
 
   const buttonBackgroundColor = isButtonDisabled
     ? themeColors.border
@@ -79,6 +82,11 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
 
   return (
     <View style={styles.container}>
+      {errorMessage && (
+        <Text style={[styles.errorText, { color: themeColors.error }]}>
+          {errorMessage}
+        </Text>
+      )}
       <TouchableOpacity
         style={[
           styles.button,
@@ -173,6 +181,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     textAlign: 'center',
     marginTop: spacing.sm,
+    ...textBase,
+  },
+  errorText: {
+    fontSize: fonts.size.labelSmall,
+    fontFamily: fonts.family.regular,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
     ...textBase,
   },
 });

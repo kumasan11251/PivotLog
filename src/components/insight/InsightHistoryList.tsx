@@ -1,10 +1,10 @@
 /**
  * InsightHistoryList - ふりかえり履歴一覧コンポーネント
  *
- * 過去に生成されたインサイトの一覧を表示するモーダル風UI
+ * 週間・月間共通の履歴モーダルUI
  */
 
-import React from 'react';
+import React, { type ComponentProps } from 'react';
 import {
   View,
   Text,
@@ -13,63 +13,50 @@ import {
   FlatList,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
-import type { WeeklyInsightDocument } from '../../services/firebase/firestore';
+import type { InsightHistoryItem } from '../../types/insightHistory';
+
+type IoniconsName = ComponentProps<typeof Ionicons>['name'];
 
 interface InsightHistoryListProps {
   /** 表示/非表示 */
   visible: boolean;
   /** 閉じる */
   onClose: () => void;
-  /** インサイト一覧 */
-  insights: WeeklyInsightDocument[];
-  /** インサイトを選択 */
-  onSelectInsight: (weekKey: string) => void;
-  /** 現在選択中の週キー */
-  currentWeekKey?: string;
+  /** 正規化済みアイテム一覧 */
+  items: InsightHistoryItem[];
+  /** アイテムを選択 */
+  onSelectItem: (key: string) => void;
+  /** 現在選択中のキー */
+  currentKey?: string;
+  /** 説明テキスト */
+  descriptionText?: string;
+  /** 空リストのタイトル */
+  emptyTitle?: string;
+  /** 空リストの説明 */
+  emptyDescription?: string;
+  /** 空リストのアイコン */
+  emptyIconName?: IoniconsName;
 }
 
-/**
- * 週キーをパースして表示用テキストを生成
- */
-function formatWeekKey(weekKey: string): { year: number; weekNumber: number } {
-  const match = weekKey.match(/^(\d{4})-W(\d{2})$/);
-  if (!match) {
-    return { year: 0, weekNumber: 0 };
-  }
-  return {
-    year: parseInt(match[1], 10),
-    weekNumber: parseInt(match[2], 10),
-  };
-}
-
-/**
- * 日付範囲を短い形式で表示
- */
-function formatDateRangeShort(startDate: string, endDate: string): string {
-  const [, startMonth, startDay] = startDate.split('-').map(Number);
-  const [, endMonth, endDay] = endDate.split('-').map(Number);
-  return `${startMonth}/${startDay} 〜 ${endMonth}/${endDay}`;
-}
-
-interface InsightHistoryItemProps {
-  insight: WeeklyInsightDocument;
+interface HistoryListItemProps {
+  item: InsightHistoryItem;
   onSelect: () => void;
   isSelected: boolean;
 }
 
-const InsightHistoryItem: React.FC<InsightHistoryItemProps> = ({
-  insight,
+const HistoryListItem: React.FC<HistoryListItemProps> = ({
+  item,
   onSelect,
   isSelected,
 }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
-  const { year, weekNumber } = formatWeekKey(insight.weekKey);
 
-  const itemBgStyle = { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF' };
+  const itemBgStyle = { backgroundColor: themeColors.surface };
   const selectedStyle = isSelected
     ? { borderColor: themeColors.primary, borderWidth: 2 }
     : undefined;
@@ -86,9 +73,9 @@ const InsightHistoryItem: React.FC<InsightHistoryItemProps> = ({
     >
       <View style={styles.itemHeader}>
         <View style={styles.itemTitleRow}>
-          <Ionicons name="analytics" size={16} color={themeColors.primary} />
+          <Ionicons name={item.iconName} size={16} color={themeColors.primary} />
           <Text style={[styles.itemTitle, { color: themeColors.text.primary }]}>
-            {year}年 第{weekNumber}週
+            {item.title}
           </Text>
           {isSelected && (
             <View style={[styles.selectedBadge, { backgroundColor: themeColors.primary }]}>
@@ -96,48 +83,46 @@ const InsightHistoryItem: React.FC<InsightHistoryItemProps> = ({
             </View>
           )}
         </View>
-        <Text style={[styles.itemDateRange, { color: themeColors.text.secondary }]}>
-          {formatDateRangeShort(insight.weekStartDate, insight.weekEndDate)}
-        </Text>
+        {item.dateRange && (
+          <Text style={[styles.itemDateRange, { color: themeColors.text.secondary }]}>
+            {item.dateRange}
+          </Text>
+        )}
       </View>
 
-      <Text
-        style={[styles.itemSummary, { color: themeColors.text.secondary }]}
-        numberOfLines={2}
-      >
-        {insight.summary}
-      </Text>
+      {item.summary && (
+        <Text
+          style={[styles.itemSummary, { color: themeColors.text.secondary }]}
+          numberOfLines={2}
+        >
+          {item.summary}
+        </Text>
+      )}
 
       <View style={styles.itemFooter}>
         <View style={styles.itemMeta}>
           <Ionicons name="calendar-outline" size={12} color={themeColors.text.secondary} />
           <Text style={[styles.itemMetaText, { color: themeColors.text.secondary }]}>
-            {insight.entryCount}日分
-          </Text>
-        </View>
-        <View style={styles.itemMeta}>
-          <Ionicons name="bulb-outline" size={12} color={themeColors.text.secondary} />
-          <Text style={[styles.itemMetaText, { color: themeColors.text.secondary }]}>
-            {insight.patterns.length}パターン
+            {item.entryCount}日分
           </Text>
         </View>
       </View>
 
-      {insight.patterns.length > 0 && (
+      {item.tags && item.tags.length > 0 && (
         <View style={[styles.patternTags, { borderTopColor: themeColors.border }]}>
-          {insight.patterns.slice(0, 3).map((pattern, index) => (
+          {item.tags.slice(0, 3).map((tag, index) => (
             <View
               key={index}
               style={[styles.patternTag, { backgroundColor: `${themeColors.primary}15` }]}
             >
               <Text style={[styles.patternTagText, { color: themeColors.primary }]}>
-                {pattern.title}
+                {tag.title}
               </Text>
             </View>
           ))}
-          {insight.patterns.length > 3 && (
+          {item.tags.length > 3 && (
             <Text style={[styles.morePatterns, { color: themeColors.text.secondary }]}>
-              +{insight.patterns.length - 3}
+              +{item.tags.length - 3}
             </Text>
           )}
         </View>
@@ -149,39 +134,43 @@ const InsightHistoryItem: React.FC<InsightHistoryItemProps> = ({
 export const InsightHistoryList: React.FC<InsightHistoryListProps> = ({
   visible,
   onClose,
-  insights,
-  onSelectInsight,
-  currentWeekKey,
+  items,
+  onSelectItem,
+  currentKey,
+  descriptionText = '過去に生成したふりかえりを選択して再度閲覧できます',
+  emptyTitle = '履歴がありません',
+  emptyDescription = 'ふりかえりを生成すると\nここに表示されます',
+  emptyIconName = 'analytics-outline',
 }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
 
-  const handleSelectInsight = (weekKey: string) => {
-    onSelectInsight(weekKey);
+  const handleSelectItem = (key: string) => {
+    onSelectItem(key);
     onClose();
   };
 
-  const renderItem = ({ item }: { item: WeeklyInsightDocument }) => (
-    <InsightHistoryItem
-      insight={item}
-      onSelect={() => handleSelectInsight(item.weekKey)}
-      isSelected={item.weekKey === currentWeekKey}
+  const renderItem = ({ item }: { item: InsightHistoryItem }) => (
+    <HistoryListItem
+      item={item}
+      onSelect={() => handleSelectItem(item.key)}
+      isSelected={item.key === currentKey}
     />
   );
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="analytics-outline" size={48} color={themeColors.text.secondary} />
+      <Ionicons name={emptyIconName} size={48} color={themeColors.text.secondary} />
       <Text style={[styles.emptyTitle, { color: themeColors.text.primary }]}>
-        履歴がありません
+        {emptyTitle}
       </Text>
       <Text style={[styles.emptyText, { color: themeColors.text.secondary }]}>
-        週間ふりかえりを生成すると{'\n'}ここに表示されます
+        {emptyDescription}
       </Text>
     </View>
   );
 
-  const descriptionBgStyle = { backgroundColor: isDark ? '#1A1A1A' : '#F5F5F5' };
+  const descriptionBgStyle = { backgroundColor: themeColors.background };
 
   return (
     <Modal
@@ -190,7 +179,7 @@ export const InsightHistoryList: React.FC<InsightHistoryListProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
         {/* ヘッダー */}
         <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -206,20 +195,20 @@ export const InsightHistoryList: React.FC<InsightHistoryListProps> = ({
         <View style={[styles.descriptionContainer, descriptionBgStyle]}>
           <Ionicons name="information-circle-outline" size={16} color={themeColors.text.secondary} />
           <Text style={[styles.descriptionText, { color: themeColors.text.secondary }]}>
-            過去に生成したふりかえりを選択して再度閲覧できます
+            {descriptionText}
           </Text>
         </View>
 
         {/* リスト */}
         <FlatList
-          data={insights}
+          data={items}
           renderItem={renderItem}
-          keyExtractor={(item) => item.weekKey}
+          keyExtractor={(item) => item.key}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={renderEmpty}
         />
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -271,9 +260,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.06,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 1,
   },
   itemHeader: {
     marginBottom: spacing.sm,

@@ -10,8 +10,6 @@ import {
   REFLECTION_SYSTEM_PROMPT,
   generateUserPrompt,
   parseAIResponse,
-  generateFallbackReflection,
-  generateFallbackReflectionV2,
   ReflectionPromptParams,
 } from './prompts';
 import { generateReflectionViaCloudFunctions } from '../firebase/functions';
@@ -494,14 +492,6 @@ export const generateReflection = async (
     return result;
   } catch (error) {
     console.error('AI reflection generation failed:', error);
-    // 利用制限エラーの場合はそのままスロー
-    const errorObj = error as { code?: string; message?: string };
-    if (errorObj.message?.includes('利用上限') ||
-        errorObj.message?.includes('再生成') ||
-        errorObj.message?.includes('3回まで')) {
-      throw error;
-    }
-    // エラー時はV2フォールバックを返す
-    return generateFallbackReflectionV2(params);
+    throw error; // すべてのエラーをそのままスロー（構造を保持）
   }
 };

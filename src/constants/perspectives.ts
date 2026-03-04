@@ -551,11 +551,18 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     emoji: '📖',
   },
   {
-    id: 'wisdom-rilke',
+    id: 'wisdom-thoreau',
     category: 'wisdom',
-    template: '「あなたの日常がどんなに平凡に見えても、それを退ける力など何ものにもない」',
-    subtext: 'リルケ『若き詩人への手紙』',
-    emoji: '✒️',
+    template: '「死ぬときになって、自分が生きていなかったと気づくことのないように」',
+    subtext: 'ソロー『ウォールデン 森の生活』',
+    emoji: '🌲',
+  },
+  {
+    id: 'wisdom-proust',
+    category: 'wisdom',
+    template: '「真の発見の旅とは、新しい景色を探すことではなく、新しい目を持つことだ」',
+    subtext: 'プルースト『失われた時を求めて』',
+    emoji: '🔭',
   },
   {
     id: 'wisdom-manyoshu',

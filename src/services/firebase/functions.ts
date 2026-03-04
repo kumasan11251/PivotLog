@@ -132,13 +132,7 @@ export async function generateReflectionViaCloudFunctions(
     return result.data as ReflectionResponse;
   } catch (error: unknown) {
     console.error('[CloudFunctions] generateReflection error:', error);
-
-    // Firebase Functions エラーの詳細を取得
-    if (error && typeof error === 'object' && 'code' in error) {
-      const functionsError = error as { code: string; message: string };
-      throw new Error(`Cloud Functions error: ${functionsError.code} - ${functionsError.message}`);
-    }
-
+    // Firebase callable エラーの code/message/details を保持したまま伝播
     throw error;
   }
 }

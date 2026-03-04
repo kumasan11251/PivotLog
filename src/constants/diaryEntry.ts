@@ -1,6 +1,6 @@
 // 日記入力画面の定数
 
-export const MAX_CHARS = 100;
+export const MAX_CHARS = 200;
 
 // ランダムプレースホルダー（コンセプト：生の有限性による価値の再定義、行動変容）
 export const PLACEHOLDERS = {
@@ -128,10 +128,8 @@ export const getDailyElement = <T>(array: readonly T[], date: Date, offset: numb
 
 // 日付フォーマット
 export const formatDateWithWeekday = (dateString: string): string => {
-  const date = new Date(dateString);
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
   const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
   const weekday = weekdays[date.getDay()];
   return `${year}年${month}月${day}日（${weekday}）`;

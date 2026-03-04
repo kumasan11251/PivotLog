@@ -3,21 +3,15 @@
  */
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { loadUserSettings } from '../utils/storage';
-import { calculateCurrentAge, calculateTimeLeft } from '../utils/timeCalculations';
 import {
   getDiariesByDateRangeFromFirestore,
   getMonthlyInsightFromFirestore,
-  saveMonthlyInsightToFirestore,
   deleteMonthlyInsightFromFirestore,
   getRecentMonthlyInsightsFromFirestore,
   MonthlyInsightDocument,
 } from '../services/firebase/firestore';
-import {
-  generateMonthlyInsightViaCloudFunctions,
-  GenerateMonthlyInsightRequest,
-} from '../services/firebase/functions';
 import { useMonthlyInsightContext } from '../contexts/MonthlyInsightContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import type { MonthlyInsightData, MonthlyInsightState, MonthlyTheme } from '../types/monthlyInsight';
 
 // ユーティリティ関数を再エクスポート（後方互換性のため）
@@ -50,9 +44,6 @@ import {
   getLastMonthKey,
   type MonthInfo,
 } from '../utils/monthUtils';
-
-// 開発モード: trueにするとインサイトの再生成が可能になる
-export const DEV_MODE_ALLOW_REGENERATE = true;
 
 interface UseMonthlyInsightOptions {
   /** 自動で先月のインサイトを読み込むか */
@@ -100,11 +91,11 @@ interface UseMonthlyInsightReturn {
   lastMonthEntryCount: number;
   /** 先月のインサイトを読み込み/生成（後方互換性） */
   loadOrGenerateLastMonthInsight: () => Promise<void>;
-  /** [開発用] インサイトを再生成（キャッシュを無視） */
+  /** インサイトを再生成（キャッシュを無視） */
   regenerateCurrentMonthInsight: () => Promise<void>;
-  /** [開発用] 現在の月のキャッシュを削除 */
+  /** 現在の月のキャッシュを削除 */
   deleteCurrentMonthCache: () => Promise<void>;
-  /** [開発用] 再生成が許可されているか */
+  /** 再生成が許可されているか（プレミアム && キャッシュ済み） */
   canRegenerate: boolean;
 }
 
@@ -113,10 +104,13 @@ export const useMonthlyInsight = (
 ): UseMonthlyInsightReturn => {
   const { autoLoadLastMonth = false, initialMonthKey } = options;
 
+  const { isPremium } = useSubscription();
+
   // Contextからバックグラウンド生成機能を取得
   const {
     getGenerationStatus,
     startGeneration,
+    regenerateGeneration,
     subscribeToCompletion,
     getGeneratedInsight,
   } = useMonthlyInsightContext();
@@ -223,11 +217,63 @@ export const useMonthlyInsight = (
   // インサイト生成可能かどうか
   const canGenerateInsight = currentMonthEntryCount >= MIN_ENTRIES_FOR_MONTHLY_INSIGHT;
 
+  // 特定の月のインサイトを読み込み（生成なし）
+  const loadInsightForMonth = useCallback(async (monthKey: string) => {
+    const generationStatus = getGenerationStatus(monthKey);
+    if (generationStatus === 'generating') {
+      setState('loading');
+      return;
+    }
+
+    setState('loading');
+    setError(null);
+
+    try {
+      const cachedInsight = await getMonthlyInsightFromFirestore(monthKey);
+
+      if (cachedInsight) {
+        if (isMountedRef.current) {
+          setInsight({
+            monthStartDate: cachedInsight.monthStartDate,
+            monthEndDate: cachedInsight.monthEndDate,
+            entryCount: cachedInsight.entryCount,
+            // 新セクション
+            lifeContextSummary: cachedInsight.lifeContextSummary,
+            storyline: cachedInsight.storyline,
+            valueDiscovery: cachedInsight.valueDiscovery,
+            highlights: cachedInsight.highlights,
+            letterToFutureSelf: cachedInsight.letterToFutureSelf,
+            growth: cachedInsight.growth,
+            question: cachedInsight.question,
+            generatedAt: cachedInsight.generatedAt,
+            modelVersion: cachedInsight.modelVersion,
+            // 後方互換性
+            summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
+            themes: cachedInsight.themes as MonthlyTheme[] | undefined,
+          });
+          setState('loaded');
+        }
+      } else {
+        if (isMountedRef.current) {
+          setState('idle');
+          setInsight(null);
+        }
+      }
+    } catch (err) {
+      console.error('月次インサイトの読み込みに失敗:', err);
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : '読み込みに失敗しました');
+        setState('error');
+      }
+    }
+  }, [getGenerationStatus]);
+
   // 月を選択
   const selectMonth = useCallback((monthKey: string) => {
     setCurrentMonthKey(monthKey);
-    setInsight(null);
-    setState('idle');
+    // insight は新しいデータがロードされるまで保持（ちらつき防止）
+    // loadInsightForMonth で必要に応じてクリアされる
+    setState('loading'); // loading に変更（idle だと一瞬「データなし」が表示される）
     setError(null);
     setCurrentMonthEntryCount(0);
     setIsCurrentMonthCached(false);
@@ -237,14 +283,16 @@ export const useMonthlyInsight = (
   const goToPreviousMonth = useCallback(() => {
     const prevKey = getPreviousMonthKey(currentMonthKey);
     selectMonth(prevKey);
-  }, [currentMonthKey, selectMonth]);
+    loadInsightForMonth(prevKey); // キャッシュ確認と状態遷移
+  }, [currentMonthKey, selectMonth, loadInsightForMonth]);
 
   // 次の月に移動
   const goToNextMonth = useCallback(() => {
     if (!canGoToNextMonth) return;
     const nextKey = getNextMonthKey(currentMonthKey);
     selectMonth(nextKey);
-  }, [currentMonthKey, canGoToNextMonth, selectMonth]);
+    loadInsightForMonth(nextKey); // キャッシュ確認と状態遷移
+  }, [currentMonthKey, canGoToNextMonth, selectMonth, loadInsightForMonth]);
 
   // 現在選択中の月のインサイトを読み込み/生成
   const loadOrGenerateCurrentMonthInsight = useCallback(async () => {
@@ -388,57 +436,6 @@ export const useMonthlyInsight = (
     }
   }, [lastMonthInfo, currentMonthKey, selectMonth, startGeneration, getGeneratedInsight, getGenerationStatus]);
 
-  // 特定の月のインサイトを読み込み（生成なし）
-  const loadInsightForMonth = useCallback(async (monthKey: string) => {
-    const generationStatus = getGenerationStatus(monthKey);
-    if (generationStatus === 'generating') {
-      setState('loading');
-      return;
-    }
-
-    setState('loading');
-    setError(null);
-
-    try {
-      const cachedInsight = await getMonthlyInsightFromFirestore(monthKey);
-
-      if (cachedInsight) {
-        if (isMountedRef.current) {
-          setInsight({
-            monthStartDate: cachedInsight.monthStartDate,
-            monthEndDate: cachedInsight.monthEndDate,
-            entryCount: cachedInsight.entryCount,
-            // 新セクション
-            lifeContextSummary: cachedInsight.lifeContextSummary,
-            storyline: cachedInsight.storyline,
-            valueDiscovery: cachedInsight.valueDiscovery,
-            highlights: cachedInsight.highlights,
-            letterToFutureSelf: cachedInsight.letterToFutureSelf,
-            growth: cachedInsight.growth,
-            question: cachedInsight.question,
-            generatedAt: cachedInsight.generatedAt,
-            modelVersion: cachedInsight.modelVersion,
-            // 後方互換性
-            summary: cachedInsight.summary || cachedInsight.lifeContextSummary,
-            themes: cachedInsight.themes as MonthlyTheme[] | undefined,
-          });
-          setState('loaded');
-        }
-      } else {
-        if (isMountedRef.current) {
-          setState('idle');
-          setInsight(null);
-        }
-      }
-    } catch (err) {
-      console.error('月次インサイトの読み込みに失敗:', err);
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : '読み込みに失敗しました');
-        setState('error');
-      }
-    }
-  }, [getGenerationStatus]);
-
   // 最近のインサイト一覧を読み込み
   const loadRecentInsights = useCallback(async () => {
     try {
@@ -449,10 +446,10 @@ export const useMonthlyInsight = (
     }
   }, []);
 
-  // [開発用] インサイトを再生成（キャッシュを無視）
+  // インサイトを再生成（キャッシュを無視）
   const regenerateCurrentMonthInsight = useCallback(async () => {
-    if (!DEV_MODE_ALLOW_REGENERATE) {
-      console.warn('再生成は開発モードでのみ利用可能です');
+    if (!isPremium) {
+      console.warn('再生成はプレミアムプランでのみ利用可能です');
       return;
     }
 
@@ -460,72 +457,24 @@ export const useMonthlyInsight = (
     setError(null);
 
     try {
-      // キャッシュを無視して直接生成
-      const entries = await getDiariesByDateRangeFromFirestore(
-        currentMonthInfo.startDate,
-        currentMonthInfo.endDate
-      );
-
-      if (entries.length < MIN_ENTRIES_FOR_MONTHLY_INSIGHT) {
-        setState('insufficient_data');
-        setError(`月次インサイトの生成には${MIN_ENTRIES_FOR_MONTHLY_INSIGHT}日以上の記録が必要です。この月は${entries.length}日分の記録でした。`);
-        return;
-      }
-
-      const settings = await loadUserSettings();
-      if (!settings) {
-        throw new Error('設定が見つかりません');
-      }
-
-      const currentAge = calculateCurrentAge(settings.birthday);
-      const timeLeft = calculateTimeLeft(settings.birthday, settings.targetLifespan);
-
-      const request: GenerateMonthlyInsightRequest = {
-        entries: entries.map(e => ({
-          date: e.date,
-          goodTime: e.goodTime,
-          wastedTime: e.wastedTime,
-          tomorrow: e.tomorrow,
-        })),
-        currentAge,
-        remainingYears: timeLeft.years + timeLeft.months / 12,
-        remainingDays: timeLeft.totalDays,
-        monthStartDate: currentMonthInfo.startDate,
-        monthEndDate: currentMonthInfo.endDate,
-        yearMonth: currentMonthKey,
-      };
-
-      const response = await generateMonthlyInsightViaCloudFunctions(request);
-
-      const newInsight: MonthlyInsightData = {
-        monthStartDate: currentMonthInfo.startDate,
-        monthEndDate: currentMonthInfo.endDate,
-        entryCount: entries.length,
-        // 新セクション
-        lifeContextSummary: response.lifeContextSummary,
-        storyline: response.storyline,
-        valueDiscovery: response.valueDiscovery,
-        highlights: response.highlights,
-        letterToFutureSelf: response.letterToFutureSelf,
-        growth: response.growth,
-        question: response.question,
-        generatedAt: response.generatedAt,
-        modelVersion: response.modelVersion,
-        // 後方互換性
-        summary: response.summary || response.lifeContextSummary,
-        themes: response.themes,
-      };
-
-      // Firestoreに保存（上書き）
-      await saveMonthlyInsightToFirestore({
-        monthKey: currentMonthKey,
-        ...newInsight,
-      });
+      await regenerateGeneration(currentMonthKey);
 
       if (isMountedRef.current) {
-        setInsight(newInsight);
-        setIsCurrentMonthCached(true);
-        setState('loaded');
+        const generatedInsight = await getGeneratedInsight(currentMonthKey);
+        if (generatedInsight) {
+          setInsight(generatedInsight);
+          setIsCurrentMonthCached(true);
+          setState('loaded');
+        } else {
+          const status = getGenerationStatus(currentMonthKey);
+          if (status === 'error') {
+            setState('error');
+            setError('月次インサイトの再生成に失敗しました');
+          } else {
+            setState('insufficient_data');
+            setError(`月次インサイトの生成には${MIN_ENTRIES_FOR_MONTHLY_INSIGHT}日以上の記録が必要です。`);
+          }
+        }
       }
     } catch (err) {
       console.error('月次インサイトの再生成に失敗:', err);
@@ -534,9 +483,9 @@ export const useMonthlyInsight = (
         setState('error');
       }
     }
-  }, [currentMonthInfo, currentMonthKey]);
+  }, [currentMonthKey, isPremium, regenerateGeneration, getGeneratedInsight, getGenerationStatus]);
 
-  // [開発用] 現在の月のキャッシュを削除
+  // 現在の月のキャッシュを削除
   const deleteCurrentMonthCache = useCallback(async () => {
     try {
       await deleteMonthlyInsightFromFirestore(currentMonthKey);
@@ -599,6 +548,6 @@ export const useMonthlyInsight = (
     loadOrGenerateLastMonthInsight,
     regenerateCurrentMonthInsight,
     deleteCurrentMonthCache,
-    canRegenerate: DEV_MODE_ALLOW_REGENERATE,
+    canRegenerate: isPremium && isCurrentMonthCached,
   };
 };

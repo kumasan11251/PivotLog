@@ -121,6 +121,14 @@ export type UsageLimitReason =
   | 'FEATURE_NOT_AVAILABLE';    // この機能は利用不可
 
 /**
+ * AI生成失敗系エラーコード
+ */
+export type GenerationErrorCode =
+  | 'MODEL_OUTPUT_TRUNCATED'    // MAX_TOKENSによる出力切り詰め
+  | 'MODEL_SAFETY_BLOCKED'      // SAFETYフィルタによるブロック
+  | 'AI_GENERATION_FAILED';     // その他の生成失敗（パースエラー等）
+
+/**
  * Cloud Functions のエラーレスポンス詳細
  */
 export interface UsageLimitErrorDetails {

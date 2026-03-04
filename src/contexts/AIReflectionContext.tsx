@@ -149,8 +149,12 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
 
     const generationPromise = (async (): Promise<AIReflectionData | null> => {
       try {
-        // ユーザー設定を読み込んで年齢と残り時間を計算
-        const settings = await loadUserSettings();
+        // ユーザー設定と直近日記を並列で読み込み
+        const [settings, recentDiaries] = await Promise.all([
+          loadUserSettings(),
+          getRecentDiaryEntries(dateString, 3),
+        ]);
+
         let currentAge = 30;
         let remainingYears = 50;
         let remainingDays = 18250;
@@ -161,9 +165,6 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
           remainingYears = Math.floor(timeLeft.totalYears);
           remainingDays = Math.floor(timeLeft.totalDays);
         }
-
-        // Phase 2: 直近3日分の日記を取得
-        const recentDiaries = await getRecentDiaryEntries(dateString, 3);
         const recentEntries = recentDiaries.map((diary) => ({
           date: diary.date,
           goodTime: diary.goodTime,
@@ -217,19 +218,25 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
         console.error('リフレクションの生成に失敗:', err);
 
         const errorMessage = err instanceof Error ? err.message : String(err);
-        const errorObj = err as { details?: { code?: UsageLimitReason } };
 
-        // 利用制限エラーの検出
+        // サーバーが返す details.code を取得（型安全にアクセス）
+        const errorDetails = (err as { details?: { code?: string; retryable?: boolean } }).details;
+        const errorCode = errorDetails?.code;
+
+        // 利用制限系エラーの検出（details.code のみで判定）
+        // details.code が存在しない場合（入力検証エラー等）は汎用エラーとして扱う
         let limitReason: UsageLimitReason | undefined;
-        if (errorObj.details?.code) {
-          limitReason = errorObj.details.code;
-        } else if (errorMessage.includes('今月のAIリフレクション利用上限')) {
-          limitReason = 'MONTHLY_LIMIT_REACHED';
-        } else if (errorMessage.includes('同じ日記の再生成')) {
-          limitReason = 'REGENERATE_NOT_ALLOWED';
-        } else if (errorMessage.includes('本日の利用上限')) {
-          limitReason = 'DAILY_LIMIT_REACHED';
+        const usageLimitCodes: UsageLimitReason[] = [
+          'MONTHLY_LIMIT_REACHED',
+          'REGENERATE_NOT_ALLOWED',
+          'DAILY_LIMIT_REACHED',
+          'FEATURE_NOT_AVAILABLE',
+        ];
+        if (errorCode && usageLimitCodes.includes(errorCode as UsageLimitReason)) {
+          limitReason = errorCode as UsageLimitReason;
         }
+        // 生成失敗系コード（MODEL_OUTPUT_TRUNCATED等）はlimitReasonではないため、
+        // 通常のエラーメッセージ（errorMessage）で処理される
 
         updateTask(dateString, {
           status: 'error',

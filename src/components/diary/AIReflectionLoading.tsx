@@ -1,26 +1,46 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { getColors, fonts, spacing, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
-interface AIReflectionLoadingProps {
-  message?: string;
-}
+const PROGRESSIVE_MESSAGES = [
+  { delay: 0, message: 'あなたの記録を読んでいます...' },
+  { delay: 2000, message: 'じっくり考えています...' },
+  { delay: 4000, message: 'もう少しお待ちください...' },
+];
 
 /**
  * AIリフレクション読み込み中の表示
  * パルスアニメーション付きのローディングインジケーター
+ * 時間経過に応じてメッセージを段階的に切り替え
  */
-const AIReflectionLoading: React.FC<AIReflectionLoadingProps> = ({
-  message = 'あなたの記録を読んでいます...',
-}) => {
+const AIReflectionLoading: React.FC = () => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
+  const [messageIndex, setMessageIndex] = useState(0);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // ドットアニメーション用（useMemoで安定化）
-  const dot1Anim = useMemo(() => new Animated.Value(0.3), []);
-  const dot2Anim = useMemo(() => new Animated.Value(0.3), []);
-  const dot3Anim = useMemo(() => new Animated.Value(0.3), []);
+  // プログレッシブメッセージの切り替え
+  useEffect(() => {
+    timersRef.current = [];
+
+    for (let i = 1; i < PROGRESSIVE_MESSAGES.length; i++) {
+      const timer = setTimeout(() => {
+        setMessageIndex(i);
+      }, PROGRESSIVE_MESSAGES[i].delay);
+      timersRef.current.push(timer);
+    }
+
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+      setMessageIndex(0);
+    };
+  }, []);
+
+  // ドットアニメーション用（useRefで安定化）
+  const dot1Anim = useRef(new Animated.Value(0.3)).current;
+  const dot2Anim = useRef(new Animated.Value(0.3)).current;
+  const dot3Anim = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
     // ドットのパルスアニメーション
@@ -57,7 +77,7 @@ const AIReflectionLoading: React.FC<AIReflectionLoadingProps> = ({
       animation2.stop();
       animation3.stop();
     };
-  }, [dot1Anim, dot2Anim, dot3Anim]);
+  }, []);
 
   return (
     <View style={[
@@ -69,7 +89,9 @@ const AIReflectionLoading: React.FC<AIReflectionLoadingProps> = ({
       },
     ]}>
       <Text style={styles.icon}>✨</Text>
-      <Text style={[styles.message, { color: themeColors.text.primary }]}>{message}</Text>
+      <Text style={[styles.message, { color: themeColors.text.primary }]}>
+        {PROGRESSIVE_MESSAGES[messageIndex].message}
+      </Text>
 
       {/* ローディングドット */}
       <View style={styles.dotsContainer}>

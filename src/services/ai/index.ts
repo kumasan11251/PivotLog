@@ -11,6 +11,5 @@ export {
   REFLECTION_SYSTEM_PROMPT,
   generateUserPrompt,
   parseAIResponse,
-  generateFallbackReflection,
 } from './prompts';
 export type { ReflectionPromptParams } from './prompts';

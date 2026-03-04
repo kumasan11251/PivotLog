@@ -8,8 +8,8 @@
  * - 未来の自分への手紙（Letter to Future Self）
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -33,6 +33,12 @@ const COLORS = {
   transformationBgDark: '#2A2A2A',
   // ストーリーライン
   storylineConnector: '#D1D5DB',
+  // 手紙セクション
+  letterAccent: '#6366F1',
+  letterBorder: '#D6DEFF',
+  letterBorderDark: '#2A3A5A',
+  letterRuleLight: '#E8E8F0',
+  letterRuleDark: '#2A3550',
 } as const;
 
 // ムードに対応するアイコンと色
@@ -47,6 +53,10 @@ const MOOD_CONFIG: Record<StorylineMood, { icon: keyof typeof Ionicons.glyphMap;
 
 interface MonthlyInsightCardProps {
   insight: MonthlyInsightData;
+  /** 再生成コールバック */
+  onRegenerate?: () => void;
+  /** 再生成可能かどうか */
+  canRegenerate?: boolean;
 }
 
 /**
@@ -57,12 +67,30 @@ function formatDateRange(startDate: string, _endDate: string): string {
   return `${startYear}年${startMonth}月`;
 }
 
-export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({ insight }) => {
+export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
+  insight,
+  onRegenerate,
+  canRegenerate = false,
+}) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // 再生成ボタン押下時
+  const handleRegeneratePress = () => {
+    setShowConfirmModal(true);
+  };
+
+  // 再生成確認
+  const handleConfirmRegenerate = () => {
+    setShowConfirmModal(false);
+    onRegenerate?.();
+  };
 
   const summaryBgColor = isDark ? COLORS.summaryBgDark : COLORS.summaryBgLight;
   const letterBgColor = isDark ? COLORS.letterBgDark : COLORS.letterBgLight;
+  const letterBorderColor = isDark ? COLORS.letterBorderDark : COLORS.letterBorder;
+  const letterRuleColor = isDark ? COLORS.letterRuleDark : COLORS.letterRuleLight;
   const transformationBgColor = isDark ? COLORS.transformationBgDark : COLORS.transformationBgLight;
 
   // 新構造かどうかを判定（lifeContextSummaryがあれば新構造）
@@ -70,6 +98,86 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({ insight 
 
   // サマリーテキスト（後方互換性対応）
   const summaryText = insight.lifeContextSummary || insight.summary || '';
+
+  // --- 手紙セクション用ヘルパー関数 ---
+
+  /** ヘッダーテキスト生成（例: 「1年後の自分へ -- 2025年1月の手紙」） */
+  const formatLetterHeader = (): string => {
+    const [startYear, startMonth] = insight.monthStartDate.split('-').map(Number);
+    return `1年後の自分へ ── ${startYear}年${startMonth}月の手紙`;
+  };
+
+  /** 差出人検出用の正規表現 */
+  const senderPattern = /(\d{4}年\d{1,2}月の[自分あなた私わたし]+より)[。\s]*$/m;
+  const fallbackSenderPattern = /^.{1,30}より[。\s]*$/;
+
+  /** 本文を改行で分割し、罫線付き段落としてレンダリング */
+  const renderLetterLines = (text: string): React.ReactNode => {
+    // 差出人行を除外したテキストを取得
+    const senderMatch = text.match(senderPattern);
+    let bodyText = text;
+    if (senderMatch) {
+      bodyText = text.slice(0, senderMatch.index).trimEnd();
+    } else {
+      const lines = text.split('\n').filter(l => l.trim());
+      const lastLine = lines[lines.length - 1]?.trim() || '';
+      if (fallbackSenderPattern.test(lastLine)) {
+        bodyText = lines.slice(0, -1).join('\n').trimEnd();
+      }
+    }
+
+    // 空行をフィルタリング
+    const lines = bodyText.split('\n').filter(l => l.trim());
+
+    // 改行なし・1行のみ・20行超の場合は罫線なしで通常表示
+    if (lines.length <= 1 || lines.length > 20) {
+      return (
+        <Text style={[styles.letterBodyText, { color: themeColors.text.primary }]}>
+          {bodyText}
+        </Text>
+      );
+    }
+
+    return lines.map((line, idx) => (
+      <View
+        key={idx}
+        style={[
+          styles.letterLine,
+          idx < lines.length - 1 && {
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: letterRuleColor,
+          },
+        ] as ViewStyle[]}
+      >
+        <Text style={[styles.letterBodyText, { color: themeColors.text.primary }]}>
+          {line.trim()}
+        </Text>
+      </View>
+    ));
+  };
+
+  /** 差出人を正規表現で抽出し、右寄せ表示 */
+  const renderLetterFooter = (text: string): React.ReactNode => {
+    const senderMatch = text.match(senderPattern);
+    if (senderMatch) {
+      return (
+        <Text style={[styles.letterSender, { color: themeColors.text.secondary }]}>
+          {senderMatch[1]}
+        </Text>
+      );
+    }
+    // フォールバック: 最終行が短く「より」で終わる場合
+    const lines = text.split('\n').filter(l => l.trim());
+    const lastLine = lines[lines.length - 1]?.trim() || '';
+    if (fallbackSenderPattern.test(lastLine)) {
+      return (
+        <Text style={[styles.letterSender, { color: themeColors.text.secondary }]}>
+          {lastLine.replace(/[。\s]+$/, '')}
+        </Text>
+      );
+    }
+    return null;
+  };
 
   return (
     <ScrollView
@@ -90,6 +198,18 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({ insight 
             {formatDateRange(insight.monthStartDate, insight.monthEndDate)}
           </Text>
         </View>
+        {/* 再生成ボタン */}
+        {canRegenerate && onRegenerate && (
+          <TouchableOpacity
+            onPress={handleRegeneratePress}
+            style={styles.regenerateButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={[styles.regenerateIcon, { color: themeColors.text.secondary }]}>
+              ↻
+            </Text>
+          </TouchableOpacity>
+        )}
         <View style={[styles.entryCountBadge, { backgroundColor: themeColors.primary }]}>
           <Text style={[styles.entryCountText, { color: themeColors.text.inverse }]}>
             {insight.entryCount}日分
@@ -234,18 +354,28 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({ insight 
       )}
 
       {/* セクション5: 未来の自分への手紙（新構造のみ） */}
-      {isNewStructure && insight.letterToFutureSelf && (
+      {isNewStructure && insight.letterToFutureSelf?.trim() && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="mail-outline" size={18} color="#6366F1" />
+            <Ionicons name="mail-outline" size={18} color={COLORS.letterAccent} />
             <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
               未来の自分への手紙
             </Text>
           </View>
-          <View style={[styles.letterContainer, { backgroundColor: letterBgColor }]}>
-            <Text style={[styles.letterText, { color: themeColors.text.primary }]}>
-              {insight.letterToFutureSelf}
-            </Text>
+          <View style={[styles.letterContainer, { backgroundColor: letterBgColor, borderColor: letterBorderColor }]}>
+            {/* ヘッダー装飾 */}
+            <View style={styles.letterHeader}>
+              <Ionicons name="mail-open-outline" size={16} color={COLORS.letterAccent} />
+              <Text style={[styles.letterHeaderText, { color: COLORS.letterAccent }]}>
+                {formatLetterHeader()}
+              </Text>
+            </View>
+            {/* 本文（罫線付き段落） */}
+            <View style={styles.letterBody}>
+              {renderLetterLines(insight.letterToFutureSelf)}
+            </View>
+            {/* 差出人（右寄せ） */}
+            {renderLetterFooter(insight.letterToFutureSelf)}
           </View>
         </View>
       )}
@@ -314,6 +444,43 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({ insight 
           {insight.question}
         </Text>
       </View>
+
+      {/* 再生成確認モーダル */}
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
+            <Text style={[styles.modalTitle, { color: themeColors.text.primary }]}>
+              再生成しますか？
+            </Text>
+            <Text style={[styles.modalMessage, { color: themeColors.text.secondary }]}>
+              新しい視点で月間ふりかえりを生成します。
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => setShowConfirmModal(false)}
+                style={[styles.modalButton, styles.modalButtonCancel]}
+              >
+                <Text style={[styles.modalButtonText, { color: themeColors.text.secondary }]}>
+                  キャンセル
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmRegenerate}
+                style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: themeColors.primary }]}
+              >
+                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                  再生成する
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
     </ScrollView>
   );
@@ -542,7 +709,6 @@ const styles = StyleSheet.create({
   },
   primaryValueHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
@@ -631,19 +797,51 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // セクション5: 未来の自分への手紙
+  // セクション5: 未来の自分への手紙（便箋風）
   letterContainer: {
     padding: spacing.md,
-    borderRadius: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: '#6366F1',
+    borderRadius: 16,
+    borderWidth: 1,
+    // iOS shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    // Android shadow
+    elevation: 3,
   },
-  letterText: {
+  letterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#D6DEFF',
+  },
+  letterHeaderText: {
+    fontSize: 13,
+    fontFamily: fonts.family.regular,
+    fontWeight: '500',
+    marginLeft: spacing.xs,
+  },
+  letterBody: {
+    marginBottom: spacing.sm,
+  },
+  letterLine: {
+    paddingVertical: 6,
+  },
+  letterBodyText: {
     fontSize: 14,
     fontFamily: fonts.family.regular,
-    lineHeight: 24,
+    lineHeight: 26,
+    letterSpacing: 0.3,
   },
-
+  letterSender: {
+    fontSize: 13,
+    fontFamily: fonts.family.regular,
+    textAlign: 'right',
+    marginTop: spacing.xs,
+  },
   // セクション6: 成長と課題
   improvementBox: {
     padding: spacing.md,
@@ -727,4 +925,63 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
+  // 再生成ボタン
+  regenerateButton: {
+    padding: spacing.xs,
+    marginRight: spacing.sm,
+  },
+  regenerateIcon: {
+    fontSize: 20,
+    fontWeight: '300',
+  },
+
+  // 再生成確認モーダル
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 16,
+    padding: spacing.lg,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: fonts.family.bold,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  modalMessage: {
+    fontSize: 14,
+    fontFamily: fonts.family.regular,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: 'transparent',
+  },
+  modalButtonConfirm: {
+    // backgroundColor is set dynamically
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontFamily: fonts.family.regular,
+    fontWeight: '600',
+  },
 });

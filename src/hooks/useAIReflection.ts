@@ -5,6 +5,13 @@ import type { UsageLimitReason } from '../types/subscription';
 import { getDiaryByDate } from '../utils/storage';
 import { useAIReflectionContext } from '../contexts/AIReflectionContext';
 
+/** 構造化エラー型 */
+export interface ReflectionError {
+  code?: string;   // Firebase error code (e.g. 'internal', 'resource-exhausted')
+  message: string; // ユーザー向け表示メッセージ
+  retryable: boolean;
+}
+
 interface UseAIReflectionProps {
   dateString: string;
   formState: {
@@ -34,6 +41,10 @@ interface UseAIReflectionReturn {
   resetReflection: () => void;
   /** 最後に発生した利用制限の理由 */
   lastLimitReason: UsageLimitReason | null;
+  /** 構造化エラー情報 */
+  reflectionError: ReflectionError | null;
+  /** ユーザー向けエラーメッセージ（reflectionErrorの派生値） */
+  errorMessage: string | null;
 }
 
 /**
@@ -57,7 +68,8 @@ export const useAIReflection = ({
   const [reflection, setReflection] = useState<AIReflectionData | null>(null);
   const [lastLimitReason, setLastLimitReason] = useState<UsageLimitReason | null>(null);
   const [localError, setLocalError] = useState<boolean>(false);
-  const fadeAnim = useMemo(() => new Animated.Value(0), []);
+  const [reflectionError, setReflectionError] = useState<ReflectionError | null>(null);
+  const [fadeAnim] = useState(() => new Animated.Value(0));
 
   // Contextから現在の生成状態を取得
   const contextStatus = getGenerationStatus(dateString);
@@ -68,6 +80,7 @@ export const useAIReflection = ({
     setReflection(null);
     setLastLimitReason(null);
     setLocalError(false);
+    setReflectionError(null);
     fadeAnim.setValue(0);
   }, [fadeAnim]);
 
@@ -83,6 +96,7 @@ export const useAIReflection = ({
       if (diary?.aiReflection) {
         setReflection(diary.aiReflection);
         setLocalError(false);
+        setReflectionError(null);
         fadeAnim.setValue(1); // 保存済みは即座に表示
       } else {
         resetReflection();
@@ -103,7 +117,7 @@ export const useAIReflection = ({
         // フェードインアニメーション
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 500,
+          duration: 200,
           useNativeDriver: true,
         }).start();
       } else if (limitReason) {
@@ -119,7 +133,11 @@ export const useAIReflection = ({
         showLimitAlert(limitReason);
       } else if (error) {
         setLocalError(true);
-        Alert.alert('エラーが発生しました', 'AIの生成に失敗しました。もう一度お試しください。');
+        setReflectionError({
+          code: error,
+          message: '生成に失敗しました。もう一度お試しください。',
+          retryable: true,
+        });
       }
     });
 
@@ -130,6 +148,7 @@ export const useAIReflection = ({
   const getReflection = useCallback(async () => {
     fadeAnim.setValue(0);
     setLocalError(false);
+    setReflectionError(null);
     setLastLimitReason(null);
 
     try {
@@ -174,6 +193,8 @@ export const useAIReflection = ({
     loadSavedReflection,
     resetReflection,
     lastLimitReason,
+    reflectionError,
+    errorMessage: reflectionError?.message ?? null,
   };
 };
 

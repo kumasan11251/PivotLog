@@ -216,15 +216,13 @@ async function recordAIReflectionUsage(
 }
 
 /**
- * 利用制限をチェック
+ * 利用制限を判定（純粋関数、I/Oなし）
+ * データ取得と判定ロジックを分離し、並列化を可能にする
  */
-async function checkUsageLimit(
-  userId: string,
-  diaryDate: string,
-  tier: SubscriptionTier
-): Promise<{ allowed: boolean; errorCode?: UsageLimitErrorCode; details?: Record<string, unknown> }> {
-  const usage = await getAIReflectionUsageWithDiary(userId, diaryDate);
-
+function evaluateUsageLimit(
+  tier: SubscriptionTier,
+  usage: { monthlyCount: number; diaryRegenCount: number; dailyCount: number; hasExistingReflection: boolean }
+): { allowed: boolean; errorCode?: UsageLimitErrorCode; details?: Record<string, unknown> } {
   if (tier === 'free') {
     // 無料ユーザー: 機能自体が利用不可（制限が0の場合）
     if (AI_USAGE_LIMITS.freeMonthlyReflectionLimit === 0) {
@@ -1045,49 +1043,6 @@ export function generateFallbackReflectionV1(params: GenerateReflectionRequest):
 }
 
 /**
- * フォールバック用のリフレクションを生成（V2: 動的セクション）
- */
-function generateFallbackReflectionV2(params: GenerateReflectionRequest): ReflectionResponseV2 {
-  const { goodTime, wastedTime, remainingYears, recentEntries } = params;
-
-  let understanding: string;
-  let perspective: string | undefined;
-  let tomorrow: string | undefined;
-
-  if (goodTime) {
-    understanding = `「${goodTime.slice(0, 20)}${goodTime.length > 20 ? '...' : ''}」という体験を大切にされていますね。日々の小さな喜びに気づき、それを言葉にできることは、とても素敵な習慣です。その体験の裏には、満足感と穏やかな喜びが感じられます。`;
-
-    // 過去データがある場合は繋がりに言及
-    if (recentEntries && recentEntries.length > 0) {
-      understanding += ' 毎日振り返りを続けていること自体が、大きな成長の証ですね。';
-    }
-
-    // 標準的な日記なので、tomorrowを追加
-    tomorrow = '今日の良かったことを、誰かに話してみませんか。喜びを共有することで、その価値が倍になります。今日感じた「良かった」を、明日も感じるために何ができそうですか？';
-  } else if (wastedTime) {
-    understanding = '今日を振り返り、反省点を見つけられたことは、明日への一歩ですね。自分に正直に向き合う姿勢が素晴らしいです。その後悔は、あなたが「もっとできたはず」と自分に期待している証拠かもしれません。';
-
-    tomorrow = '明日の朝、今日の反省を1つだけ意識してみませんか。小さな意識の変化が、大きな行動の変化につながります。今日の後悔を、明日への学びに変えるとしたら、何を意識しますか？';
-  } else {
-    understanding = '今日も一日を振り返る時間を取られていますね。この習慣が、あなたの人生をより豊かにしていくでしょう。自分と向き合う習慣を持つことは、とても価値があります。';
-
-    // 内容が薄いので、perspectiveを追加
-    perspective = `残り約${remainingYears}年の中で、毎日の振り返りがあなたの軸を作っていきます。今日のような時間をあと何回過ごせるでしょうか。`;
-
-    tomorrow = '明日は、1つでも具体的な出来事を書いてみませんか。具体的な記録が、振り返りをより豊かにします。';
-  }
-
-  return {
-    understanding,
-    ...(perspective && { perspective }),
-    ...(tomorrow && { tomorrow }),
-    generatedAt: new Date().toISOString(),
-    modelVersion: 'fallback',
-    schemaVersion: 2,
-  };
-}
-
-/**
  * AIリフレクション生成エンドポイント
  *
  * Firebase Callable Function として実装
@@ -1097,7 +1052,8 @@ export const generateReflection = onCall(
   {
     secrets: [geminiApiKey],
     region: 'asia-northeast1', // 東京リージョン
-    memory: '256MiB',
+    memory: '512MiB',
+    minInstances: process.env.FUNCTIONS_MIN_INSTANCES ? parseInt(process.env.FUNCTIONS_MIN_INSTANCES) : 0,
     timeoutSeconds: 60,
   },
   async (request) => {
@@ -1144,13 +1100,20 @@ export const generateReflection = onCall(
     // ============================================================
     // 利用制限チェック
     // ============================================================
+    // 初回のusageデータを保持（生成成功後の記録時に再利用）
+    let cachedUsage: { monthlyCount: number; diaryRegenCount: number; dailyCount: number; hasExistingReflection: boolean } | null = null;
+
     if (!data.skipUsageCheck) {
-      // ユーザーのサブスクリプションティアを取得
-      const tier = await getUserSubscriptionTier(userId);
+      // tier取得とusage取得を並列実行（互いに独立したFirestore読み取り）
+      const [tier, usage] = await Promise.all([
+        getUserSubscriptionTier(userId),
+        getAIReflectionUsageWithDiary(userId, diaryDate),
+      ]);
+      cachedUsage = usage;
       console.log(`[generateReflection] User ${userId} tier: ${tier}`);
 
-      // 利用制限をチェック
-      const limitCheck = await checkUsageLimit(userId, diaryDate, tier);
+      // 取得済みデータで判定（純粋関数、I/Oなし）
+      const limitCheck = evaluateUsageLimit(tier, usage);
 
       if (!limitCheck.allowed) {
         console.log(`[generateReflection] Usage limit reached: ${limitCheck.errorCode}`, limitCheck.details);
@@ -1185,96 +1148,125 @@ export const generateReflection = onCall(
 
     if (!apiKey) {
       console.error('GEMINI_API_KEY is not configured');
-      // APIキーがない場合はV2フォールバックを返す
-      return generateFallbackReflectionV2(data);
+      throw new HttpsError(
+        'internal',
+        'AIリフレクションの生成に失敗しました。もう一度お試しください。'
+      );
     }
 
     try {
       const userPrompt = generateUserPrompt(data);
-      // V2用のシステムプロンプトを使用
-      const combinedPrompt = `${REFLECTION_SYSTEM_PROMPT_V2}\n\n---\n\n${userPrompt}`;
-
       // 使用するモデルを決定（デフォルト: gemini-3-flash-preview）
       const selectedModel: GeminiModel = data.model || DEFAULT_GEMINI_MODEL;
       console.log('[generateReflection] Selected model:', selectedModel);
       console.log('[generateReflection] Using V2 schema');
       console.log('[generateReflection] Calling Gemini API...');
 
+      // 共通設定を事前定義
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+      const generationConfig = {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'object',
+          properties: {
+            understanding: {
+              type: 'string',
+              description: '今日のあなたへ：感情の理解と共感（必須、80-150文字程度）',
+            },
+            perspective: {
+              type: 'string',
+              description: '人生という視点で：深い日記の場合のみ（任意、80-150文字程度）',
+            },
+            tomorrow: {
+              type: 'string',
+              description: '明日へのヒント：アクション提案や問いかけ（任意、80-150文字程度）',
+            },
+            schemaVersion: {
+              type: 'integer',
+              description: 'スキーマバージョン（常に2）',
+            },
+          },
+          required: ['understanding'],
+        },
+      };
+      const safetySettings = [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+      ];
+      const fetchHeaders = { 'Content-Type': 'application/json' };
+
+      // systemInstruction方式の有効/無効（環境変数で恒久切替可能）
+      const useSystemInstruction = process.env.DISABLE_SYSTEM_INSTRUCTION !== 'true';
+
       // Gemini APIにリクエストを送信（リトライ機能付き）
       const maxRetries = 3;
       let lastError: Error | null = null;
+      const observedFinishReasons = new Set<string>();
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    parts: [{ text: combinedPrompt }],
-                  },
-                ],
-                generationConfig: {
-                  temperature: 0.7,
-                  maxOutputTokens: 2048,
-                  responseMimeType: 'application/json',
-                  // V2用のレスポンススキーマ（動的セクション）
-                  responseSchema: {
-                    type: 'object',
-                    properties: {
-                      understanding: {
-                        type: 'string',
-                        description: '今日のあなたへ：感情の理解と共感（必須、80-150文字程度）',
-                      },
-                      perspective: {
-                        type: 'string',
-                        description: '人生という視点で：深い日記の場合のみ（任意、80-150文字程度）',
-                      },
-                      tomorrow: {
-                        type: 'string',
-                        description: '明日へのヒント：アクション提案や問いかけ（任意、80-150文字程度）',
-                      },
-                      schemaVersion: {
-                        type: 'integer',
-                        description: 'スキーマバージョン（常に2）',
-                      },
-                    },
-                    // understandingのみ必須、perspectiveとtomorrowは任意
-                    required: ['understanding'],
-                  },
-                },
-                // Safety settingsを緩和して、日常的な日記内容がブロックされないようにする
-                safetySettings: [
-                  {
-                    category: 'HARM_CATEGORY_HARASSMENT',
-                    threshold: 'BLOCK_ONLY_HIGH',
-                  },
-                  {
-                    category: 'HARM_CATEGORY_HATE_SPEECH',
-                    threshold: 'BLOCK_ONLY_HIGH',
-                  },
-                  {
-                    category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                    threshold: 'BLOCK_ONLY_HIGH',
-                  },
-                  {
-                    category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                    threshold: 'BLOCK_ONLY_HIGH',
-                  },
-                ],
-              }),
-            }
-          );
+          let response: Response;
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[generateReflection] Gemini API error (attempt ${attempt}):`, response.status, errorText);
-            throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+          if (useSystemInstruction) {
+            // systemInstruction方式を試行（Geminiサーバー側キャッシュが効く可能性あり）
+            try {
+              response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: fetchHeaders,
+                body: JSON.stringify({
+                  systemInstruction: { parts: [{ text: REFLECTION_SYSTEM_PROMPT_V2 }] },
+                  contents: [{ parts: [{ text: userPrompt }] }],
+                  generationConfig,
+                  safetySettings,
+                }),
+              });
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+              }
+            } catch (sysInstructionError) {
+              // systemInstruction方式が失敗した場合、旧方式（contents連結）にフォールバック
+              console.warn('[generateReflection] systemInstruction failed, falling back to combined prompt:', sysInstructionError);
+              const combinedPrompt = `${REFLECTION_SYSTEM_PROMPT_V2}\n\n---\n\n${userPrompt}`;
+              response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: fetchHeaders,
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: combinedPrompt }] }],
+                  generationConfig,
+                  safetySettings,
+                }),
+              });
+
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[generateReflection] Fallback also failed (attempt ${attempt}):`, response.status, errorText);
+                throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+              }
+            }
+          } else {
+            // DISABLE_SYSTEM_INSTRUCTION=true の場合は旧方式のみ
+            const combinedPrompt = `${REFLECTION_SYSTEM_PROMPT_V2}\n\n---\n\n${userPrompt}`;
+            response = await fetch(apiUrl, {
+              method: 'POST',
+              headers: fetchHeaders,
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: combinedPrompt }] }],
+                generationConfig,
+                safetySettings,
+              }),
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`[generateReflection] Gemini API error (attempt ${attempt}):`, response.status, errorText);
+              throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+            }
           }
 
           const responseData = await response.json();
@@ -1288,6 +1280,7 @@ export const generateReflection = onCall(
 
           if (finishReason && finishReason !== 'STOP') {
             console.warn(`[generateReflection] Unexpected finishReason: ${finishReason}`);
+            observedFinishReasons.add(finishReason);
             // SAFETY, MAX_TOKENS, RECITATIONなどの場合はリトライ
             if (finishReason === 'SAFETY' || finishReason === 'MAX_TOKENS') {
               throw new Error(`Generation stopped: ${finishReason}`);
@@ -1329,10 +1322,10 @@ export const generateReflection = onCall(
             schemaVersion: 2,
           };
 
-          // 生成成功時に利用状況を記録
+          // 生成成功時に利用状況を記録（初回チェック時のusageデータを再利用し、Firestore再読み込みを削減）
           if (!data.skipUsageCheck) {
-            const usage = await getAIReflectionUsageWithDiary(userId, diaryDate);
-            await recordAIReflectionUsage(userId, diaryDate, usage.hasExistingReflection);
+            const isRegenerate = cachedUsage?.hasExistingReflection ?? false;
+            await recordAIReflectionUsage(userId, diaryDate, isRegenerate);
           }
 
           console.log('[generateReflection] Success');
@@ -1348,14 +1341,39 @@ export const generateReflection = onCall(
         }
       }
 
-      // すべてのリトライが失敗した場合
+      // すべてのリトライが失敗した場合：優先順位付きで原因別HttpsErrorを投げ分け
       console.error('[generateReflection] All retries failed:', lastError?.message);
-      throw lastError || new Error('All retries failed');
-    } catch (error) {
-      console.error('[generateReflection] Error:', error);
+      console.error('[generateReflection] Observed finishReasons:', [...observedFinishReasons]);
 
-      // エラー時はV2フォールバックを返す（ユーザー体験を損なわないため）
-      return generateFallbackReflectionV2(data);
+      if (observedFinishReasons.has('SAFETY')) {
+        throw new HttpsError('internal', '安全性フィルタにより生成できませんでした。日記の内容を変更してお試しください。', {
+          code: 'MODEL_SAFETY_BLOCKED',
+          retryable: false,
+        });
+      }
+      if (observedFinishReasons.has('MAX_TOKENS')) {
+        throw new HttpsError('internal', 'AIの応答が長すぎたため生成できませんでした。もう一度お試しください。', {
+          code: 'MODEL_OUTPUT_TRUNCATED',
+          retryable: true,
+        });
+      }
+      throw new HttpsError('internal', 'AIリフレクションの生成に失敗しました。もう一度お試しください。', {
+        code: 'AI_GENERATION_FAILED',
+        retryable: true,
+      });
+    } catch (error) {
+      // 生エラーメッセージはサーバーログのみに記録（クライアントには返さない）
+      console.error('[generateReflection] Error:', error);
+      // 既にHttpsError（利用制限エラー・原因別エラー等）の場合はそのまま再スロー
+      if (error instanceof HttpsError) {
+        throw error;
+      }
+      // それ以外は汎用エラー（サニタイズ済みコードのみ返却）
+      throw new HttpsError(
+        'internal',
+        'AIリフレクションの生成に失敗しました。もう一度お試しください。',
+        { code: 'AI_GENERATION_FAILED', retryable: true }
+      );
     }
   }
 );
@@ -2731,15 +2749,24 @@ const MONTHLY_INSIGHT_SYSTEM_PROMPT = `あなたは「PivotLog」の月間リフ
 
 このセクションは月間インサイトの「つかみ」です。150-200文字で、ユーザーの心を掴む導入を書いてください。
 
-必ず含める要素：
-1. 残り寿命における「この月の希少性」を伝える
-   例：「残り約42年の人生で、あなたが過ごせる『1月』はあと42回」
-2. この月で最も印象的だった出来事を「」で引用
-3. その出来事を「人生の文脈」で意味づける
-4. 温かい締めの言葉
+■ 書き出しパターン（ユーザープロンプトで指定された番号に従うこと）：
+1. 残り回数から入る - 「残り約XX年の人生で、あなたが過ごせる『N月』はあとXX回...」
+2. 季節や月の特徴から入る - 「新しい1年が始まるこの季節、あなたは静かに...」
+3. 最も印象的な出来事から入る - 「『○○○...』この一文が、この月のすべてを物語っています...」
+4. 前月との対比から入る - 季節の移り変わりや一般的な時期の対比で書く（前月の具体的な日記データはないため、前月の日記内容を推測・捏造しないこと）
+5. 人生の章立てとして入る - 「もしあなたの人生が一冊の本だとしたら...」
+6. 問いかけから入る - 「この1ヶ月で、あなたが最も多く口にした言葉は何でしょう？...」
 
-＜良い例＞
-「残り約42年の人生で、あなたが過ごせる『1月』はあと42回。2025年1月はその貴重な1回でした。『子どもと雪だるまを作った』『久しぶりに両親と食事した』など、大切な人との時間を重ねられた月でしたね。こうした1月は、二度と戻ってこない、かけがえのない時間です。」
+■ 必ず含める要素（書き出しパターンに関わらず、文中のどこかで必ず触れること）：
+- 残り寿命における「この月の希少性」（書き出し以外の箇所でもOK）
+- この月で最も印象的だった出来事を「」で引用
+- その出来事を「人生の文脈」で意味づける
+
+＜良い例：パターン3の場合＞
+「『子どもの初めての自転車』——この一文が、この1月のすべてを物語っています。寒い朝、何度も転びながら漕ぎ出したあの姿。残りの人生であと42回しか来ない1月の中で、この光景はきっと特別な記憶として残るでしょう。」
+
+＜良い例：パターン6の場合＞
+「この1ヶ月で、あなたが最も多く書いた言葉は『ありがとう』でした。残り約42年の人生で、あなたが過ごせる1月はあと42回。その貴重な1回を、感謝の気持ちで満たせたこの月は、きっと忘れられない1ページになるはずです。」
 
 ＜避けるべき例＞
 - 「今月は20日分の記録がありました」（統計的すぎる）
@@ -2962,6 +2989,22 @@ interface MonthlyInsightResponse {
   }>;
 }
 
+// 月ごとの季節情報マッピング
+const SEASON_INFO: Record<number, { season: string; atmosphere: string; keywords: string }> = {
+  1: { season: '冬', atmosphere: '新しい1年の始まり、寒さの中にも希望', keywords: '正月、初詣、新年の抱負、冬の静けさ' },
+  2: { season: '冬', atmosphere: '寒さが続く中、春への期待が芽生える', keywords: '節分、バレンタイン、受験、梅の花' },
+  3: { season: '春', atmosphere: '別れと出発、新たなスタートの季節', keywords: '卒業、年度末、桜の開花、引っ越し' },
+  4: { season: '春', atmosphere: '新しい環境、フレッシュな気持ち', keywords: '入学、入社、新生活、お花見' },
+  5: { season: '春', atmosphere: '新緑が眩しく、活動的になる季節', keywords: 'ゴールデンウィーク、こどもの日、母の日' },
+  6: { season: '夏', atmosphere: '梅雨の内省、夏への助走', keywords: '梅雨、父の日、衣替え、紫陽花' },
+  7: { season: '夏', atmosphere: '夏本番、エネルギッシュな季節', keywords: '七夕、夏休み、海、花火大会' },
+  8: { season: '夏', atmosphere: '夏の思い出、お盆の帰省と家族の時間', keywords: 'お盆、帰省、夏祭り、終戦記念日' },
+  9: { season: '秋', atmosphere: '夏の余韻、秋の気配と新学期', keywords: '新学期、敬老の日、秋分、お月見' },
+  10: { season: '秋', atmosphere: '深まる秋、実りと落ち着きの季節', keywords: 'ハロウィン、読書の秋、運動会、紅葉' },
+  11: { season: '秋', atmosphere: '晩秋、1年の振り返りが始まる', keywords: '七五三、感謝、紅葉狩り、冬支度' },
+  12: { season: '冬', atmosphere: '1年の締めくくり、大切な人との時間', keywords: 'クリスマス、忘年会、大掃除、年越し' },
+};
+
 /**
  * 月次インサイト用ユーザープロンプトを生成
  */
@@ -2976,6 +3019,9 @@ function generateMonthlyInsightUserPrompt(request: GenerateMonthlyInsightRequest
   // 人生の文脈を計算
   const monthsRemaining = Math.round(remainingYears * 12);
   const sameMonthsRemaining = Math.round(remainingYears); // 同じ月（1月なら1月）があと何回あるか
+
+  // 導入文の書き出しパターンをランダムに選択（1-6）
+  const lifeContextPattern = Math.floor(Math.random() * 6) + 1;
 
   // 日記エントリーを時系列で整理（ストーリーライン用）
   const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date));
@@ -3010,6 +3056,9 @@ function generateMonthlyInsightUserPrompt(request: GenerateMonthlyInsightRequest
   // 価値観分析のためのキーワード集計
   const valueAnalysis = analyzeValuesFromEntries(entries);
 
+  // 季節情報を取得
+  const seasonInfo = SEASON_INFO[month] || SEASON_INFO[1];
+
   return `【このユーザーについて】
 ${currentAge}歳。人生の目標を${targetAge}歳に設定。
 残り約${Math.round(remainingYears)}年（${remainingDays.toLocaleString()}日）、約${monthsRemaining}ヶ月。
@@ -3018,6 +3067,11 @@ ${currentAge}歳。人生の目標を${targetAge}歳に設定。
 - この「${month}月」を過ごせるのは、残りの人生であと約${sameMonthsRemaining}回
 - この1ヶ月は、残りの人生の約${(100 / (remainingYears * 12)).toFixed(2)}%に相当
 - ${monthName}は、あなたの人生で二度と戻ってこない、かけがえのない1ヶ月
+
+【季節の参考情報】（補助的に活用。日記内容が中心であることを忘れずに）
+- 季節: ${seasonInfo.season}（${month}月）
+- 雰囲気: ${seasonInfo.atmosphere}
+- 季節のキーワード: ${seasonInfo.keywords}
 
 【対象期間】
 ${monthName}（${monthStartDate.replace(/-/g, '/')} 〜 ${monthEndDate.replace(/-/g, '/')}）
@@ -3051,7 +3105,8 @@ ${analysisHints}
 週間インサイトとは異なる、より深い洞察を提供してください。
 
 1. lifeContextSummary（人生の中のこの月）150-200文字
-   - 残り寿命における「この月の希少性」を伝える
+   - ★今回はパターン${lifeContextPattern}で書き出してください（システムプロンプトの書き出しパターン参照）
+   - 書き出しパターンに関わらず、文中のどこかで残り寿命における「この月の希少性」に触れる
    - 日記の言葉を「」で引用（2つ以上）
    - 人生の文脈で意味づける
    - ※「今月」ではなく「${monthName}」「この${month}月」と表現

@@ -4,7 +4,7 @@
  * 週選択ナビゲーションと履歴表示機能を持つフル機能のインサイト画面
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -16,6 +16,7 @@ import { useWeeklyInsight, isLastWeek, MIN_ENTRIES_FOR_INSIGHT } from '../hooks/
 import { WeeklyInsightCard, WeekSelector, InsightHistoryList } from '../components/insight';
 import { WeeklyInsightCardV2 } from '../components/insight/WeeklyInsightCardV2';
 import { isWeeklyInsightV2 } from '../types/weeklyInsight';
+import { weeklyToHistoryItem } from '../utils/insightHistoryAdapters';
 import type { RootStackParamList } from '../types/navigation';
 
 type WeeklyInsightScreenRouteProp = RouteProp<RootStackParamList, 'WeeklyInsight'>;
@@ -95,6 +96,12 @@ const WeeklyInsightScreen: React.FC = () => {
       setIsRegenerating(false);
     }
   };
+
+  // 履歴アイテムを変換
+  const historyItems = useMemo(
+    () => recentInsights.map(weeklyToHistoryItem),
+    [recentInsights]
+  );
 
   // 履歴から週を選択
   const handleSelectFromHistory = useCallback((weekKey: string) => {
@@ -308,9 +315,10 @@ const WeeklyInsightScreen: React.FC = () => {
       <InsightHistoryList
         visible={historyVisible}
         onClose={() => setHistoryVisible(false)}
-        insights={recentInsights}
-        onSelectInsight={handleSelectFromHistory}
-        currentWeekKey={currentWeekInfo.weekKey}
+        items={historyItems}
+        onSelectItem={handleSelectFromHistory}
+        currentKey={currentWeekInfo.weekKey}
+        emptyDescription={'週間ふりかえりを生成すると\nここに表示されます'}
       />
     </SafeAreaView>
   );
