@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getColors, spacing } from '../theme';
@@ -27,8 +26,9 @@ import {
 } from '../components/diary';
 import AIConsentModal from '../components/common/AIConsentModal';
 import { useDiaryEntry, DiaryFieldKey } from '../hooks/useDiaryEntry';
-import { useAIReflection } from '../hooks/useAIReflection';
+import { useAIReflection, showLimitAlert } from '../hooks/useAIReflection';
 import { useAIReflectionLimit } from '../hooks/useAIReflectionLimit';
+import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
 import { DIARY_QUESTIONS } from '../constants/diary';
 import { hasValidAIConsent, recordAIConsent } from '../utils/storage';
 
@@ -81,6 +81,8 @@ const DiaryEntryScreen: React.FC = () => {
     remainingThisMonth,
     canRegenerate,
     canGenerate,
+    limitReason,
+    isLoading: isLimitLoading,
     refreshUsage,
   } = useAIReflectionLimit({ diaryDate: dateString, hasLocalReflection });
 
@@ -96,16 +98,6 @@ const DiaryEntryScreen: React.FC = () => {
     // キーボードを閉じる
     Keyboard.dismiss();
 
-    // 無料ユーザーはプレミアム訴求アラートを表示
-    if (!isPremium) {
-      Alert.alert(
-        'プレミアム機能',
-        'AIリフレクションはプレミアムプランでご利用いただけます。あなたの日記をAIが分析し、心に響く気づきを提供します。',
-        [{ text: '閉じる', style: 'cancel' }]
-      );
-      return;
-    }
-
     // 同意チェック
     const hasConsent = await hasValidAIConsent();
     if (!hasConsent) {
@@ -113,9 +105,14 @@ const DiaryEntryScreen: React.FC = () => {
       return;
     }
 
-    // リフレクションを取得
+    // 事前に利用制限をチェック（サーバーリクエスト前にアラート表示）
+    if (!canGenerate && limitReason) {
+      showLimitAlert(limitReason, !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined);
+      return;
+    }
+
     await executeGetReflection();
-  }, [executeGetReflection, isPremium]);
+  }, [executeGetReflection, canGenerate, limitReason, isPremium]);
 
   // 同意後の処理
   const handleConsent = useCallback(async () => {
@@ -317,20 +314,20 @@ const DiaryEntryScreen: React.FC = () => {
                     remainingThisMonth={remainingThisMonth}
                     isPremium={isPremium}
                     isLimitReached={!canGenerate}
-                    isFeatureLocked={!isPremium}
+                    isFeatureLocked={!isPremium && !isLimitLoading && !canGenerate}
                     errorMessage={aiErrorMessage}
                   />
                 )}
 
                 {/* 初回生成時のみボタンを表示（再生成はカード内のアイコンから） */}
-                {aiReflectionState === 'idle' && (
+                {(aiReflectionState === 'idle' || aiReflectionState === 'limit_reached') && (
                   <AIReflectionButton
                     onPress={handleGetAIReflection}
                     disabled={!hasDiaryContent}
                     remainingThisMonth={remainingThisMonth}
                     isPremium={isPremium}
                     isLimitReached={!canGenerate}
-                    isFeatureLocked={!isPremium}
+                    isFeatureLocked={!isPremium && !isLimitLoading && !canGenerate}
                   />
                 )}
               </View>

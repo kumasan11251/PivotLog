@@ -34,7 +34,7 @@ type SubscriptionTier = 'free' | 'premium';
  */
 const AI_USAGE_LIMITS = {
   /** 無料ユーザーの月間リフレクション生成上限 */
-  freeMonthlyReflectionLimit: 0,
+  freeMonthlyReflectionLimit: 3,
   /** プレミアムユーザーの1日あたりの生成上限 */
   premiumDailyLimit: 30,
 } as const;
@@ -45,8 +45,7 @@ const AI_USAGE_LIMITS = {
 type UsageLimitErrorCode =
   | 'MONTHLY_LIMIT_REACHED'
   | 'REGENERATE_NOT_ALLOWED'
-  | 'DAILY_LIMIT_REACHED'
-  | 'FEATURE_NOT_AVAILABLE';
+  | 'DAILY_LIMIT_REACHED';
 
 /**
  * 現在の年月を取得（YYYY-MM形式）
@@ -224,18 +223,6 @@ function evaluateUsageLimit(
   usage: { monthlyCount: number; diaryRegenCount: number; dailyCount: number; hasExistingReflection: boolean }
 ): { allowed: boolean; errorCode?: UsageLimitErrorCode; details?: Record<string, unknown> } {
   if (tier === 'free') {
-    // 無料ユーザー: 機能自体が利用不可（制限が0の場合）
-    if (AI_USAGE_LIMITS.freeMonthlyReflectionLimit === 0) {
-      return {
-        allowed: false,
-        errorCode: 'FEATURE_NOT_AVAILABLE',
-        details: {
-          tier: 'free',
-          message: 'AIリフレクションはプレミアムプランでご利用いただけます',
-        },
-      };
-    }
-
     // 無料ユーザー: 月間制限チェック
     if (usage.monthlyCount >= AI_USAGE_LIMITS.freeMonthlyReflectionLimit) {
       return {
@@ -1129,9 +1116,6 @@ export const generateReflection = onCall(
             break;
           case 'DAILY_LIMIT_REACHED':
             errorMessage = '本日の利用上限に達しました。明日以降に再度お試しください。';
-            break;
-          case 'FEATURE_NOT_AVAILABLE':
-            errorMessage = 'AIリフレクションはプレミアムプランでご利用いただけます。';
             break;
         }
 

@@ -2,8 +2,10 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Animated, Alert } from 'react-native';
 import type { AIReflectionData, AIReflectionState } from '../types/aiReflection';
 import type { UsageLimitReason } from '../types/subscription';
+import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
 import { getDiaryByDate } from '../utils/storage';
 import { useAIReflectionContext } from '../contexts/AIReflectionContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 
 /** 構造化エラー型 */
 export interface ReflectionError {
@@ -56,6 +58,8 @@ export const useAIReflection = ({
   formState,
   onLimitReached,
 }: UseAIReflectionProps): UseAIReflectionReturn => {
+  const { isPremium } = useSubscription();
+
   // Contextから状態と関数を取得
   const {
     getGenerationStatus,
@@ -130,7 +134,7 @@ export const useAIReflection = ({
         }
 
         // 利用制限エラーのアラート表示
-        showLimitAlert(limitReason);
+        showLimitAlert(limitReason, !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined);
       } else if (error) {
         setLocalError(true);
         setReflectionError({
@@ -142,7 +146,7 @@ export const useAIReflection = ({
     });
 
     return unsubscribe;
-  }, [dateString, subscribeToCompletion, fadeAnim, onLimitReached]);
+  }, [dateString, subscribeToCompletion, fadeAnim, onLimitReached, isPremium]);
 
   // AIリフレクションを取得する
   const getReflection = useCallback(async () => {
@@ -201,12 +205,14 @@ export const useAIReflection = ({
 /**
  * 利用制限エラーのアラートを表示
  */
-function showLimitAlert(limitReason: UsageLimitReason): void {
+export function showLimitAlert(limitReason: UsageLimitReason, monthlyLimit?: number): void {
   switch (limitReason) {
     case 'MONTHLY_LIMIT_REACHED':
       Alert.alert(
         '今月の利用上限に達しました',
-        'AIリフレクションの今月の利用上限に達しました。プレミアムプランにアップグレードすると制限が緩和されます。',
+        monthlyLimit != null
+          ? `無料プランでは月${monthlyLimit}回までAIふりかえり機能をご利用いただけます。プレミアムプランにアップグレードすると無制限にご利用いただけます。`
+          : 'AIふりかえりの今月の利用上限に達しました。',
         [{ text: '閉じる', style: 'cancel' }]
       );
       break;
@@ -214,7 +220,7 @@ function showLimitAlert(limitReason: UsageLimitReason): void {
     case 'REGENERATE_NOT_ALLOWED':
       Alert.alert(
         '再生成はプレミアム機能です',
-        '無料プランでは同じ日記のAIリフレクションを再生成することはできません。',
+        '無料プランでは同じ日記のAIふりかえりを再生成することはできません。',
         [{ text: '閉じる', style: 'cancel' }]
       );
       break;
@@ -223,14 +229,6 @@ function showLimitAlert(limitReason: UsageLimitReason): void {
       Alert.alert(
         '本日の利用上限に達しました',
         '明日以降に再度お試しください。',
-        [{ text: '閉じる', style: 'cancel' }]
-      );
-      break;
-
-    case 'FEATURE_NOT_AVAILABLE':
-      Alert.alert(
-        'プレミアム機能',
-        'AIリフレクションはプレミアムプランでご利用いただけます。',
         [{ text: '閉じる', style: 'cancel' }]
       );
       break;

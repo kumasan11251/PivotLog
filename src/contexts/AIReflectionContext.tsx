@@ -230,7 +230,6 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
           'MONTHLY_LIMIT_REACHED',
           'REGENERATE_NOT_ALLOWED',
           'DAILY_LIMIT_REACHED',
-          'FEATURE_NOT_AVAILABLE',
         ];
         if (errorCode && usageLimitCodes.includes(errorCode as UsageLimitReason)) {
           limitReason = errorCode as UsageLimitReason;

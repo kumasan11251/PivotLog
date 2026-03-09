@@ -425,7 +425,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     category: 'reflection',
     template: '新しい週が始まった。今週、どんな自分でいたい？',
     subtext: '月曜日は、小さなリセットボタン',
-    emoji: '📌',
+    emoji: '🌱',
     displayCondition: { dayOfWeek: [1] },
   },
   {

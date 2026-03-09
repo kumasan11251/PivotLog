@@ -45,7 +45,7 @@ export interface AIUsageLimits {
  * デフォルトの利用制限設定
  */
 export const DEFAULT_AI_USAGE_LIMITS: AIUsageLimits = {
-  freeMonthlyReflectionLimit: 0,
+  freeMonthlyReflectionLimit: 3,
   premiumDailyLimit: 30,
   freeWeeklyInsightLimit: 0,
   freeMonthlyInsightLimit: 0,
@@ -117,8 +117,7 @@ export interface UsageLimitCheckResult {
 export type UsageLimitReason =
   | 'MONTHLY_LIMIT_REACHED'      // 月間制限に達した
   | 'REGENERATE_NOT_ALLOWED'    // 無料プランでは再生成不可
-  | 'DAILY_LIMIT_REACHED'       // 1日の利用上限に達した
-  | 'FEATURE_NOT_AVAILABLE';    // この機能は利用不可
+  | 'DAILY_LIMIT_REACHED';      // 1日の利用上限に達した
 
 /**
  * AI生成失敗系エラーコード

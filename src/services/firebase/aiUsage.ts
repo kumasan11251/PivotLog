@@ -144,18 +144,6 @@ export const checkAIReflectionLimit = async (
 
     // 無料ユーザーの制限チェック
     if (!isPremium) {
-      // 機能自体が利用不可（制限が0の場合）
-      if (limits.freeMonthlyReflectionLimit === 0) {
-        return {
-          canGenerate: false,
-          limitReason: 'FEATURE_NOT_AVAILABLE',
-          remainingThisMonth: 0,
-          remainingRegenerations: null,
-          usedThisMonth,
-          regenerationsUsed: actualRegenerations,
-        };
-      }
-
       // 月間制限チェック
       if (usedThisMonth >= limits.freeMonthlyReflectionLimit) {
         return {
