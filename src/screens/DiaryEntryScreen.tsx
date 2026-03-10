@@ -105,6 +105,12 @@ const DiaryEntryScreen: React.FC = () => {
       return;
     }
 
+    // 無料ユーザーの再生成はアップセルアラートを表示
+    if (!isPremium && hasLocalReflection) {
+      showLimitAlert('REGENERATE_NOT_ALLOWED', DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit);
+      return;
+    }
+
     // 事前に利用制限をチェック（サーバーリクエスト前にアラート表示）
     if (!canGenerate && limitReason) {
       showLimitAlert(limitReason, !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined);
@@ -112,7 +118,7 @@ const DiaryEntryScreen: React.FC = () => {
     }
 
     await executeGetReflection();
-  }, [executeGetReflection, canGenerate, limitReason, isPremium]);
+  }, [executeGetReflection, canGenerate, limitReason, isPremium, hasLocalReflection]);
 
   // 同意後の処理
   const handleConsent = useCallback(async () => {

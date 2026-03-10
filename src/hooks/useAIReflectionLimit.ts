@@ -109,8 +109,8 @@ export const useAIReflectionLimit = ({
     if (isPremium) {
       return usageCheck.canGenerate;
     }
-    // 無料ユーザーは再生成不可
-    return false;
+    // 無料ユーザーもボタン表示（押下時にアップセルアラート表示）
+    return true;
   }, [usageCheck, isPremium, hasExistingReflection]);
 
   // 月間上限
