@@ -10,6 +10,7 @@ import { withRetry } from '../../utils/retry';
 import type {
   AIReflectionUsage,
   DiaryReflectionRecord,
+  WeeklyInsightUsage,
   UsageLimitCheckResult,
   SubscriptionTier,
   AIUsageLimits,
@@ -18,6 +19,7 @@ import { DEFAULT_AI_USAGE_LIMITS } from '../../types/subscription';
 
 // ドキュメントID
 const AI_REFLECTION_USAGE_DOC = 'aiReflection';
+const WEEKLY_INSIGHT_USAGE_DOC = 'weeklyInsight';
 
 // ヘルパー関数
 const getUserUsageRef = () => {
@@ -339,6 +341,133 @@ export const resetReflectionHistory = async (): Promise<void> => {
   } catch (error) {
     console.error('[Usage] 生成履歴のリセットに失敗:', error);
     throw error;
+  }
+};
+
+// ========================================
+// 週次インサイト利用状況管理
+// ========================================
+
+/**
+ * 週次インサイトの利用状況を取得
+ */
+export const getWeeklyInsightUsage = async (): Promise<WeeklyInsightUsage | null> => {
+  try {
+    const usageRef = getUserUsageRef();
+
+    return await withRetry(
+      async () => {
+        const doc = await usageRef.doc(WEEKLY_INSIGHT_USAGE_DOC).get();
+        if (Boolean(doc.exists)) {
+          return doc.data() as WeeklyInsightUsage;
+        }
+        return null;
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Usage] 週次インサイト利用状況取得リトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
+  } catch (error) {
+    console.error('[Usage] 週次インサイト利用状況の取得に失敗:', error);
+    return null;
+  }
+};
+
+/**
+ * 週次インサイトの今月の生成回数を取得
+ */
+export const getWeeklyInsightMonthlyCount = async (): Promise<number> => {
+  try {
+    const usage = await getWeeklyInsightUsage();
+    if (!usage) return 0;
+
+    const currentMonth = getCurrentYearMonth();
+    return usage.monthlyUsage?.[currentMonth]?.count || 0;
+  } catch (error) {
+    console.error('[Usage] 週次インサイト月次利用回数の取得に失敗:', error);
+    return 0;
+  }
+};
+
+/**
+ * 週次インサイトの利用可否をチェック（クライアント側の事前チェック用）
+ * 利用記録の更新はサーバーサイド（Cloud Functions）で行う
+ */
+export const checkWeeklyInsightLimit = async (
+  weekKey: string,
+  tier: SubscriptionTier,
+  limits: AIUsageLimits = DEFAULT_AI_USAGE_LIMITS
+): Promise<UsageLimitCheckResult> => {
+  try {
+    const usage = await getWeeklyInsightUsage();
+    const currentMonth = getCurrentYearMonth();
+
+    // 今月の利用回数
+    const usedThisMonth = usage?.monthlyUsage?.[currentMonth]?.count || 0;
+
+    // この週の生成履歴
+    const hasExistingGeneration = !!usage?.generationHistory?.[weekKey];
+
+    const isPremium = tier === 'premium';
+
+    // 無料ユーザーの制限チェック
+    if (!isPremium) {
+      // 月間制限チェック
+      if (usedThisMonth >= limits.freeWeeklyInsightLimit) {
+        return {
+          canGenerate: false,
+          limitReason: 'MONTHLY_LIMIT_REACHED',
+          remainingThisMonth: 0,
+          remainingRegenerations: null,
+          usedThisMonth,
+          regenerationsUsed: 0,
+        };
+      }
+
+      // 再生成不可（無料ユーザーは同じ週で再生成できない）
+      if (hasExistingGeneration) {
+        return {
+          canGenerate: false,
+          limitReason: 'REGENERATE_NOT_ALLOWED',
+          remainingThisMonth: limits.freeWeeklyInsightLimit - usedThisMonth,
+          remainingRegenerations: null,
+          usedThisMonth,
+          regenerationsUsed: 0,
+        };
+      }
+
+      return {
+        canGenerate: true,
+        remainingThisMonth: limits.freeWeeklyInsightLimit - usedThisMonth,
+        remainingRegenerations: null,
+        usedThisMonth,
+        regenerationsUsed: 0,
+      };
+    }
+
+    // プレミアムユーザーは制限なし
+    return {
+      canGenerate: true,
+      remainingThisMonth: null,
+      remainingRegenerations: null,
+      usedThisMonth,
+      regenerationsUsed: 0,
+    };
+  } catch (error) {
+    console.error('[Usage] 週次インサイト利用制限チェックに失敗:', error);
+    // エラー時は安全のため生成を許可しない
+    return {
+      canGenerate: false,
+      limitReason: 'MONTHLY_LIMIT_REACHED',
+      remainingThisMonth: 0,
+      remainingRegenerations: null,
+      usedThisMonth: 0,
+      regenerationsUsed: 0,
+    };
   }
 };
 

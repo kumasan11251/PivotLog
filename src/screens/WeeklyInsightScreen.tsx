@@ -5,10 +5,9 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useSubscription } from '../contexts/SubscriptionContext';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -26,8 +25,6 @@ const WeeklyInsightScreen: React.FC = () => {
   const route = useRoute<WeeklyInsightScreenRouteProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
-  const { isPremium } = useSubscription();
-
   const { weekKey: initialWeekKey } = route.params || {};
   const [historyVisible, setHistoryVisible] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -51,17 +48,6 @@ const WeeklyInsightScreen: React.FC = () => {
     regenerateCurrentWeekInsight,
     canRegenerate,
   } = useWeeklyInsight({ initialWeekKey });
-
-  // プレミアムチェック（フォールバック保護）
-  useEffect(() => {
-    if (!isPremium) {
-      Alert.alert(
-        'プレミアム機能',
-        'この機能はプレミアムプランでご利用いただけます。',
-        [{ text: '閉じる', onPress: () => navigation.goBack() }]
-      );
-    }
-  }, [isPremium, navigation]);
 
   // 初期化時にインサイト履歴を読み込み
   useEffect(() => {

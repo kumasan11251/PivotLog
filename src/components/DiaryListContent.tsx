@@ -99,16 +99,8 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   );
 
   const handleNavigateToWeeklyInsight = useCallback(() => {
-    if (!isPremium) {
-      Alert.alert(
-        'プレミアム機能',
-        '週間ふりかえりはプレミアムプランでご利用いただけます。1週間の記録をAIが分析し、時間の使い方のパターンを発見します。',
-        [{ text: '閉じる', style: 'cancel' }]
-      );
-      return;
-    }
     navigation.navigate('WeeklyInsight', {});
-  }, [navigation, isPremium]);
+  }, [navigation]);
 
   const handleNavigateToMonthlyInsight = useCallback(() => {
     if (!isPremium) {

@@ -37,6 +37,8 @@ const AI_USAGE_LIMITS = {
   freeMonthlyReflectionLimit: 3,
   /** プレミアムユーザーの1日あたりの生成上限 */
   premiumDailyLimit: 30,
+  /** 無料ユーザーの月間週次インサイト生成上限 */
+  freeWeeklyInsightLimit: 1,
 } as const;
 
 /**
@@ -66,6 +68,23 @@ function getCurrentDate(): string {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/**
+ * 日付からISO週番号を取得し、weekKey（YYYY-WNN形式）を返す
+ */
+function getWeekKeyFromDate(dateString: string): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  // ISO 8601: 木曜日が属する年の週
+  const thursday = new Date(date);
+  thursday.setDate(date.getDate() + (3 - ((date.getDay() + 6) % 7)));
+  const isoYear = thursday.getFullYear();
+  const yearStart = new Date(isoYear, 0, 1);
+  const weekNumber = Math.ceil(((thursday.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+
+  return `${isoYear}-W${String(weekNumber).padStart(2, '0')}`;
 }
 
 /**
@@ -263,6 +282,91 @@ function evaluateUsageLimit(
   }
 
   return { allowed: true };
+}
+
+/**
+ * 週次インサイトの利用制限を判定（純粋関数、I/Oなし）
+ */
+function evaluateWeeklyInsightLimit(
+  tier: SubscriptionTier,
+  usage: { monthlyCount: number; hasExistingGeneration: boolean }
+): { allowed: boolean; errorCode?: UsageLimitErrorCode; details?: Record<string, unknown> } {
+  if (tier === 'free') {
+    // 月間制限チェック
+    if (usage.monthlyCount >= AI_USAGE_LIMITS.freeWeeklyInsightLimit) {
+      return {
+        allowed: false,
+        errorCode: 'MONTHLY_LIMIT_REACHED',
+        details: {
+          limit: AI_USAGE_LIMITS.freeWeeklyInsightLimit,
+          used: usage.monthlyCount,
+          remaining: 0,
+        },
+      };
+    }
+
+    // 再生成不可チェック
+    if (usage.hasExistingGeneration) {
+      return {
+        allowed: false,
+        errorCode: 'REGENERATE_NOT_ALLOWED',
+        details: {
+          tier: 'free',
+          message: '無料プランでは週間ふりかえりの再生成はできません',
+        },
+      };
+    }
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * 週次インサイトの利用記録を更新
+ */
+async function recordWeeklyInsightUsage(
+  userId: string,
+  weekKey: string,
+  isRegenerate: boolean
+): Promise<void> {
+  try {
+    const currentMonth = getCurrentYearMonth();
+    const now = new Date().toISOString();
+    const usageRef = db
+      .collection('users')
+      .doc(userId)
+      .collection('usage')
+      .doc('weeklyInsight');
+
+    const usageDoc = await usageRef.get();
+    const currentData = usageDoc.data() || {};
+    const currentMonthlyCount = currentData?.monthlyUsage?.[currentMonth]?.count || 0;
+
+    // 再生成の場合は月間カウントを増やさない
+    const newMonthlyCount = isRegenerate ? currentMonthlyCount : currentMonthlyCount + 1;
+
+    await usageRef.set({
+      monthlyUsage: {
+        ...currentData?.monthlyUsage,
+        [currentMonth]: {
+          count: newMonthlyCount,
+          lastGeneratedAt: now,
+        },
+      },
+      generationHistory: {
+        ...currentData?.generationHistory,
+        [weekKey]: {
+          generatedAt: now,
+        },
+      },
+      updatedAt: now,
+    }, { merge: true });
+
+    console.log(`[recordWeeklyInsightUsage] Updated usage for user ${userId}, week ${weekKey}, monthly: ${newMonthlyCount}`);
+  } catch (error) {
+    console.error('[recordWeeklyInsightUsage] Error:', error);
+    // 利用状況の更新失敗は致命的ではないので、エラーをスローしない
+  }
 }
 
 /**
@@ -2413,10 +2517,37 @@ export const generateWeeklyInsightV2 = onCall(
       );
     }
 
+    // 利用制限チェック
+    const uid = request.auth.uid;
+    const weekKey = data.weekStartDate ? getWeekKeyFromDate(data.weekStartDate) : '';
+    const [tier, weeklyUsageDoc] = await Promise.all([
+      getUserSubscriptionTier(uid),
+      db.collection('users').doc(uid).collection('usage').doc('weeklyInsight').get(),
+    ]);
+
+    const weeklyUsageData = weeklyUsageDoc.data() || {};
+    const currentMonth = getCurrentYearMonth();
+    const monthlyCount = weeklyUsageData?.monthlyUsage?.[currentMonth]?.count || 0;
+    const hasExistingGeneration = !!weeklyUsageData?.generationHistory?.[weekKey];
+
+    const limitResult = evaluateWeeklyInsightLimit(tier, { monthlyCount, hasExistingGeneration });
+    if (!limitResult.allowed) {
+      throw new HttpsError(
+        'resource-exhausted',
+        limitResult.errorCode === 'MONTHLY_LIMIT_REACHED'
+          ? `無料プランでは月${AI_USAGE_LIMITS.freeWeeklyInsightLimit}回まで週間ふりかえり機能をご利用いただけます。`
+          : '無料プランでは週間ふりかえりの再生成はご利用いただけません。',
+        { code: limitResult.errorCode, ...limitResult.details }
+      );
+    }
+
+    const isRegenerate = hasExistingGeneration;
+
     const apiKey = geminiApiKey.value();
 
     if (!apiKey) {
       console.error('GEMINI_API_KEY is not configured');
+      await recordWeeklyInsightUsage(uid, weekKey, isRegenerate);
       return generateFallbackWeeklyInsightV2(data);
     }
 
@@ -2532,6 +2663,7 @@ export const generateWeeklyInsightV2 = onCall(
 
       if (!content) {
         console.error('[generateWeeklyInsightV2] Empty response from Gemini');
+        await recordWeeklyInsightUsage(uid, weekKey, isRegenerate);
         return generateFallbackWeeklyInsightV2(data);
       }
 
@@ -2541,6 +2673,7 @@ export const generateWeeklyInsightV2 = onCall(
 
       if (!parsed) {
         console.error('[generateWeeklyInsightV2] Failed to parse response');
+        await recordWeeklyInsightUsage(uid, weekKey, isRegenerate);
         return generateFallbackWeeklyInsightV2(data);
       }
 
@@ -2554,9 +2687,14 @@ export const generateWeeklyInsightV2 = onCall(
       };
 
       console.log('[generateWeeklyInsightV2] Success');
+
+      // 利用記録を更新（エラーでも生成結果は返却する）
+      await recordWeeklyInsightUsage(uid, weekKey, isRegenerate);
+
       return result;
     } catch (error) {
       console.error('[generateWeeklyInsightV2] Error:', error);
+      await recordWeeklyInsightUsage(uid, weekKey, isRegenerate);
       return generateFallbackWeeklyInsightV2(data);
     }
   }

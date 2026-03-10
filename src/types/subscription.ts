@@ -47,7 +47,7 @@ export interface AIUsageLimits {
 export const DEFAULT_AI_USAGE_LIMITS: AIUsageLimits = {
   freeMonthlyReflectionLimit: 3,
   premiumDailyLimit: 30,
-  freeWeeklyInsightLimit: 0,
+  freeWeeklyInsightLimit: 1,
   freeMonthlyInsightLimit: 0,
 };
 
@@ -91,6 +91,18 @@ export interface DiaryReflectionRecord {
   regenerateCount: number;
   /** 最終再生成日時 */
   lastRegeneratedAt?: string;
+}
+
+/**
+ * 週次インサイトの利用状況
+ */
+export interface WeeklyInsightUsage {
+  /** 月次利用状況（YYYY-MM形式をキーとする） */
+  monthlyUsage: { [yearMonth: string]: MonthlyUsageRecord };
+  /** 週ごとの生成履歴（YYYY-WNN形式をキーとする） */
+  generationHistory: { [weekKey: string]: { generatedAt: string } };
+  /** 最終更新日時 */
+  updatedAt: string;
 }
 
 /**

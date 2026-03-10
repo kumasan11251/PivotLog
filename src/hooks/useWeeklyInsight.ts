@@ -16,6 +16,10 @@ import type {
   WeeklyInsightDataV2,
   WeeklyInsightState,
 } from '../types/weeklyInsight';
+import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
+import { checkWeeklyInsightLimit, getWeeklyInsightMonthlyCount } from '../services/firebase/aiUsage';
+import { showLimitAlert } from './useAIReflection';
+import type { UsageLimitReason } from '../types/subscription';
 
 /** V1またはV2のインサイトデータ */
 type WeeklyInsightUnion = WeeklyInsightData | WeeklyInsightDataV2;
@@ -94,8 +98,16 @@ interface UseWeeklyInsightReturn {
   loadOrGenerateLastWeekInsight: () => Promise<void>;
   /** インサイトを再生成（キャッシュを無視） */
   regenerateCurrentWeekInsight: () => Promise<void>;
-  /** 再生成が許可されているか（プレミアムユーザーかつキャッシュ済み） */
+  /** 再生成が許可されているか（キャッシュ済みの場合） */
   canRegenerate: boolean;
+  /** 今月の利用回数 */
+  monthlyUsed: number;
+  /** 月間利用上限 */
+  monthlyLimit: number;
+  /** 今月の残り回数（プレミアムはnull） */
+  remainingThisMonth: number | null;
+  /** 利用制限の理由 */
+  limitReason: UsageLimitReason | null;
 }
 
 export const useWeeklyInsight = (
@@ -121,6 +133,8 @@ export const useWeeklyInsight = (
   const [error, setError] = useState<string | null>(null);
   const [currentWeekEntryCount, setCurrentWeekEntryCount] = useState(0);
   const [isCurrentWeekCached, setIsCurrentWeekCached] = useState(false);
+  const [monthlyUsed, setMonthlyUsed] = useState(0);
+  const [limitReason, setLimitReason] = useState<UsageLimitReason | null>(null);
 
   // マウント状態を追跡
   const isMountedRef = useRef(true);
@@ -171,6 +185,10 @@ export const useWeeklyInsight = (
       // キャッシュチェック
       const cached = await getWeeklyInsightFromFirestore(currentWeekKey);
       setIsCurrentWeekCached(!!cached);
+
+      // 月間利用回数を取得
+      const count = await getWeeklyInsightMonthlyCount();
+      setMonthlyUsed(count);
     } catch (err) {
       console.error('週の記録数の確認に失敗:', err);
     }
@@ -252,8 +270,25 @@ export const useWeeklyInsight = (
     }
 
     try {
+      // 利用制限の事前チェック（キャッシュがある場合はスキップ）
+      const cachedInsightPreCheck = await getWeeklyInsightFromFirestore(currentWeekKey);
+      if (!cachedInsightPreCheck) {
+        const tier = isPremium ? 'premium' : 'free';
+        const limitCheck = await checkWeeklyInsightLimit(currentWeekKey, tier);
+        if (!limitCheck.canGenerate) {
+          setLimitReason(limitCheck.limitReason ?? null);
+          showLimitAlert(
+            limitCheck.limitReason!,
+            !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit : undefined,
+            '週間ふりかえり'
+          );
+          setState('idle');
+          return;
+        }
+      }
+
       // まずキャッシュ（Firestore）から取得を試みる
-      const cachedInsight = await getWeeklyInsightFromFirestore(currentWeekKey);
+      const cachedInsight = cachedInsightPreCheck;
 
       if (cachedInsight) {
         if (isMountedRef.current) {
@@ -328,7 +363,7 @@ export const useWeeklyInsight = (
         setState('error');
       }
     }
-  }, [currentWeekKey, getGenerationStatus, startGeneration, getGeneratedInsight]);
+  }, [currentWeekKey, isPremium, getGenerationStatus, startGeneration, getGeneratedInsight]);
 
   // 後方互換性: 先週のインサイトを読み込み/生成
   const loadOrGenerateLastWeekInsight = useCallback(async () => {
@@ -512,6 +547,16 @@ export const useWeeklyInsight = (
 
   // インサイトを再生成（Context経由でバックグラウンド管理）
   const regenerateCurrentWeekInsight = useCallback(async () => {
+    // 無料ユーザーは再生成不可
+    if (!isPremium) {
+      showLimitAlert(
+        'REGENERATE_NOT_ALLOWED',
+        DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit,
+        '週間ふりかえり'
+      );
+      return;
+    }
+
     setState('loading');
     setError(null);
 
@@ -545,7 +590,7 @@ export const useWeeklyInsight = (
         setState('error');
       }
     }
-  }, [currentWeekKey, regenerateGeneration, getGeneratedInsight, getGenerationStatus]);
+  }, [currentWeekKey, isPremium, regenerateGeneration, getGeneratedInsight, getGenerationStatus]);
 
   // 週が変更されたら記録数を確認
   useEffect(() => {
@@ -582,8 +627,13 @@ export const useWeeklyInsight = (
     // 後方互換性
     lastWeekEntryCount: currentWeekKey === lastWeekInfo.weekKey ? currentWeekEntryCount : 0,
     loadOrGenerateLastWeekInsight,
-    // 再生成機能（プレミアム限定）
+    // 再生成機能
     regenerateCurrentWeekInsight,
-    canRegenerate: isPremium && isCurrentWeekCached,
+    canRegenerate: isCurrentWeekCached,
+    // 利用状況
+    monthlyUsed,
+    monthlyLimit: DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit,
+    remainingThisMonth: isPremium ? null : Math.max(0, DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit - monthlyUsed),
+    limitReason,
   };
 };

@@ -205,14 +205,18 @@ export const useAIReflection = ({
 /**
  * 利用制限エラーのアラートを表示
  */
-export function showLimitAlert(limitReason: UsageLimitReason, monthlyLimit?: number): void {
+export function showLimitAlert(
+  limitReason: UsageLimitReason,
+  monthlyLimit?: number,
+  featureName: string = 'AIふりかえり'
+): void {
   switch (limitReason) {
     case 'MONTHLY_LIMIT_REACHED':
       Alert.alert(
         '今月の利用上限に達しました',
         monthlyLimit != null
-          ? `無料プランでは月${monthlyLimit}回までAIふりかえり機能をご利用いただけます。プレミアムプランにアップグレードすると無制限にご利用いただけます。`
-          : 'AIふりかえりの今月の利用上限に達しました。',
+          ? `無料プランでは月${monthlyLimit}回まで${featureName}機能をご利用いただけます。プレミアムプランにアップグレードすると無制限にご利用いただけます。`
+          : `${featureName}の今月の利用上限に達しました。`,
         [{ text: '閉じる', style: 'cancel' }]
       );
       break;
@@ -220,7 +224,9 @@ export function showLimitAlert(limitReason: UsageLimitReason, monthlyLimit?: num
     case 'REGENERATE_NOT_ALLOWED':
       Alert.alert(
         '再生成はプレミアム機能です',
-        '無料プランでは同じ日記のAIふりかえりを再生成することはできません。',
+        featureName === 'AIふりかえり'
+          ? '無料プランでは同じ日記のAIふりかえりを再生成することはできません。'
+          : `無料プランでは${featureName}の再生成はご利用いただけません。`,
         [{ text: '閉じる', style: 'cancel' }]
       );
       break;
