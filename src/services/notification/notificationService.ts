@@ -13,6 +13,8 @@ import { DAILY_REMINDER_MESSAGES, getMessageByDate } from './messages';
 
 const REMINDER_SETTINGS_KEY = '@pivot_log_reminder_settings';
 const DAILY_REMINDER_IDENTIFIER = 'daily-reminder';
+const DAILY_REMINDER_BACKUP_PREFIX = 'pivot_log_reminder_backup_';
+const BACKUP_DAYS = 7;
 
 // 通知のデフォルト設定
 Notifications.setNotificationHandler({
@@ -139,6 +141,12 @@ export const scheduleDailyReminder = async (
 export const cancelDailyReminder = async (): Promise<void> => {
   try {
     await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_IDENTIFIER);
+    // バックアップ DATE trigger も全てキャンセル
+    for (let i = 2; i <= BACKUP_DAYS; i++) {
+      await Notifications.cancelScheduledNotificationAsync(
+        `${DAILY_REMINDER_BACKUP_PREFIX}${i}`
+      );
+    }
     console.log('リマインダーをキャンセルしました');
   } catch (error) {
     // 既存の通知がない場合はエラーを無視
@@ -213,26 +221,63 @@ export const updateReminderSchedule = async (settings: ReminderSettings): Promis
 export const initializeReminder = async (): Promise<void> => {
   const settings = await loadReminderSettings();
 
-  if (settings.enabled) {
-    const hasPermission = await checkNotificationPermissions();
-    if (hasPermission) {
-      await scheduleDailyReminder(settings.hour, settings.minute);
-    }
-  }
-};
+  if (!settings.enabled) return;
 
-/**
- * テスト用：即座に通知を送信
- */
-export const sendTestNotification = async (): Promise<void> => {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'PivotLog',
-      body: 'テスト通知です。リマインダーが正常に動作しています。',
-      data: { type: 'test' },
-    },
-    trigger: null, // 即座に送信
-  });
+  const hasPermission = await checkNotificationPermissions();
+  if (!hasPermission) return;
+
+  // 既存のスケジュール済み通知を確認
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const existingReminder = scheduled.find(
+    (n) => n.identifier === DAILY_REMINDER_IDENTIFIER
+  );
+
+  // バックアップ DATE trigger の整理（早期リターンの前に実行）
+  const backupIdentifiers = Array.from({ length: BACKUP_DAYS - 1 }, (_, i) =>
+    `${DAILY_REMINDER_BACKUP_PREFIX}${i + 2}`
+  );
+  const existingBackups = scheduled.filter(
+    (n) => backupIdentifiers.includes(n.identifier)
+  );
+
+  if (existingReminder) {
+    // 既にスケジュール済み — ただし設定時刻が変更されていないか確認する
+    const trigger = existingReminder.trigger;
+    const isTimeChanged = (() => {
+      if (trigger.type === Notifications.SchedulableTriggerInputTypes.DAILY) {
+        return trigger.hour !== settings.hour || trigger.minute !== settings.minute;
+      }
+      if (trigger.type === Notifications.SchedulableTriggerInputTypes.DATE) {
+        const scheduledDate = new Date(trigger.date);
+        return scheduledDate.getHours() !== settings.hour || scheduledDate.getMinutes() !== settings.minute;
+      }
+      return false;
+    })();
+
+    if (!isTimeChanged) {
+      // 時刻が一致 → メインはそのまま維持
+      // 時刻が不一致のバックアップのみキャンセル
+      for (const backup of existingBackups) {
+        const backupTrigger = backup.trigger;
+        if (backupTrigger.type === Notifications.SchedulableTriggerInputTypes.DATE) {
+          const backupDate = new Date(backupTrigger.date);
+          if (backupDate.getHours() !== settings.hour || backupDate.getMinutes() !== settings.minute) {
+            await Notifications.cancelScheduledNotificationAsync(backup.identifier);
+          }
+        }
+      }
+      return;
+    }
+    // 時刻が変更されている → 再スケジュールが必要（下に続く）
+  }
+
+  // バックアップ DATE trigger がある場合は全てキャンセル（メインの DAILY に統合するため）
+  for (const backup of existingBackups) {
+    await Notifications.cancelScheduledNotificationAsync(backup.identifier);
+  }
+
+  // スケジュールが存在しない or 時刻変更あり → DAILY で新規スケジュール
+  await scheduleDailyReminder(settings.hour, settings.minute);
 };
 
 /**
@@ -242,25 +287,55 @@ export const sendTestNotification = async (): Promise<void> => {
 export const cancelTodayReminderAndReschedule = async (): Promise<void> => {
   try {
     const settings = await loadReminderSettings();
+    if (!settings.enabled) return;
 
-    // リマインダーが無効なら何もしない
-    if (!settings.enabled) {
-      return;
-    }
-
-    // 通知権限をチェック
     const hasPermission = await checkNotificationPermissions();
-    if (!hasPermission) {
-      return;
-    }
+    if (!hasPermission) return;
 
-    // 現在のリマインダーをキャンセル
     await cancelDailyReminder();
 
-    // 即座に再スケジュール（翌日から有効）
-    await scheduleDailyReminder(settings.hour, settings.minute);
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
 
-    console.log('当日のリマインダーをキャンセルし、翌日から再スケジュールしました');
+    // リマインダー時刻がまだ来ていない場合は、翌日〜7日後まで DATE trigger でスケジュール
+    const isBeforeReminderTime =
+      currentHour < settings.hour ||
+      (currentHour === settings.hour && currentMinute < settings.minute);
+
+    if (isBeforeReminderTime) {
+      // DATE trigger は1回限りのため、アプリを開かない期間をカバーするために
+      // 7日分の DATE trigger を個別にスケジュールする
+      for (let i = 1; i <= BACKUP_DAYS; i++) {
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + i);
+        targetDate.setHours(settings.hour, settings.minute, 0, 0);
+
+        const message = getMessageByDate(DAILY_REMINDER_MESSAGES);
+        const identifier = i === 1
+          ? DAILY_REMINDER_IDENTIFIER
+          : `${DAILY_REMINDER_BACKUP_PREFIX}${i}`;
+
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: message.title,
+            body: message.body,
+            data: { type: 'daily_reminder' },
+            badge: 1,
+          },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: targetDate,
+          },
+          identifier,
+        });
+      }
+
+      console.log(`翌日〜${BACKUP_DAYS}日後の DATE trigger でリマインダーをスケジュール`);
+    } else {
+      // リマインダー時刻を過ぎている → 通常の DAILY で再スケジュール（翌日から発火）
+      await scheduleDailyReminder(settings.hour, settings.minute);
+    }
   } catch (error) {
     console.error('リマインダーの再スケジュールに失敗:', error);
   }

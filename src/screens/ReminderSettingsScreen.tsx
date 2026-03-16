@@ -30,7 +30,6 @@ import {
   checkNotificationPermissions,
   scheduleDailyReminder,
   cancelDailyReminder,
-  sendTestNotification,
 } from '../services/notification';
 
 // 時間選択肢（0-23時）
@@ -218,41 +217,6 @@ const ReminderSettingsScreen: React.FC = () => {
     setMinute(selectedMinute);
   }, []);
 
-  const handleTestNotification = async () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    // 権限がない場合は権限リクエスト
-    if (!hasPermission) {
-      const granted = await requestNotificationPermissions();
-      if (granted) {
-        setHasPermission(true);
-        try {
-          await sendTestNotification();
-          Alert.alert('テスト通知を送信しました', '通知が届くことを確認してください。');
-        } catch {
-          Alert.alert('エラー', 'テスト通知の送信に失敗しました');
-        }
-      } else {
-        Alert.alert(
-          '通知の許可が必要です',
-          '設定アプリから通知を許可してください。',
-          [
-            { text: 'キャンセル', style: 'cancel' },
-            { text: '設定を開く', onPress: openNotificationSettings },
-          ]
-        );
-      }
-      return;
-    }
-
-    try {
-      await sendTestNotification();
-      Alert.alert('テスト通知を送信しました', '通知が届くことを確認してください。');
-    } catch {
-      Alert.alert('エラー', 'テスト通知の送信に失敗しました');
-    }
-  };
-
   const formatTime = (h: number, m: number): string => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   };
@@ -411,25 +375,6 @@ const ReminderSettingsScreen: React.FC = () => {
           </>
         )}
 
-        {/* テスト通知（常時表示） */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.testButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
-            onPress={handleTestNotification}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="paper-plane-outline" size={20} color={themeColors.primary} />
-            <Text style={[styles.testButtonText, { color: themeColors.primary }]}>
-              テスト通知を送信
-            </Text>
-          </TouchableOpacity>
-          <Text style={[styles.testButtonHint, { color: themeColors.text.secondary }]}>
-            {hasPermission
-              ? '通知が正しく届くかテストできます'
-              : '通知権限を確認・テストできます'}
-          </Text>
-        </View>
-
         {/* 説明 */}
         <View style={styles.section}>
           <View style={[styles.infoCard, { backgroundColor: `${themeColors.primary}08`, borderColor: `${themeColors.primary}20` }]}>
@@ -558,27 +503,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: fonts.family.regular,
     marginLeft: 2,
-  },
-
-  // --- テストボタン ---
-  testButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    borderRadius: spacing.borderRadius.large,
-    borderWidth: 1,
-    paddingVertical: spacing.md,
-  },
-  testButtonText: {
-    fontSize: 14,
-    fontFamily: fonts.family.bold,
-  },
-  testButtonHint: {
-    fontSize: 11,
-    fontFamily: fonts.family.regular,
-    textAlign: 'center',
-    marginTop: spacing.xs,
   },
 
   // --- 説明カード ---

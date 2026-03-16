@@ -27,6 +27,7 @@ import { MonthlyInsightProvider } from './src/contexts/MonthlyInsightContext';
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 import { AIReflectionProvider } from './src/contexts/AIReflectionContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
+import { getEffectiveToday } from './src/utils/dateUtils';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
 import type { RootStackParamList } from './src/types/navigation';
@@ -35,15 +36,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 // ナビゲーションref（通知タップ時のナビゲーション用）
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
-
-// 今日の日付を取得（YYYY-MM-DD形式）
-const getTodayDateString = (): string => {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 // ディープリンク設定
 const linkingConfig = {
@@ -225,14 +217,22 @@ export default function App() {
       console.log('通知がタップされました:', data);
 
       // リマインダー通知の場合は日記入力画面へ遷移
-      if (data?.type === 'daily_reminder' || data?.type === 'test') {
+      if (data?.type === 'daily_reminder') {
         // バッジをクリア
         clearBadge();
 
         // ナビゲーションの準備ができるまで少し待つ
-        setTimeout(() => {
+        setTimeout(async () => {
           if (navigationRef.isReady()) {
-            navigationRef.navigate('DiaryEntry', { initialDate: getTodayDateString() });
+            let dayStartHour = 0;
+            try {
+              const settings = await loadUserSettings();
+              dayStartHour = settings?.dayStartHour ?? 0;
+            } catch {
+              // 設定読み込み失敗時はデフォルト値（dayStartHour=0）を使用
+            }
+            const effectiveToday = getEffectiveToday(dayStartHour);
+            navigationRef.navigate('DiaryEntry', { initialDate: effectiveToday });
           }
         }, 100);
       }
