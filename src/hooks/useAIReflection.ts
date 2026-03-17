@@ -23,6 +23,8 @@ interface UseAIReflectionProps {
   };
   /** 利用制限チェック後のコールバック */
   onLimitReached?: (reason: UsageLimitReason) => void;
+  /** プレミアムアップグレード導線のコールバック */
+  onUpgrade?: () => void;
 }
 
 /** 拡張されたAIリフレクションの状態 */
@@ -57,6 +59,7 @@ export const useAIReflection = ({
   dateString,
   formState,
   onLimitReached,
+  onUpgrade,
 }: UseAIReflectionProps): UseAIReflectionReturn => {
   const { isPremium } = useSubscription();
 
@@ -134,7 +137,10 @@ export const useAIReflection = ({
         }
 
         // 利用制限エラーのアラート表示
-        showLimitAlert(limitReason, !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined);
+        showLimitAlert(limitReason, {
+          monthlyLimit: !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined,
+          onUpgrade,
+        });
       } else if (error) {
         setLocalError(true);
         setReflectionError({
@@ -146,7 +152,7 @@ export const useAIReflection = ({
     });
 
     return unsubscribe;
-  }, [dateString, subscribeToCompletion, fadeAnim, onLimitReached, isPremium]);
+  }, [dateString, subscribeToCompletion, fadeAnim, onLimitReached, isPremium, onUpgrade]);
 
   // AIリフレクションを取得する
   const getReflection = useCallback(async () => {
@@ -202,14 +208,27 @@ export const useAIReflection = ({
   };
 };
 
+interface ShowLimitAlertOptions {
+  monthlyLimit?: number;
+  featureName?: string;
+  onUpgrade?: () => void;
+}
+
 /**
  * 利用制限エラーのアラートを表示
  */
 export function showLimitAlert(
   limitReason: UsageLimitReason,
-  monthlyLimit?: number,
-  featureName: string = 'AIふりかえり'
+  options: ShowLimitAlertOptions = {},
 ): void {
+  const { monthlyLimit, featureName = 'AIふりかえり', onUpgrade } = options;
+  const buttons: { text: string; style?: 'cancel' | 'default' | 'destructive'; onPress?: () => void }[] = [
+    { text: '閉じる', style: 'cancel' },
+  ];
+  if (onUpgrade) {
+    buttons.push({ text: 'プレミアムを見る', onPress: onUpgrade });
+  }
+
   switch (limitReason) {
     case 'MONTHLY_LIMIT_REACHED':
       Alert.alert(
@@ -217,7 +236,7 @@ export function showLimitAlert(
         monthlyLimit != null
           ? `無料プランでは月${monthlyLimit}回まで${featureName}機能をご利用いただけます。プレミアムプランにアップグレードすると無制限にご利用いただけます。`
           : `${featureName}の今月の利用上限に達しました。`,
-        [{ text: '閉じる', style: 'cancel' }]
+        buttons,
       );
       break;
 
@@ -227,7 +246,7 @@ export function showLimitAlert(
         featureName === 'AIふりかえり'
           ? '無料プランでは同じ日記のAIふりかえりを再生成することはできません。'
           : `無料プランでは${featureName}の再生成はご利用いただけません。`,
-        [{ text: '閉じる', style: 'cancel' }]
+        buttons,
       );
       break;
 
@@ -235,7 +254,7 @@ export function showLimitAlert(
       Alert.alert(
         '本日の利用上限に達しました',
         '明日以降に再度お試しください。',
-        [{ text: '閉じる', style: 'cancel' }]
+        [{ text: '閉じる', style: 'cancel' }],
       );
       break;
 

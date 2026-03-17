@@ -20,6 +20,7 @@ import { loadUserSettings, saveUserSettings, resetOnboarding } from '../utils/st
 import { getCurrentUser, deleteAccount } from '../services/firebase';
 import { deleteAllUserData } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 import DevDebugPanel from '../components/common/DevDebugPanel';
@@ -38,7 +39,7 @@ interface SettingItemProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value?: string;
-  onPress: () => void;
+  onPress?: () => void;
   isLoading?: boolean;
   isLast?: boolean;
   themeColors?: Colors;
@@ -55,11 +56,12 @@ const SettingItem: React.FC<SettingItemProps> = ({
 }) => (
   <TouchableOpacity
     style={[styles.settingItem, { borderBottomColor: tc.border }, isLast && styles.settingItemLast]}
-    onPress={() => {
+    onPress={onPress ? () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onPress();
-    }}
-    activeOpacity={0.6}
+    } : undefined}
+    activeOpacity={onPress ? 0.6 : 1}
+    disabled={!onPress}
   >
     <View style={[styles.settingIconContainer, { backgroundColor: `${tc.primary}15` }]}>
       <Ionicons name={icon} size={20} color={tc.primary} />
@@ -89,6 +91,7 @@ const SettingsScreen: React.FC = () => {
   const [showDebugSection, setShowDebugSection] = useState(false);
   const [showDevDebugPanel, setShowDevDebugPanel] = useState(false);
   const user = getCurrentUser();
+  const { isPremium } = useSubscription();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const themeColors = getColors(isDark);
 
@@ -303,6 +306,21 @@ const SettingsScreen: React.FC = () => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* ⓪ プランセクション */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>プラン</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <SettingItem
+              icon="diamond-outline"
+              label="プレミアムプラン"
+              value={isPremium ? '利用中' : 'アップグレード'}
+              onPress={isPremium ? undefined : () => navigation.navigate('Paywall', { source: 'settings' })}
+              isLast
+              themeColors={themeColors}
+            />
+          </View>
+        </View>
+
         {/* ① ウィジェット・通知セクション */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>ウィジェット・通知</Text>

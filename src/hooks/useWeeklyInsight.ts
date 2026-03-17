@@ -55,6 +55,8 @@ interface UseWeeklyInsightOptions {
   autoLoadLastWeek?: boolean;
   /** 初期表示する週（指定がなければ先週） */
   initialWeekKey?: string;
+  /** プレミアムアップグレード導線のコールバック */
+  onUpgrade?: () => void;
 }
 
 interface UseWeeklyInsightReturn {
@@ -113,7 +115,7 @@ interface UseWeeklyInsightReturn {
 export const useWeeklyInsight = (
   options: UseWeeklyInsightOptions = {}
 ): UseWeeklyInsightReturn => {
-  const { autoLoadLastWeek = false, initialWeekKey } = options;
+  const { autoLoadLastWeek = false, initialWeekKey, onUpgrade } = options;
 
   // Contextからバックグラウンド生成機能を取得
   const {
@@ -277,11 +279,11 @@ export const useWeeklyInsight = (
         const limitCheck = await checkWeeklyInsightLimit(currentWeekKey, tier);
         if (!limitCheck.canGenerate) {
           setLimitReason(limitCheck.limitReason ?? null);
-          showLimitAlert(
-            limitCheck.limitReason!,
-            !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit : undefined,
-            '週間ふりかえり'
-          );
+          showLimitAlert(limitCheck.limitReason!, {
+            monthlyLimit: !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit : undefined,
+            featureName: '週間ふりかえり',
+            onUpgrade,
+          });
           setState('idle');
           return;
         }
@@ -363,7 +365,7 @@ export const useWeeklyInsight = (
         setState('error');
       }
     }
-  }, [currentWeekKey, isPremium, getGenerationStatus, startGeneration, getGeneratedInsight]);
+  }, [currentWeekKey, isPremium, onUpgrade, getGenerationStatus, startGeneration, getGeneratedInsight]);
 
   // 後方互換性: 先週のインサイトを読み込み/生成
   const loadOrGenerateLastWeekInsight = useCallback(async () => {
@@ -549,11 +551,11 @@ export const useWeeklyInsight = (
   const regenerateCurrentWeekInsight = useCallback(async () => {
     // 無料ユーザーは再生成不可
     if (!isPremium) {
-      showLimitAlert(
-        'REGENERATE_NOT_ALLOWED',
-        DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit,
-        '週間ふりかえり'
-      );
+      showLimitAlert('REGENERATE_NOT_ALLOWED', {
+        monthlyLimit: DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit,
+        featureName: '週間ふりかえり',
+        onUpgrade,
+      });
       return;
     }
 
@@ -590,7 +592,7 @@ export const useWeeklyInsight = (
         setState('error');
       }
     }
-  }, [currentWeekKey, isPremium, regenerateGeneration, getGeneratedInsight, getGenerationStatus]);
+  }, [currentWeekKey, isPremium, onUpgrade, regenerateGeneration, getGeneratedInsight, getGenerationStatus]);
 
   // 週が変更されたら記録数を確認
   useEffect(() => {

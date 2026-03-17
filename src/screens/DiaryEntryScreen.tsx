@@ -9,6 +9,8 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { DiaryEntryScreenNavigationProp } from '../types/navigation';
 import { getColors, spacing } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -33,9 +35,14 @@ import { DIARY_QUESTIONS } from '../constants/diary';
 import { hasValidAIConsent, recordAIConsent } from '../utils/storage';
 
 const DiaryEntryScreen: React.FC = () => {
+  const navigation = useNavigation<DiaryEntryScreenNavigationProp>();
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const { isPremium } = useSubscription();
+
+  const handleNavigateToPaywall = useCallback(() => {
+    navigation.navigate('Paywall', { source: 'limit_reached' });
+  }, [navigation]);
 
   const {
     formState,
@@ -71,7 +78,7 @@ const DiaryEntryScreen: React.FC = () => {
     loadSavedReflection,
     resetReflection: _resetReflection, // 将来使用予定
     errorMessage: aiErrorMessage,
-  } = useAIReflection({ dateString, formState });
+  } = useAIReflection({ dateString, formState, onUpgrade: handleNavigateToPaywall });
 
   // ローカルにリフレクションがあるかどうか
   const hasLocalReflection = aiReflectionState === 'loaded' && aiReflection !== null;
@@ -107,18 +114,24 @@ const DiaryEntryScreen: React.FC = () => {
 
     // 無料ユーザーの再生成はアップセルアラートを表示
     if (!isPremium && hasLocalReflection) {
-      showLimitAlert('REGENERATE_NOT_ALLOWED', DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit);
+      showLimitAlert('REGENERATE_NOT_ALLOWED', {
+        monthlyLimit: DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit,
+        onUpgrade: handleNavigateToPaywall,
+      });
       return;
     }
 
     // 事前に利用制限をチェック（サーバーリクエスト前にアラート表示）
     if (!canGenerate && limitReason) {
-      showLimitAlert(limitReason, !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined);
+      showLimitAlert(limitReason, {
+        monthlyLimit: !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined,
+        onUpgrade: handleNavigateToPaywall,
+      });
       return;
     }
 
     await executeGetReflection();
-  }, [executeGetReflection, canGenerate, limitReason, isPremium, hasLocalReflection]);
+  }, [executeGetReflection, canGenerate, limitReason, isPremium, hasLocalReflection, handleNavigateToPaywall]);
 
   // 同意後の処理
   const handleConsent = useCallback(async () => {

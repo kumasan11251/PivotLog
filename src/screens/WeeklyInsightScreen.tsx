@@ -8,6 +8,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -21,13 +22,17 @@ import type { RootStackParamList } from '../types/navigation';
 type WeeklyInsightScreenRouteProp = RouteProp<RootStackParamList, 'WeeklyInsight'>;
 
 const WeeklyInsightScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<WeeklyInsightScreenRouteProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
   const { weekKey: initialWeekKey } = route.params || {};
   const [historyVisible, setHistoryVisible] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleNavigateToPaywall = useCallback(() => {
+    navigation.navigate('Paywall', { source: 'weekly_insight' });
+  }, [navigation]);
 
   const {
     insight,
@@ -47,7 +52,7 @@ const WeeklyInsightScreen: React.FC = () => {
     isCurrentWeekCached,
     regenerateCurrentWeekInsight,
     canRegenerate,
-  } = useWeeklyInsight({ initialWeekKey });
+  } = useWeeklyInsight({ initialWeekKey, onUpgrade: handleNavigateToPaywall });
 
   // 初期化時にインサイト履歴を読み込み
   useEffect(() => {

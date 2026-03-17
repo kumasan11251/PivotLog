@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import type { HomeScreenNavigationProp } from '../types/navigation';
@@ -104,11 +104,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
 
   const handleNavigateToMonthlyInsight = useCallback(() => {
     if (!isPremium) {
-      Alert.alert(
-        'プレミアム機能',
-        '月間ふりかえりはプレミアムプランでご利用いただけます。1ヶ月の記録をAIが分析し、長期的な傾向やパターンを発見します。',
-        [{ text: '閉じる', style: 'cancel' }]
-      );
+      navigation.navigate('Paywall', { source: 'monthly_insight' });
       return;
     }
     navigation.navigate('MonthlyInsight', {});

@@ -5,9 +5,10 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
@@ -20,7 +21,7 @@ import type { RootStackParamList } from '../types/navigation';
 type MonthlyInsightScreenRouteProp = RouteProp<RootStackParamList, 'MonthlyInsight'>;
 
 const MonthlyInsightScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<MonthlyInsightScreenRouteProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
@@ -52,11 +53,7 @@ const MonthlyInsightScreen: React.FC = () => {
   // プレミアムチェック（フォールバック保護）
   useEffect(() => {
     if (!isPremium) {
-      Alert.alert(
-        'プレミアム機能',
-        'この機能はプレミアムプランでご利用いただけます。',
-        [{ text: '閉じる', onPress: () => navigation.goBack() }]
-      );
+      navigation.replace('Paywall', { source: 'monthly_insight' });
     }
   }, [isPremium, navigation]);
 
@@ -257,6 +254,11 @@ const MonthlyInsightScreen: React.FC = () => {
       </View>
     );
   };
+
+  // replace完了までは空画面を表示（テーマ背景色でちらつき防止）
+  if (!isPremium) {
+    return <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} />;
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
