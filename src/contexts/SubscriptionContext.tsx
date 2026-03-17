@@ -32,8 +32,10 @@ import {
   isSubscriptionActive,
   extractSubscriptionDetails,
   restorePurchases as restorePurchasesService,
+  purchasePackage as purchasePackageService,
   addCustomerInfoUpdateListener,
 } from '../services/revenueCat';
+import type { PurchasesPackage } from '../services/revenueCat';
 
 // 開発モードフラグ（リリース時はfalseに）
 const __DEV_MODE__ = __DEV__;
@@ -56,6 +58,10 @@ interface SubscriptionContextType {
   restorePurchases: () => Promise<RestoreResult>;
   /** 復元処理中かどうか */
   isRestoring: boolean;
+  /** パッケージ購入（成功時はtrue、キャンセル時はfalse） */
+  purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
+  /** 購入処理中かどうか */
+  isPurchasing: boolean;
 
   // === 開発用機能 ===
   /** 開発モードが有効かどうか */
@@ -81,6 +87,8 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   isLoading: true,
   restorePurchases: async () => 'unavailable' as const,
   isRestoring: false,
+  purchasePackage: async () => false,
+  isPurchasing: false,
   isDevMode: false,
   devSetTier: () => {},
   devResetOverride: () => {},
@@ -98,6 +106,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   const [status, setStatus] = useState<SubscriptionStatus>(defaultStatus);
   const [isLoading, setIsLoading] = useState(true);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
   const [devOverrideTier, setDevOverrideTier] = useState<SubscriptionTier | null>(null);
 
   // stale closure防止用のref
@@ -279,6 +288,38 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     }
   }, [user, syncSubscriptionToFirestore]);
 
+  // パッケージ購入
+  const purchaseSubscription = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
+    setIsPurchasing(true);
+    try {
+      const customerInfo = await purchasePackageService(pkg);
+      if (!customerInfo) return false; // ユーザーキャンセル
+
+      // 購入成功 → Context状態を即座に更新（リスナー発火を待たない）
+      const isPremiumNow = isSubscriptionActive(customerInfo);
+      const details = extractSubscriptionDetails(customerInfo);
+      const newStatus: SubscriptionStatus = {
+        tier: isPremiumNow ? 'premium' : 'free',
+        isPremium: isPremiumNow,
+        ...details,
+        updatedAt: new Date().toISOString(),
+      };
+      setStatus(newStatus);
+
+      // Firestoreにも同期
+      if (user) {
+        await syncSubscriptionToFirestore(user.uid, newStatus);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[Subscription] 購入に失敗:', error);
+      throw error; // PaywallScreenでAlert表示するためre-throw
+    } finally {
+      setIsPurchasing(false);
+    }
+  }, [user, syncSubscriptionToFirestore]);
+
   // 開発用: ティアを手動で設定（Firestoreも更新）
   const devSetTier = useCallback(async (tier: SubscriptionTier) => {
     if (!__DEV_MODE__) {
@@ -369,11 +410,13 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     isLoading,
     restorePurchases,
     isRestoring,
+    purchasePackage: purchaseSubscription,
+    isPurchasing,
     isDevMode: __DEV_MODE__,
     devSetTier,
     devResetOverride,
     isDevOverrideActive: __DEV_MODE__ && devOverrideTier !== null,
-  }), [status, effectiveTier, isLoading, restorePurchases, isRestoring, devSetTier, devResetOverride, devOverrideTier]);
+  }), [status, effectiveTier, isLoading, restorePurchases, isRestoring, purchaseSubscription, isPurchasing, devSetTier, devResetOverride, devOverrideTier]);
 
   return (
     <SubscriptionContext.Provider value={value}>

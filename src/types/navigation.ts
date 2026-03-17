@@ -16,6 +16,9 @@ export type RootStackParamList = {
   ReminderSettings: undefined;
   WeeklyInsight: { weekKey?: string } | undefined;
   MonthlyInsight: { monthKey?: string } | undefined;
+  Paywall: {
+    source?: 'limit_reached' | 'weekly_insight' | 'monthly_insight' | 'settings';
+  } | undefined;
 };
 
 // 各画面のナビゲーションプロップの型定義
@@ -33,3 +36,4 @@ export type WidgetSettingsScreenNavigationProp = NativeStackNavigationProp<RootS
 export type ReminderSettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ReminderSettings'>;
 export type WeeklyInsightScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'WeeklyInsight'>;
 export type MonthlyInsightScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MonthlyInsight'>;
+export type PaywallScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;

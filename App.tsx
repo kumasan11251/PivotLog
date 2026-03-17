@@ -19,6 +19,7 @@ import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
 import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
 import WeeklyInsightScreen from './src/screens/WeeklyInsightScreen';
 import MonthlyInsightScreen from './src/screens/MonthlyInsightScreen';
+import PaywallScreen from './src/screens/PaywallScreen';
 import { initializeReminder, clearBadge } from './src/services/notification';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
@@ -162,6 +163,14 @@ function MainNavigator() {
       <Stack.Screen
         name="MonthlyInsight"
         component={MonthlyInsightScreen}
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="Paywall"
+        component={PaywallScreen}
         options={{
           presentation: 'modal',
           animation: 'slide_from_bottom',
