@@ -80,6 +80,8 @@ module.exports = {
     ],
     extra: {
       geminiApiKey: env.GEMINI_API_KEY || '',
+      revenueCatApiKeyIos: env.REVENUECAT_API_KEY_IOS || process.env.REVENUECAT_API_KEY_IOS || '',
+      revenueCatApiKeyAndroid: env.REVENUECAT_API_KEY_ANDROID || process.env.REVENUECAT_API_KEY_ANDROID || '',
       eas: {
         projectId: '41c32323-fec2-4cb3-bed7-afd879da5ea4',
       },
