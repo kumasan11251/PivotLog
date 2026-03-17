@@ -131,6 +131,9 @@ export type UsageLimitReason =
   | 'REGENERATE_NOT_ALLOWED'    // 無料プランでは再生成不可
   | 'DAILY_LIMIT_REACHED';      // 1日の利用上限に達した
 
+/** 購入復元の結果 */
+export type RestoreResult = 'restored' | 'not_found' | 'unavailable';
+
 /**
  * AI生成失敗系エラーコード
  */
