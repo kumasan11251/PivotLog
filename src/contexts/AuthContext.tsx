@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { onAuthStateChanged, signInAnonymously, User, signOut as firebaseSignOut } from '../services/firebase';
 import { syncWidgetSettingsFromCloud } from '../utils/widgetStorage';
+import { logoutRevenueCat } from '../services/revenueCat';
 
 interface AuthContextType {
   user: User | null;
@@ -65,6 +66,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // ログアウト処理
   const logout = useCallback(async () => {
     try {
+      // RevenueCatリセットは失敗してもログアウトをブロックしない
+      try {
+        await logoutRevenueCat();
+      } catch (rcError) {
+        console.error('RevenueCat logout failed:', rcError);
+      }
       // Firebaseからログアウト
       await firebaseSignOut();
       // 状態を更新（onAuthStateChangedでも更新されるが、即座に反映するため）
