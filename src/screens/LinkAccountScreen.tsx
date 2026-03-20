@@ -17,6 +17,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 import { getColors, fonts, spacing, textBase } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
 import {
@@ -69,6 +70,7 @@ const GoogleIcon: React.FC<{ size?: number }> = ({ size = 24 }) => (
 const LinkAccountScreen: React.FC = () => {
   const navigation = useNavigation<LinkAccountScreenNavigationProp>();
   const { isDark } = useTheme();
+  const { isPremium } = useSubscription();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -186,6 +188,22 @@ const LinkAccountScreen: React.FC = () => {
       return;
     }
 
+    // サブスク保持中は確認ダイアログを表示
+    if (isPremium) {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'サブスクリプションの確認',
+          'プレミアムプランは現在のアカウントに紐付いています。別のアカウントにログインすると、プレミアム機能が利用できなくなります。\n\nプレミアムを維持する場合は、キャンセルしてアカウント連携をご利用ください。',
+          [
+            { text: 'キャンセル', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'ログインを続ける', style: 'destructive', onPress: () => resolve(true) },
+          ],
+          { cancelable: false },
+        );
+      });
+      if (!confirmed) return;
+    }
+
     setIsLoginLoading(true);
 
     try {
@@ -208,6 +226,23 @@ const LinkAccountScreen: React.FC = () => {
   // 既存アカウントでログイン（Google）
   const handleLoginWithGoogle = async () => {
     setLoginError(null);
+
+    // サブスク保持中は確認ダイアログを表示
+    if (isPremium) {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'サブスクリプションの確認',
+          'プレミアムプランは現在のアカウントに紐付いています。別のアカウントにログインすると、プレミアム機能が利用できなくなります。\n\nプレミアムを維持する場合は、キャンセルしてアカウント連携をご利用ください。',
+          [
+            { text: 'キャンセル', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'ログインを続ける', style: 'destructive', onPress: () => resolve(true) },
+          ],
+          { cancelable: false },
+        );
+      });
+      if (!confirmed) return;
+    }
+
     setIsGoogleLoginLoading(true);
 
     try {
