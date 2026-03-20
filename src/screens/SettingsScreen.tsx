@@ -472,27 +472,39 @@ const SettingsScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>その他</Text>
           <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
             {/* バージョン（タップで開発者メニューをトグル） */}
-            <TouchableOpacity
-              style={[styles.settingItem, dynamicStyles.settingItem]}
-              onPress={toggleDebugSection}
-              activeOpacity={0.6}
-            >
-              <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
-                <Ionicons name="information-circle-outline" size={20} color={themeColors.primary} />
+            {__DEV__ ? (
+              <TouchableOpacity
+                style={[styles.settingItem, dynamicStyles.settingItem]}
+                onPress={toggleDebugSection}
+                activeOpacity={0.6}
+              >
+                <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
+                  <Ionicons name="information-circle-outline" size={20} color={themeColors.primary} />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>バージョン</Text>
+                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>1.0.0</Text>
+                </View>
+                <Ionicons
+                  name={showDebugSection ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={themeColors.text.secondary}
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.settingItem, dynamicStyles.settingItem]}>
+                <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
+                  <Ionicons name="information-circle-outline" size={20} color={themeColors.primary} />
+                </View>
+                <View style={styles.settingContent}>
+                  <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>バージョン</Text>
+                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>1.0.0</Text>
+                </View>
               </View>
-              <View style={styles.settingContent}>
-                <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>バージョン</Text>
-                <Text style={[styles.settingValue, dynamicStyles.settingValue]}>1.0.0</Text>
-              </View>
-              <Ionicons
-                name={showDebugSection ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={themeColors.text.secondary}
-              />
-            </TouchableOpacity>
+            )}
 
             {/* 開発者メニュー（アニメーション付きトグル） */}
-            {showDebugSection && (
+            {__DEV__ && showDebugSection && (
               <Animated.View
                 style={[
                   styles.debugSection,
@@ -566,22 +578,20 @@ const SettingsScreen: React.FC = () => {
                 </TouchableOpacity>
 
                 {/* サブスクリプション・利用状況デバッグ */}
-                {__DEV__ && (
-                  <TouchableOpacity
-                    style={[styles.debugItem, styles.debugItemLast]}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setShowDevDebugPanel(true);
-                    }}
-                    activeOpacity={0.6}
-                  >
-                    <Ionicons name="bug-outline" size={18} color="#9C27B0" />
-                    <Text style={[styles.debugItemText, { color: '#9C27B0' }]}>
-                      課金・利用状況デバッグ
-                    </Text>
-                    <Ionicons name="chevron-forward" size={16} color={themeColors.text.secondary} />
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={[styles.debugItem, styles.debugItemLast]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setShowDevDebugPanel(true);
+                  }}
+                  activeOpacity={0.6}
+                >
+                  <Ionicons name="bug-outline" size={18} color="#9C27B0" />
+                  <Text style={[styles.debugItemText, { color: '#9C27B0' }]}>
+                    課金・利用状況デバッグ
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color={themeColors.text.secondary} />
+                </TouchableOpacity>
               </Animated.View>
             )}
 
