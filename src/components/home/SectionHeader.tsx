@@ -145,7 +145,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   return (
     <View style={styles.titleContainer}>
       <View style={styles.titleWithIcon}>
-        {icon && renderIcon()}
+        {icon && <View style={styles.iconWrapper}>{renderIcon()}</View>}
         <Text style={[styles.title, { color: themeColors.text.secondary }]}>{title}</Text>
       </View>
       <TouchableOpacity
@@ -164,14 +164,18 @@ const styles = StyleSheet.create({
   titleContainer: {
     width: '100%',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+  },
+  iconWrapper: {
+    position: 'absolute',
+    right: '100%',
+    marginRight: spacing.xs,
   },
   title: {
     fontSize: 13,
@@ -179,6 +183,8 @@ const styles = StyleSheet.create({
     ...textBase,
   },
   toggleButton: {
+    position: 'absolute',
+    right: 0,
     padding: spacing.xs,
     borderRadius: spacing.borderRadius.small,
   },

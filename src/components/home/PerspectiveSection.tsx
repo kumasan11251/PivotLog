@@ -63,12 +63,16 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   return (
     <View style={[styles.container, { backgroundColor: themeColors.card, borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0, 0, 0, 0.04)' }]}>
       <View style={styles.headerRow}>
-        <MaterialCommunityIcons
-          name="lightbulb-outline"
-          size={16}
-          color={themeColors.text.secondary}
-        />
-        <Text style={[styles.headerText, { color: themeColors.text.secondary }]}>今日の視点</Text>
+        <View style={styles.headerTitleWrapper}>
+          <View style={styles.headerIconWrapper}>
+            <MaterialCommunityIcons
+              name="lightbulb-outline"
+              size={16}
+              color={themeColors.text.secondary}
+            />
+          </View>
+          <Text style={[styles.headerText, { color: themeColors.text.secondary }]}>今日の視点</Text>
+        </View>
       </View>
 
       <View style={styles.contentContainer}>
@@ -98,8 +102,17 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    justifyContent: 'center',
     marginBottom: spacing.md,
+  },
+  headerTitleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconWrapper: {
+    position: 'absolute',
+    right: '100%',
+    marginRight: spacing.xs,
   },
   headerText: {
     ...textBase,
