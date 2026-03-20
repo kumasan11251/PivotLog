@@ -532,8 +532,8 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'wisdom-thich',
     category: 'wisdom',
-    template: '「生きていること自体が奇跡ではない。気づいていることが奇跡なのだ」',
-    subtext: 'ティク・ナット・ハン',
+    template: '「今この瞬間は、喜びと幸せに満ちている。注意深くあれば、それが見えるだろう」',
+    subtext: 'ティク・ナット・ハン "Peace Is Every Step"',
     emoji: '🕊️',
   },
   {
