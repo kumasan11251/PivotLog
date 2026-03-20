@@ -75,6 +75,7 @@ module.exports = {
           },
         },
       ],
+      ['react-native-purchases', { ios: { useStoreKit2JWS: true } }],
       '@bacons/apple-targets',
       './plugins/withAndroidWidget',
     ],
