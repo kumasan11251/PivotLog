@@ -112,12 +112,9 @@ const DiaryEntryScreen: React.FC = () => {
       return;
     }
 
-    // 無料ユーザーの再生成はアップセルアラートを表示
+    // 無料ユーザーの再生成はPaywall画面に直接遷移
     if (!isPremium && hasLocalReflection) {
-      showLimitAlert('REGENERATE_NOT_ALLOWED', {
-        monthlyLimit: DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit,
-        onUpgrade: handleNavigateToPaywall,
-      });
+      handleNavigateToPaywall();
       return;
     }
 
@@ -322,6 +319,7 @@ const DiaryEntryScreen: React.FC = () => {
                     onRegenerate={handleGetAIReflection}
                     canRegenerate={canRegenerate}
                     isRegenerating={false}
+                    isPremium={isPremium}
                   />
                 )}
 

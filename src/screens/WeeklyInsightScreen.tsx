@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSubscription } from '../contexts/SubscriptionContext';
 import { useWeeklyInsight, isLastWeek, MIN_ENTRIES_FOR_INSIGHT } from '../hooks/useWeeklyInsight';
 import { WeeklyInsightCard, WeekSelector, InsightHistoryList } from '../components/insight';
 import { WeeklyInsightCardV2 } from '../components/insight/WeeklyInsightCardV2';
@@ -26,6 +27,7 @@ const WeeklyInsightScreen: React.FC = () => {
   const route = useRoute<WeeklyInsightScreenRouteProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+  const { isPremium } = useSubscription();
   const { weekKey: initialWeekKey } = route.params || {};
   const [historyVisible, setHistoryVisible] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -198,6 +200,7 @@ const WeeklyInsightScreen: React.FC = () => {
           onRegenerate={handleRegenerate}
           canRegenerate={canRegenerate}
           isRegenerating={false}
+          isPremium={isPremium}
         />
       ) : (
         <WeeklyInsightCard
@@ -205,6 +208,7 @@ const WeeklyInsightScreen: React.FC = () => {
           onRegenerate={handleRegenerate}
           canRegenerate={canRegenerate}
           isRegenerating={false}
+          isPremium={isPremium}
         />
       );
     }

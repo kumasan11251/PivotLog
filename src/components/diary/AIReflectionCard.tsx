@@ -17,6 +17,8 @@ interface AIReflectionCardProps {
   canRegenerate?: boolean;
   /** 再生成中かどうか */
   isRegenerating?: boolean;
+  /** プレミアムユーザーかどうか */
+  isPremium?: boolean;
 }
 
 /**
@@ -68,6 +70,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
   onRegenerate,
   canRegenerate = false,
   isRegenerating = false,
+  isPremium = false,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
@@ -75,6 +78,11 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
 
   // 再生成ボタン押下時
   const handleRegeneratePress = () => {
+    if (!isPremium) {
+      // 無料ユーザーは確認モーダルを出さず直接onRegenerateを呼ぶ（Paywall遷移）
+      onRegenerate?.();
+      return;
+    }
     setShowConfirmModal(true);
   };
 

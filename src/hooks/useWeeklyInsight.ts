@@ -549,13 +549,9 @@ export const useWeeklyInsight = (
 
   // インサイトを再生成（Context経由でバックグラウンド管理）
   const regenerateCurrentWeekInsight = useCallback(async () => {
-    // 無料ユーザーは再生成不可
+    // 無料ユーザーはPaywall画面に直接遷移
     if (!isPremium) {
-      showLimitAlert('REGENERATE_NOT_ALLOWED', {
-        monthlyLimit: DEFAULT_AI_USAGE_LIMITS.freeWeeklyInsightLimit,
-        featureName: '週間ふりかえり',
-        onUpgrade,
-      });
+      onUpgrade?.();
       return;
     }
 

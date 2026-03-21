@@ -24,6 +24,8 @@ interface WeeklyInsightCardProps {
   canRegenerate?: boolean;
   /** 再生成中かどうか */
   isRegenerating?: boolean;
+  /** プレミアムユーザーかどうか */
+  isPremium?: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({
   onRegenerate,
   canRegenerate = false,
   isRegenerating = false,
+  isPremium = false,
 }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
@@ -49,6 +52,10 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({
 
   // 再生成ボタン押下時
   const handleRegeneratePress = () => {
+    if (!isPremium) {
+      onRegenerate?.();
+      return;
+    }
     setShowConfirmModal(true);
   };
 
