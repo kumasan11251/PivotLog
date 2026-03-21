@@ -9,6 +9,8 @@ import {
   Modal,
   FlatList,
   Animated,
+  Linking,
+  Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -87,11 +89,12 @@ const SettingsScreen: React.FC = () => {
   const [dayStartHour, setDayStartHour] = useState<number>(0);
   const [showDayStartPicker, setShowDayStartPicker] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showPremiumInfoModal, setShowPremiumInfoModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDebugSection, setShowDebugSection] = useState(false);
   const [showDevDebugPanel, setShowDevDebugPanel] = useState(false);
   const user = getCurrentUser();
-  const { isPremium } = useSubscription();
+  const { isPremium, status } = useSubscription();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const themeColors = getColors(isDark);
 
@@ -226,6 +229,15 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
+  // expiresAt は時刻付き ISO 8601 文字列のため new Date() で直接パースして問題なし。
+  // getFullYear/getMonth/getDate はローカル時刻で返す。本アプリは日本向けのため
+  // UTC との差異が表示上の問題になることはないが、意図を明示するため getDate() を使用。
+  const formatExpiresAt = (isoString?: string): string => {
+    if (!isoString) return '―';
+    const d = new Date(isoString);
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  };
+
   const formatDayStartHour = (hour: number): string => {
     return hour === 0 ? '0時（深夜0時）' : `${hour}時`;
   };
@@ -314,7 +326,9 @@ const SettingsScreen: React.FC = () => {
               icon="diamond-outline"
               label="プレミアムプラン"
               value={isPremium ? '利用中' : 'アップグレード'}
-              onPress={isPremium ? undefined : () => navigation.navigate('Paywall', { source: 'settings' })}
+              onPress={isPremium
+                ? () => setShowPremiumInfoModal(true)
+                : () => navigation.navigate('Paywall', { source: 'settings' })}
               isLast
               themeColors={themeColors}
             />
@@ -746,6 +760,86 @@ const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
       </Modal>
 
+      {/* プレミアム情報モーダル */}
+      <Modal
+        visible={showPremiumInfoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPremiumInfoModal(false)}
+      >
+        <TouchableOpacity
+          style={[styles.modalOverlay, dynamicStyles.modalOverlay]}
+          activeOpacity={1}
+          onPress={() => setShowPremiumInfoModal(false)}
+        >
+          <TouchableOpacity
+            style={[styles.modalContent, styles.premiumModalContent, dynamicStyles.modalContent]}
+            activeOpacity={1}
+            onPress={() => {}}
+          >
+            {/* ヘッダー */}
+            <View style={[styles.modalHeader, dynamicStyles.modalHeader]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>プレミアムプラン</Text>
+              <TouchableOpacity onPress={() => setShowPremiumInfoModal(false)}>
+                <Ionicons name="close" size={24} color={themeColors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.premiumModalBody} showsVerticalScrollIndicator={false}>
+              {/* ステータスバッジ */}
+              <View style={styles.premiumStatusRow}>
+                <View style={[styles.premiumStatusBadge, { backgroundColor: `${themeColors.primary}15` }]}>
+                  <Ionicons name="checkmark-circle" size={16} color={themeColors.primary} />
+                  <Text style={[styles.premiumStatusText, { color: themeColors.primary }]}>利用中</Text>
+                </View>
+              </View>
+
+              {/* 有効期限 */}
+              <View style={[styles.premiumInfoRow, { borderBottomColor: themeColors.border }]}>
+                <Text style={[styles.premiumInfoLabel, { color: themeColors.text.secondary }]}>有効期限</Text>
+                <Text style={[styles.premiumInfoValue, { color: themeColors.text.primary }]}>
+                  {formatExpiresAt(status.expiresAt)}
+                </Text>
+              </View>
+
+              {/* 自動更新 */}
+              {status.isAutoRenewEnabled !== undefined && (
+                <View style={[styles.premiumInfoRow, { borderBottomColor: themeColors.border }]}>
+                  <Text style={[styles.premiumInfoLabel, { color: themeColors.text.secondary }]}>自動更新</Text>
+                  <Text style={[styles.premiumInfoValue, { color: themeColors.text.primary }]}>
+                    {status.isAutoRenewEnabled ? 'オン' : 'オフ'}
+                  </Text>
+                </View>
+              )}
+
+              {/* App Storeで管理（iOSのみ） */}
+              {/* Android向けは market://subscriptions または https://play.google.com/store/account/subscriptions を将来対応 */}
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity
+                  style={[styles.premiumManageButton, { borderColor: themeColors.primary }]}
+                  onPress={() => Linking.openURL('itms-apps://apps.apple.com/account/subscriptions')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="storefront-outline" size={16} color={themeColors.primary} />
+                  <Text style={[styles.premiumManageButtonText, { color: themeColors.primary }]}>
+                    App Storeでサブスクを管理
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* 閉じるボタン */}
+              <TouchableOpacity
+                style={[styles.premiumCloseButton, { backgroundColor: themeColors.primary }]}
+                onPress={() => setShowPremiumInfoModal(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.premiumCloseButtonText}>閉じる</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* 開発用デバッグパネル */}
       {__DEV__ && (
         <DevDebugPanel
@@ -1043,6 +1137,76 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+  },
+  premiumModalContent: {
+    width: '88%',
+    maxHeight: '75%',
+  },
+  premiumModalBody: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  premiumStatusRow: {
+    alignItems: 'flex-start',
+    marginBottom: spacing.lg,
+  },
+  premiumStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  premiumStatusText: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.bold,
+    ...textBase,
+  },
+  premiumInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+  },
+  premiumInfoLabel: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  premiumInfoValue: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.bold,
+    ...textBase,
+  },
+  premiumManageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: spacing.borderRadius.medium,
+    borderWidth: 1,
+  },
+  premiumManageButtonText: {
+    fontSize: fonts.size.body,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  premiumCloseButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    borderRadius: spacing.borderRadius.medium,
+    alignItems: 'center',
+  },
+  premiumCloseButtonText: {
+    fontSize: fonts.size.body,
+    fontFamily: fonts.family.bold,
+    color: '#FFFFFF',
+    ...textBase,
   },
 });
 
