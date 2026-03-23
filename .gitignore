@@ -34,6 +34,9 @@ yarn-error.*
 .claude/
 plans/
 
+# Internal docs (not for public)
+docs-internal/
+
 # local env files
 .env
 .env*.local
@@ -50,3 +53,4 @@ ios/DerivedData/
 android/.gradle/
 android/build/
 android/app/build/
+android/app/debug.keystore
