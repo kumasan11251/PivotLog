@@ -26,6 +26,7 @@ import { useSubscription } from '../contexts/SubscriptionContext';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 import DevDebugPanel from '../components/common/DevDebugPanel';
+import { LEGAL_URLS } from '../constants/legal';
 
 // 1日の開始時刻の選択肢（0時〜12時）
 const DAY_START_HOUR_OPTIONS = Array.from({ length: 13 }, (_, i) => i);
@@ -630,6 +631,32 @@ const SettingsScreen: React.FC = () => {
               </View>
               <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
             </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ⑥ 法的書類セクション */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>法的情報</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <SettingItem
+              icon="shield-checkmark-outline"
+              label="プライバシーポリシー"
+              onPress={() => Linking.openURL(LEGAL_URLS.PRIVACY)}
+              themeColors={themeColors}
+            />
+            <SettingItem
+              icon="document-text-outline"
+              label="利用規約"
+              onPress={() => Linking.openURL(LEGAL_URLS.TERMS)}
+              themeColors={themeColors}
+            />
+            <SettingItem
+              icon="storefront-outline"
+              label="特定商取引法に基づく表記"
+              onPress={() => Linking.openURL(LEGAL_URLS.TOKUSHOHO)}
+              isLast
+              themeColors={themeColors}
+            />
           </View>
         </View>
 

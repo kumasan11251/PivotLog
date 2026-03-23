@@ -11,6 +11,7 @@ import {
 import { useMemo } from 'react';
 import { getColors, fonts, spacing, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { LEGAL_URLS } from '../../constants/legal';
 
 interface AIConsentModalProps {
   visible: boolean;
@@ -32,7 +33,7 @@ const AIConsentModal: React.FC<AIConsentModalProps> = ({
 
   const handlePrivacyPolicy = () => {
     // プライバシーポリシーのURLを開く
-    Linking.openURL('https://pivotlog.app/privacy');
+    Linking.openURL(LEGAL_URLS.PRIVACY);
   };
 
   return (

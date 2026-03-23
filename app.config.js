@@ -39,6 +39,8 @@ module.exports = {
       googleServicesFile: './GoogleService-Info.plist',
       usesAppleSignIn: true,
       appleTeamId: '4823HQK9AB',
+      // src/constants/legal.ts の LEGAL_URLS.PRIVACY と同期すること
+      privacyUrl: 'https://kumasan11251.github.io/PivotLog/privacy',
       entitlements: {
         'com.apple.security.application-groups': [
           'group.com.kumasan11251.pivotlog.expowidgets',

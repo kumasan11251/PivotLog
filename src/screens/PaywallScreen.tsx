@@ -18,9 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { getOfferings } from '../services/revenueCat';
 import type { PurchasesPackage } from '../services/revenueCat';
-
-const PRIVACY_URL = 'https://pivotlog.app/privacy';
-const TERMS_URL = 'https://pivotlog.app/terms';
+import { LEGAL_URLS } from '../constants/legal';
 
 const FEATURES = [
   { icon: 'sparkles-outline' as const, text: 'AIふりかえり 無制限' },
@@ -298,15 +296,21 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <View style={styles.legalContainer}>
-          <TouchableOpacity onPress={() => Linking.openURL(TERMS_URL)}>
+          <TouchableOpacity onPress={() => Linking.openURL(LEGAL_URLS.TERMS)}>
             <Text style={[styles.legalText, { color: themeColors.text.placeholder }, textBase]}>
               利用規約
             </Text>
           </TouchableOpacity>
           <Text style={[styles.legalSeparator, { color: themeColors.text.placeholder }]}>・</Text>
-          <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_URL)}>
+          <TouchableOpacity onPress={() => Linking.openURL(LEGAL_URLS.PRIVACY)}>
             <Text style={[styles.legalText, { color: themeColors.text.placeholder }, textBase]}>
               プライバシーポリシー
+            </Text>
+          </TouchableOpacity>
+          <Text style={[styles.legalSeparator, { color: themeColors.text.placeholder }]}>・</Text>
+          <TouchableOpacity onPress={() => Linking.openURL(LEGAL_URLS.TOKUSHOHO)}>
+            <Text style={[styles.legalText, { color: themeColors.text.placeholder }, textBase]}>
+              特定商取引法に基づく表記
             </Text>
           </TouchableOpacity>
         </View>
@@ -464,6 +468,7 @@ const styles = StyleSheet.create({
   },
   legalContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: spacing.lg,
