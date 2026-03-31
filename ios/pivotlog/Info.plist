@@ -35,6 +35,18 @@
 				<string>com.kumasan11251.pivotlog</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.882479887406-e4u4v0e8e63lepdlgcc5oqa0jcc7sh7v</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>exp+pivot-log</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>

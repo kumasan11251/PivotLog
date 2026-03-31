@@ -68,7 +68,12 @@ module.exports = {
     plugins: [
       'expo-font',
       '@react-native-firebase/app',
-      '@react-native-google-signin/google-signin',
+      [
+        '@react-native-google-signin/google-signin',
+        {
+          iosUrlScheme: 'com.googleusercontent.apps.882479887406-e4u4v0e8e63lepdlgcc5oqa0jcc7sh7v',
+        },
+      ],
       [
         'expo-build-properties',
         {

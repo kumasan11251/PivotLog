@@ -48,8 +48,7 @@ export const isAnonymousUser = (): boolean => {
 // Google Sign-In の設定
 GoogleSignin.configure({
   webClientId: '882479887406-fu7bih5n3ddlppr1du8qqecrcf0dstnf.apps.googleusercontent.com',
-  // iOSの場合はGoogleService-Info.plistからCLIENT_IDが自動的に読み込まれる
-  // offlineAccessを有効にしてrefresh tokenを取得
+  iosClientId: '882479887406-e4u4v0e8e63lepdlgcc5oqa0jcc7sh7v.apps.googleusercontent.com',
   offlineAccess: true,
 });
 

@@ -4,63 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="12dp"
+    android:padding="24dp"
     android:background="@drawable/widget_background_light">
 
-    <!-- 上部ヘッダー: 日付 + ストリーク -->
-    <LinearLayout
-        android:id="@+id/header_row"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginBottom="4dp">
-
-        <!-- 日付ラベル -->
-        <TextView
-            android:id="@+id/date_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text=""
-            android:textSize="11sp"
-            android:textColor="@color/widget_text_secondary"
-            android:includeFontPadding="false" />
-
-        <!-- 日記状態インジケーター -->
-        <TextView
-            android:id="@+id/diary_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="10sp"
-            android:includeFontPadding="false"
-            android:layout_marginEnd="6dp"
-            android:visibility="gone" />
-
-        <!-- ストリーク表示 -->
-        <TextView
-            android:id="@+id/streak_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="11sp"
-            android:textColor="@color/widget_text_secondary"
-            android:includeFontPadding="false"
-            android:visibility="gone" />
-
-    </LinearLayout>
-
-    <!-- カウントダウン表示 + 進捗率 -->
+    <!-- 上部: 残り時間と進捗率を横並び -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="bottom">
 
-        <!-- 左側: 残り時間 -->
+        <!-- 左側: 残り時間（年と日を横並び） -->
         <LinearLayout
-            android:id="@+id/countdown_container"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -140,9 +95,9 @@
         android:max="1000"
         android:progress="0"
         android:progressDrawable="@drawable/progress_bar_drawable"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="10dp" />
 
-    <!-- メッセージテキスト -->
+    <!-- カスタムテキスト（左揃え、残りスペースを使用） -->
     <TextView
         android:id="@+id/custom_text"
         android:layout_width="match_parent"
@@ -151,8 +106,9 @@
         android:text=""
         android:textSize="12sp"
         android:textColor="@color/widget_text_secondary"
+        android:maxLines="3"
         android:ellipsize="end"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="10dp"
         android:gravity="start|center_vertical"
         android:lineSpacingExtra="2dp"
         android:visibility="gone" />
