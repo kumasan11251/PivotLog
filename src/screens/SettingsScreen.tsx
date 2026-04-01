@@ -71,13 +71,15 @@ const SettingItem: React.FC<SettingItemProps> = ({
     </View>
     <View style={styles.settingContent}>
       <Text style={[styles.settingLabel, { color: tc.text.primary }]}>{label}</Text>
-      <View style={styles.settingValueContainer}>
-        {isLoading ? (
-          <View style={[styles.loadingPlaceholder, { backgroundColor: tc.border }]} />
-        ) : (
-          <Text style={[styles.settingValue, { color: tc.text.secondary }]}>{value || ' '}</Text>
-        )}
-      </View>
+      {(value || isLoading) && (
+        <View style={styles.settingValueContainer}>
+          {isLoading ? (
+            <View style={[styles.loadingPlaceholder, { backgroundColor: tc.border }]} />
+          ) : (
+            <Text style={[styles.settingValue, { color: tc.text.secondary }]}>{value}</Text>
+          )}
+        </View>
+      )}
     </View>
     <Ionicons name="chevron-forward" size={18} color={tc.text.secondary} />
   </TouchableOpacity>
