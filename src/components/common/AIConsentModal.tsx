@@ -48,7 +48,6 @@ const AIConsentModal: React.FC<AIConsentModalProps> = ({
           <ScrollView showsVerticalScrollIndicator={false}>
             {/* ヘッダー */}
             <View style={styles.header}>
-              <Text style={styles.headerIcon}>{'AI'}</Text>
               <Text style={[styles.title, { color: themeColors.text.primary }]}>
                 今日の気づき機能について
               </Text>
@@ -66,13 +65,13 @@ const AIConsentModal: React.FC<AIConsentModalProps> = ({
                 </Text>
                 <View style={styles.infoList}>
                   <Text style={[styles.infoItem, { color: themeColors.text.primary }]}>
-                    {'  '}日記の内容はリフレクション生成のみに使用されます
+                    日記の内容は気づきの生成にのみ使用されます。
                   </Text>
                   <Text style={[styles.infoItem, { color: themeColors.text.primary }]}>
-                    {'  '}AIの学習目的には使用されません
+                    AIの学習目的には使用されません。
                   </Text>
                   <Text style={[styles.infoItem, { color: themeColors.text.primary }]}>
-                    {'  '}生成された内容は参考情報であり、専門家のアドバイスではありません
+                    生成された内容は参考情報であり、専門家のアドバイスではありません。
                   </Text>
                 </View>
               </View>
