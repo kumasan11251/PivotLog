@@ -416,7 +416,7 @@ const SettingsScreen: React.FC = () => {
               <View style={styles.settingContent}>
                 <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>ログイン状態</Text>
                 <View style={styles.accountStatusRow}>
-                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
+                  <Text style={[styles.settingValue, dynamicStyles.settingValue, { flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="middle">
                     {user?.isAnonymous ? 'ゲストユーザー' : user?.email || '不明'}
                   </Text>
                   <View style={[
