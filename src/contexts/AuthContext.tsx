@@ -14,6 +14,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   /** ログイン画面を表示すべきかどうか（初回起動時・ログアウト後） */
   showAuthScreen: boolean;
+  /** ログアウト経由で認証画面に戻ったかどうか */
+  isReturningUser: boolean;
   /** ログアウト処理（AuthContextが状態を管理） */
   logout: () => Promise<void>;
   /** 匿名ログインで始める */
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAuthenticated: false,
   showAuthScreen: false,
+  isReturningUser: false,
   logout: async () => {},
   startAnonymously: async () => {},
 });
@@ -37,6 +40,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAuthScreen, setShowAuthScreen] = useState(false);
+  const [isReturningUser, setIsReturningUser] = useState(false);
 
   useEffect(() => {
     // 認証状態の変更を監視
@@ -76,6 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await firebaseSignOut();
       // 状態を更新（onAuthStateChangedでも更新されるが、即座に反映するため）
       setUser(null);
+      setIsReturningUser(true);
       setShowAuthScreen(true);
     } catch (error) {
       console.error('ログアウトエラー:', error);
@@ -99,6 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     isAuthenticated: user !== null,
     showAuthScreen,
+    isReturningUser,
     logout,
     startAnonymously,
   };

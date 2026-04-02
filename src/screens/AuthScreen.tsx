@@ -21,11 +21,13 @@ import {
   sendPasswordResetEmail,
   getErrorMessage,
 } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 type AuthMode = 'login' | 'signup';
 
 const AuthScreen: React.FC = () => {
-  const [mode, setMode] = useState<AuthMode>('login');
+  const { isReturningUser } = useAuth();
+  const [mode, setMode] = useState<AuthMode>(isReturningUser ? 'login' : 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

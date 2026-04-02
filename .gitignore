@@ -1,5 +1,8 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# Google Service Account Key
+google-service-account.json
+
 # dependencies
 node_modules/
 
