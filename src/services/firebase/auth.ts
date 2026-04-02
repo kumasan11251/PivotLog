@@ -466,7 +466,6 @@ export const getErrorMessage = (error: unknown): string => {
         return 'パスワードを入力してください';
 
       default:
-        // デバッグ用にエラーコードをログ出力
         console.warn('未対応のFirebaseエラーコード:', errorCode);
         return '認証エラーが発生しました。しばらく待ってから再試行してください';
     }
