@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "882479887406-sebpso4e1sfbo1q9p8u43kr2sb0cov67.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kumasan11251.pivotlog",
+            "certificate_hash": "93911fa179b3a491714b0524a035b9e2a232a1f2"
+          }
+        },
+        {
           "client_id": "882479887406-vi3c1oc5t89pm9gqlikvnvk9sm8duhil.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
