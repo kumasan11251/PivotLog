@@ -11,7 +11,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, spacing, getColors } from '../../theme';
+import { fonts, spacing, getColors, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { MonthlyHighlightCard } from './MonthlyHighlightCard';
 import type { MonthlyInsightData, StorylineMood } from '../../types/monthlyInsight';
@@ -591,6 +591,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   entryCountText: {
+    ...textBase,
     fontSize: 12,
     fontFamily: fonts.family.regular,
     fontWeight: '500',

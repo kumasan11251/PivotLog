@@ -5,7 +5,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, spacing, getColors } from '../../theme';
+import { fonts, spacing, getColors, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { MIN_ENTRIES_FOR_MONTHLY_INSIGHT } from '../../utils/monthUtils';
 import type { MonthlyInsightState } from '../../types/monthlyInsight';
@@ -189,6 +189,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   badgeText: {
+    ...textBase,
     fontSize: 10,
     fontFamily: fonts.family.regular,
     fontWeight: '500',

@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, spacing, getColors } from '../../theme';
+import { fonts, spacing, getColors, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { InsightPatternCard } from './InsightPatternCard';
 import type { WeeklyInsightData } from '../../types/weeklyInsight';
@@ -214,6 +214,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   entryCountText: {
+    ...textBase,
     fontSize: 12,
     fontFamily: fonts.family.regular,
     fontWeight: '500',

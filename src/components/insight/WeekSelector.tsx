@@ -7,7 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, spacing, getColors } from '../../theme';
+import { fonts, spacing, getColors, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface WeekSelectorProps {
@@ -178,6 +178,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   lastWeekBadgeText: {
+    ...textBase,
     fontSize: 10,
     fontFamily: fonts.family.regular,
     fontWeight: '500',

@@ -5,7 +5,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, spacing, getColors } from '../../theme';
+import { fonts, spacing, getColors, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { MonthlyHighlight } from '../../types/monthlyInsight';
 
@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   typeText: {
+    ...textBase,
     fontSize: 10,
     fontFamily: fonts.family.regular,
     fontWeight: '500',
