@@ -36,6 +36,7 @@ export default function PaywallScreen() {
     isPurchasing,
     restorePurchases,
     isRestoring,
+    isRevenueCatReady,
   } = useSubscription();
 
   const [monthlyPackage, setMonthlyPackage] = useState<PurchasesPackage | null>(null);
@@ -69,8 +70,10 @@ export default function PaywallScreen() {
   }, []);
 
   useEffect(() => {
-    loadOfferings();
-  }, [loadOfferings]);
+    if (isRevenueCatReady) {
+      loadOfferings();
+    }
+  }, [isRevenueCatReady, loadOfferings]);
 
   // 年額の割引率を動的に計算
   const discountPercent = (() => {
@@ -179,6 +182,11 @@ export default function PaywallScreen() {
             <Text style={[styles.errorText, { color: themeColors.text.secondary }, textBase]}>
               プランの読み込みに失敗しました。{'\n'}再度お試しください。
             </Text>
+            {__DEV__ && (
+              <Text style={[styles.errorText, { color: themeColors.text.placeholder, fontSize: 11 }, textBase]}>
+                SDK初期化: {isRevenueCatReady ? 'OK' : 'NG'} / コンソールログを確認してください
+              </Text>
+            )}
             <TouchableOpacity
               style={[styles.retryButton, { borderColor: themeColors.primary }]}
               onPress={loadOfferings}

@@ -62,6 +62,8 @@ interface SubscriptionContextType {
   purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
   /** 購入処理中かどうか */
   isPurchasing: boolean;
+  /** RevenueCat SDKの初期化が完了しているか */
+  isRevenueCatReady: boolean;
 
   // === 開発用機能 ===
   /** 開発モードが有効かどうか */
@@ -89,6 +91,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   isRestoring: false,
   purchasePackage: async () => false,
   isPurchasing: false,
+  isRevenueCatReady: false,
   isDevMode: false,
   devSetTier: () => {},
   devResetOverride: () => {},
@@ -107,6 +110,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isRestoring, setIsRestoring] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isRevenueCatReady, setIsRevenueCatReady] = useState(false);
   const [devOverrideTier, setDevOverrideTier] = useState<SubscriptionTier | null>(null);
 
   // stale closure防止用のref
@@ -182,6 +186,10 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
       try {
         // SDK初期化（冪等。既に初期化済みなら即リターン）
         await initializeRevenueCat();
+
+        if (!cancelled) {
+          setIsRevenueCatReady(true);
+        }
 
         // Firebase Auth UIDでRevenueCatユーザーを特定
         await identifyUser(user.uid);
@@ -412,11 +420,12 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     isRestoring,
     purchasePackage: purchaseSubscription,
     isPurchasing,
+    isRevenueCatReady,
     isDevMode: __DEV_MODE__,
     devSetTier,
     devResetOverride,
     isDevOverrideActive: __DEV_MODE__ && devOverrideTier !== null,
-  }), [status, effectiveTier, isLoading, restorePurchases, isRestoring, purchaseSubscription, isPurchasing, devSetTier, devResetOverride, devOverrideTier]);
+  }), [status, effectiveTier, isLoading, restorePurchases, isRestoring, purchaseSubscription, isPurchasing, isRevenueCatReady, devSetTier, devResetOverride, devOverrideTier]);
 
   return (
     <SubscriptionContext.Provider value={value}>

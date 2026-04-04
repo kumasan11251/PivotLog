@@ -14,39 +14,64 @@ import Purchases, {
 import { REVENUECAT_API_KEY, ENTITLEMENT_ID } from '../../constants/revenueCat';
 
 let isInitialized = false;
+let initializationPromise: Promise<void> | null = null;
+
+/**
+ * 初期化完了を待つ（他の関数からのフォールバック用）
+ * initializeRevenueCat()が呼ばれていなければ自動で開始する
+ */
+async function ensureInitialized(): Promise<boolean> {
+  if (isInitialized) return true;
+  if (initializationPromise) {
+    await initializationPromise;
+    return isInitialized;
+  }
+  // まだ誰も初期化を開始していない場合
+  await initializeRevenueCat();
+  return isInitialized;
+}
 
 /**
  * RevenueCat SDKを初期化
  * APIキーが空の場合はスキップする（環境変数未設定時のクラッシュ防止）
+ * 複数箇所から呼ばれても安全（同一Promiseを返す）
  */
-export async function initializeRevenueCat(): Promise<void> {
-  if (isInitialized) return;
+export function initializeRevenueCat(): Promise<void> {
+  if (isInitialized) return Promise.resolve();
+  if (initializationPromise) return initializationPromise;
 
-  if (!REVENUECAT_API_KEY) {
-    console.warn('[RevenueCat] APIキーが設定されていません。SDK初期化をスキップします。');
-    return;
-  }
-
-  try {
-    if (__DEV__) {
-      Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+  initializationPromise = (async () => {
+    if (!REVENUECAT_API_KEY) {
+      console.warn('[RevenueCat] APIキーが設定されていません。SDK初期化をスキップします。');
+      return;
     }
 
-    Purchases.configure({
-      apiKey: REVENUECAT_API_KEY,
-    });
+    try {
+      if (__DEV__) {
+        Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+      }
 
-    isInitialized = true;
-  } catch (error) {
-    console.error('[RevenueCat] SDK初期化に失敗しました:', error);
-  }
+      Purchases.configure({
+        apiKey: REVENUECAT_API_KEY,
+      });
+
+      isInitialized = true;
+      console.log('[RevenueCat] SDK初期化完了');
+    } catch (error) {
+      console.error('[RevenueCat] SDK初期化に失敗しました:', error);
+      // 失敗時はPromiseをリセットして再試行可能にする
+      initializationPromise = null;
+    }
+  })();
+
+  return initializationPromise;
 }
 
 /**
  * Firebase Auth UIDでRevenueCatユーザーを特定
  */
 export async function identifyUser(userId: string): Promise<void> {
-  if (!isInitialized) return;
+  if (!(await ensureInitialized())) return;
 
   try {
     await Purchases.logIn(userId);
@@ -60,7 +85,7 @@ export async function identifyUser(userId: string): Promise<void> {
  * 現在のサブスクリプション状態を取得
  */
 export async function getCustomerInfo(): Promise<CustomerInfo | null> {
-  if (!isInitialized) return null;
+  if (!(await ensureInitialized())) return null;
 
   try {
     return await Purchases.getCustomerInfo();
@@ -74,10 +99,17 @@ export async function getCustomerInfo(): Promise<CustomerInfo | null> {
  * 利用可能なプラン（月額・年額）を取得
  */
 export async function getOfferings(): Promise<PurchasesOfferings | null> {
-  if (!isInitialized) return null;
+  if (!(await ensureInitialized())) return null;
 
   try {
-    return await Purchases.getOfferings();
+    const offerings = await Purchases.getOfferings();
+    if (__DEV__ && offerings && !offerings.current) {
+      console.warn(
+        '[RevenueCat] Offeringsは取得できましたが、currentがnullです。' +
+        'RevenueCatダッシュボードで「Default」Offeringがcurrentに設定されているか確認してください。'
+      );
+    }
+    return offerings;
   } catch (error) {
     console.error('[RevenueCat] Offering取得に失敗しました:', error);
     throw error;
@@ -89,7 +121,7 @@ export async function getOfferings(): Promise<PurchasesOfferings | null> {
  * @returns 購入成功時のCustomerInfo、キャンセル時はnull
  */
 export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
-  if (!isInitialized) {
+  if (!(await ensureInitialized())) {
     throw new Error('RevenueCat SDKが初期化されていません');
   }
 
@@ -114,7 +146,7 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerIn
  * 購入復元
  */
 export async function restorePurchases(): Promise<CustomerInfo | null> {
-  if (!isInitialized) return null;
+  if (!(await ensureInitialized())) return null;
 
   try {
     return await Purchases.restorePurchases();
