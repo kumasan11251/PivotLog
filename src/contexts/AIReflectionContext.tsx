@@ -239,11 +239,11 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
 
         updateTask(dateString, {
           status: 'error',
-          error: errorMessage,
+          error: errorCode || errorMessage,
           limitReason,
           completedAt: Date.now(),
         });
-        notifyCompletion(dateString, null, errorMessage, limitReason);
+        notifyCompletion(dateString, null, errorCode || errorMessage, limitReason);
         return null;
       } finally {
         // 完了後にマップから削除

@@ -402,6 +402,7 @@ const InitialSetupScreen: React.FC = () => {
         minValue={minLifespan}
         maxValue={120}
         currentAge={currentAge}
+        forceLightMode
       />
 
       <View style={styles.motivationContainer}>

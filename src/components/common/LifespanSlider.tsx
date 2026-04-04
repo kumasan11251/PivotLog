@@ -23,6 +23,7 @@ interface LifespanSliderProps {
   minValue?: number;
   maxValue?: number;
   currentAge: number;
+  forceLightMode?: boolean;
 }
 
 // プリセット値を動的に生成する関数
@@ -60,9 +61,10 @@ const LifespanSlider: React.FC<LifespanSliderProps> = ({
   minValue = 50,
   maxValue = 120,
   currentAge,
+  forceLightMode = false,
 }) => {
   const { isDark } = useTheme();
-  const themeColors = useMemo(() => getColors(isDark), [isDark]);
+  const themeColors = useMemo(() => getColors(forceLightMode ? false : isDark), [isDark, forceLightMode]);
   const [sliderWidth, setSliderWidth] = useState(SLIDER_WIDTH);
   const [isDragging, setIsDragging] = useState(false);
   const animatedValue = useMemo(() => new Animated.Value(0), []);

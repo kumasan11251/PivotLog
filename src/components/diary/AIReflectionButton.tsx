@@ -16,6 +16,8 @@ interface AIReflectionButtonProps {
   isFeatureLocked?: boolean;
   /** エラーメッセージ（エラー時に表示） */
   errorMessage?: string | null;
+  /** リトライ可能かどうか（falseの場合はリトライボタンを無効化） */
+  retryable?: boolean;
 }
 
 /**
@@ -30,25 +32,26 @@ const AIReflectionButton: React.FC<AIReflectionButtonProps> = ({
   isLimitReached = false,
   isFeatureLocked = false,
   errorMessage,
+  retryable = true,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
 
-  // ボタンの無効状態を決定（isFeatureLocked時はタップ可能にする）
+  // ボタンの無効状態を決定（isFeatureLocked時はタップ可能にする、retryable=falseの場合も無効化）
   const isButtonDisabled = isFeatureLocked
     ? disabled
-    : disabled || isLimitReached;
+    : disabled || isLimitReached || (!!errorMessage && !retryable);
 
   // ボタンテキスト（初回生成のみ表示されるので、再生成関連のテキストは不要）
   const buttonText = useMemo(() => {
     if (errorMessage) {
-      return 'もう一度試す';
+      return retryable ? 'もう一度試す' : '生成できませんでした';
     }
     if (isLimitReached) {
       return '利用上限に達しました';
     }
     return '気づきを受け取る';
-  }, [isLimitReached, errorMessage]);
+  }, [isLimitReached, errorMessage, retryable]);
 
   const buttonBackgroundColor = isButtonDisabled
     ? themeColors.border

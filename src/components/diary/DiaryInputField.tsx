@@ -83,7 +83,7 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
             placeholder={placeholder}
             placeholderTextColor={themeColors.text.placeholder}
             multiline
-            textAlignVertical="top"
+            textAlignVertical="center"
             maxLength={MAX_CHARS}
           />
         </View>
@@ -134,6 +134,7 @@ const styles = StyleSheet.create({
     minHeight: 22,
     paddingTop: 0,
     paddingBottom: 0,
+    includeFontPadding: false,
     ...textBase,
   },
 });

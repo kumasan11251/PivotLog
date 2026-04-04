@@ -24,7 +24,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  themeMode: 'system',
+  themeMode: 'light',
   colorScheme: 'light',
   isDark: false,
   setThemeMode: async () => {},
@@ -37,7 +37,7 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const systemColorScheme = useSystemColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
   const [isLoading, setIsLoading] = useState(true);
   const prevSystemColorScheme = useRef(systemColorScheme);
 

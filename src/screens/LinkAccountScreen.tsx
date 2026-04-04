@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 import { getColors, fonts, spacing, textBase } from '../theme';
@@ -261,7 +261,7 @@ const LinkAccountScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: themeColors.background }]}>
       <ScreenHeader
         title="アカウント連携"
         leftAction={{
@@ -281,86 +281,13 @@ const LinkAccountScreen: React.FC = () => {
           {/* 説明 */}
           <View style={[styles.descriptionContainer, { backgroundColor: themeColors.surface }]}>
             <Text style={[styles.description, { color: themeColors.text.primary }]}>
-              アカウントを連携すると、機種変更時やアプリの再インストール時にデータを復元できます。
-              {'\n'}複数の認証方法を追加することで、どちらでもログインできるようになります。
+              アカウントを連携すると、機種変更やアプリ再インストール時にデータを復元できます。現在のデータはそのまま引き継がれます。
             </Text>
           </View>
-
-          {/* 連携状態 */}
-          {!isAnonymous && (
-            <View style={[styles.statusContainer, { backgroundColor: themeColors.surface }]}>
-              <Text style={[styles.statusTitle, { color: themeColors.text.secondary }]}>連携済みの認証方法</Text>
-              <View style={styles.statusList}>
-                {isLinkedWith('google.com') && (
-                  <View style={styles.statusItem}>
-                    <GoogleIcon size={16} />
-                    <Text style={[styles.statusText, { color: themeColors.text.primary }]}>Google</Text>
-                    <Text style={[styles.statusBadge, { color: themeColors.primary, backgroundColor: `${themeColors.primary}20` }]}>連携済み</Text>
-                  </View>
-                )}
-                {isLinkedWith('password') && (
-                  <View style={styles.statusItem}>
-                    <Text style={styles.statusIcon}>✉️</Text>
-                    <Text style={[styles.statusText, { color: themeColors.text.primary }]}>メールアドレス</Text>
-                    <Text style={[styles.statusBadge, { color: themeColors.primary, backgroundColor: `${themeColors.primary}20` }]}>連携済み</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* ソーシャルログイン */}
-          <View style={styles.socialContainer}>
-            {!isLinkedWith('google.com') ? (
-              <>
-                <TouchableOpacity
-                  style={[styles.socialButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
-                  onPress={handleLinkWithGoogle}
-                  disabled={isAnyLoading}
-                  activeOpacity={0.7}
-                >
-                  {isGoogleLoading ? (
-                    <ActivityIndicator color={themeColors.text.primary} size="small" />
-                  ) : (
-                    <>
-                      <GoogleIcon size={20} />
-                      <Text style={[styles.socialButtonText, { color: themeColors.text.primary }]}>Googleで連携</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                <View style={styles.googleNoteContainer}>
-                  <Text style={styles.googleNoteText}>
-                    ⚠️ 現在テスト版のため、Googleで連携するには事前に開発者へGoogleアカウントのメールアドレスをお知らせください。
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <View style={[styles.socialButton, styles.linkedButton, { backgroundColor: themeColors.background, borderColor: themeColors.primary }]}>
-                <GoogleIcon size={20} />
-                <Text style={[styles.linkedButtonText, { color: themeColors.primary }]}>Google連携済み</Text>
-              </View>
-            )}
-
-            {/* Apple連携は Apple Developer Program 登録後に有効化 */}
-          </View>
-
-          {/* 区切り線 - メール未連携の場合のみ表示 */}
-          {!isLinkedWith('password') && (
-            <View style={styles.dividerContainer}>
-              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
-              <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>または</Text>
-              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
-            </View>
-          )}
 
           {/* メールフォーム - メール未連携の場合のみ表示 */}
           {!isLinkedWith('password') ? (
             <View style={styles.form}>
-              <View style={styles.emailFormHeader}>
-                <Text style={[styles.emailFormNote, { color: themeColors.primary, backgroundColor: `${themeColors.primary}10` }]}>
-                  💡 メールアドレスで連携後も、同じGoogleアカウントであれば後からGoogle連携を追加できます。
-                </Text>
-              </View>
               <View style={styles.inputContainer}>
                 <Text style={[styles.label, { color: themeColors.text.secondary }]}>メールアドレス</Text>
                 <TextInput
@@ -404,7 +331,7 @@ const LinkAccountScreen: React.FC = () => {
                 />
               </View>
 
-              {error && <Text style={styles.errorText}>{error}</Text>}
+              {error && <Text style={[styles.errorText, { color: isDark ? '#EF9A9A' : '#D32F2F' }]}>{error}</Text>}
 
               <View style={styles.buttonContainer}>
                 <Button
@@ -427,6 +354,43 @@ const LinkAccountScreen: React.FC = () => {
             </View>
           )}
 
+          {/* 区切り線 - Google未連携の場合のみ表示 */}
+          {!isLinkedWith('google.com') && (
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
+              <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>または</Text>
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
+            </View>
+          )}
+
+          {/* ソーシャルログイン */}
+          <View style={styles.socialContainer}>
+            {!isLinkedWith('google.com') ? (
+              <TouchableOpacity
+                style={[styles.socialButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
+                onPress={handleLinkWithGoogle}
+                disabled={isAnyLoading}
+                activeOpacity={0.7}
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator color={themeColors.text.primary} size="small" />
+                ) : (
+                  <>
+                    <GoogleIcon size={20} />
+                    <Text style={[styles.socialButtonText, { color: themeColors.text.primary }]}>Googleで連携</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.socialButton, styles.linkedButton, { backgroundColor: themeColors.background, borderColor: themeColors.primary }]}>
+                <GoogleIcon size={20} />
+                <Text style={[styles.linkedButtonText, { color: themeColors.primary }]}>Google連携済み</Text>
+              </View>
+            )}
+
+            {/* Apple連携は Apple Developer Program 登録後に有効化 */}
+          </View>
+
           {/* 全て連携済みの場合のメッセージ */}
           {isLinkedWith('google.com') && isLinkedWith('password') && (
             <View style={[styles.allLinkedContainer, { backgroundColor: `${themeColors.primary}10` }]}>
@@ -435,13 +399,6 @@ const LinkAccountScreen: React.FC = () => {
               </Text>
             </View>
           )}
-
-          {/* 注意書き */}
-          <View style={styles.noteContainer}>
-            <Text style={[styles.noteText, { color: themeColors.text.secondary }]}>
-              ※ 連携後も現在のデータはそのまま引き継がれます
-            </Text>
-          </View>
 
           {/* 既存アカウントでログインセクション - 匿名ユーザーのみ表示 */}
           {isAnonymous && (
@@ -499,33 +456,10 @@ const LinkAccountScreen: React.FC = () => {
             contentContainerStyle={styles.modalScrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.modalWarning}>
-              <Text style={styles.modalWarningText}>
+            <View style={[styles.modalWarning, { backgroundColor: isDark ? '#3E2C1A' : '#FFF3E0' }]}>
+              <Text style={[styles.modalWarningText, { color: isDark ? '#FFB74D' : '#E65100' }]}>
                 ⚠️ ログインすると現在のデータは破棄され、選択したアカウントのデータに切り替わります。
               </Text>
-            </View>
-
-            {/* Googleログイン */}
-            <TouchableOpacity
-              style={[styles.socialButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
-              onPress={handleLoginWithGoogle}
-              disabled={isLoginLoading || isGoogleLoginLoading}
-              activeOpacity={0.7}
-            >
-              {isGoogleLoginLoading ? (
-                <ActivityIndicator color={themeColors.text.primary} size="small" />
-              ) : (
-                <>
-                  <GoogleIcon size={20} />
-                  <Text style={[styles.socialButtonText, { color: themeColors.text.primary }]}>Googleでログイン</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <View style={styles.dividerContainer}>
-              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
-              <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>または</Text>
-              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
             </View>
 
             {/* メールログインフォーム */}
@@ -559,7 +493,7 @@ const LinkAccountScreen: React.FC = () => {
                 />
               </View>
 
-              {loginError && <Text style={styles.errorText}>{loginError}</Text>}
+              {loginError && <Text style={[styles.errorText, { color: isDark ? '#EF9A9A' : '#D32F2F' }]}>{loginError}</Text>}
 
               <View style={styles.buttonContainer}>
                 <Button
@@ -576,6 +510,29 @@ const LinkAccountScreen: React.FC = () => {
                 )}
               </View>
             </View>
+
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
+              <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>または</Text>
+              <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
+            </View>
+
+            {/* Googleログイン */}
+            <TouchableOpacity
+              style={[styles.socialButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
+              onPress={handleLoginWithGoogle}
+              disabled={isLoginLoading || isGoogleLoginLoading}
+              activeOpacity={0.7}
+            >
+              {isGoogleLoginLoading ? (
+                <ActivityIndicator color={themeColors.text.primary} size="small" />
+              ) : (
+                <>
+                  <GoogleIcon size={20} />
+                  <Text style={[styles.socialButtonText, { color: themeColors.text.primary }]}>Googleでログイン</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -634,42 +591,6 @@ const styles = StyleSheet.create({
   linkedButtonText: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
-    ...textBase,
-  },
-  statusContainer: {
-    borderRadius: spacing.borderRadius.medium,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  statusTitle: {
-    fontSize: fonts.size.label,
-    fontFamily: fonts.family.bold,
-    marginBottom: spacing.sm,
-    ...textBase,
-  },
-  statusList: {
-    gap: spacing.xs,
-  },
-  statusItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  statusIcon: {
-    fontSize: 16,
-  },
-  statusText: {
-    fontSize: fonts.size.body,
-    fontFamily: fonts.family.regular,
-    flex: 1,
-    ...textBase,
-  },
-  statusBadge: {
-    fontSize: fonts.size.labelSmall,
-    fontFamily: fonts.family.bold,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: spacing.borderRadius.small,
     ...textBase,
   },
   linkedEmailContainer: {
@@ -731,7 +652,6 @@ const styles = StyleSheet.create({
     ...textBase,
   },
   errorText: {
-    color: '#D32F2F',
     fontSize: fonts.size.label,
     textAlign: 'center',
     marginBottom: spacing.md,
@@ -749,38 +669,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing.sm + 14,
     alignSelf: 'center',
-  },
-  noteContainer: {
-    alignItems: 'center',
-  },
-  noteText: {
-    fontSize: fonts.size.labelSmall,
-    fontFamily: fonts.family.regular,
-    ...textBase,
-  },
-  googleNoteContainer: {
-    backgroundColor: '#FFF8E1',
-    borderRadius: spacing.borderRadius.medium,
-    padding: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  googleNoteText: {
-    fontSize: fonts.size.labelSmall,
-    color: '#F57C00',
-    fontFamily: fonts.family.regular,
-    lineHeight: 18,
-    ...textBase,
-  },
-  emailFormHeader: {
-    marginBottom: spacing.md,
-  },
-  emailFormNote: {
-    fontSize: fonts.size.labelSmall,
-    fontFamily: fonts.family.regular,
-    lineHeight: 18,
-    padding: spacing.sm,
-    borderRadius: spacing.borderRadius.medium,
-    ...textBase,
   },
   existingAccountContainer: {
     marginTop: spacing.xl,
@@ -845,14 +733,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   modalWarning: {
-    backgroundColor: '#FFF3E0',
     borderRadius: spacing.borderRadius.medium,
     padding: spacing.md,
     marginBottom: spacing.lg,
   },
   modalWarningText: {
     fontSize: fonts.size.label,
-    color: '#E65100',
     fontFamily: fonts.family.regular,
     lineHeight: 20,
     ...textBase,

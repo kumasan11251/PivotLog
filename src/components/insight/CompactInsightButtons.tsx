@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { fonts, spacing, getColors } from '../../theme';
+import { fonts, spacing, getColors, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { WeeklyInsightState } from '../../types/weeklyInsight';
 import type { MonthlyInsightState } from '../../types/monthlyInsight';
@@ -240,11 +240,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
+    ...textBase,
     fontSize: 13,
     fontFamily: fonts.family.regular,
     fontWeight: '600',
   },
   subtitle: {
+    ...textBase,
     fontSize: 10,
     fontFamily: fonts.family.regular,
     marginTop: 1,
@@ -256,6 +258,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   badgeText: {
+    ...textBase,
     fontSize: 10,
     fontFamily: fonts.family.regular,
     fontWeight: '600',
@@ -267,6 +270,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   proBadgeText: {
+    ...textBase,
     fontSize: 9,
     fontFamily: fonts.family.regular,
     fontWeight: '700',
@@ -279,6 +283,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   loadingText: {
+    ...textBase,
     fontSize: 12,
     fontFamily: fonts.family.regular,
     fontWeight: '500',

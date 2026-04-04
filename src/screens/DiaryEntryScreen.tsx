@@ -78,6 +78,7 @@ const DiaryEntryScreen: React.FC = () => {
     loadSavedReflection,
     resetReflection: _resetReflection, // 将来使用予定
     errorMessage: aiErrorMessage,
+    reflectionError: aiReflectionError,
   } = useAIReflection({ dateString, formState, onUpgrade: handleNavigateToPaywall });
 
   // ローカルにリフレクションがあるかどうか
@@ -333,6 +334,7 @@ const DiaryEntryScreen: React.FC = () => {
                     isLimitReached={!canGenerate}
                     isFeatureLocked={!isPremium && !isLimitLoading && !canGenerate}
                     errorMessage={aiErrorMessage}
+                    retryable={aiReflectionError?.retryable ?? true}
                   />
                 )}
 

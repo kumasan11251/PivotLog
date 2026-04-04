@@ -143,11 +143,19 @@ export const useAIReflection = ({
         });
       } else if (error) {
         setLocalError(true);
-        setReflectionError({
-          code: error,
-          message: '生成に失敗しました。もう一度お試しください。',
-          retryable: true,
-        });
+        if (error === 'MODEL_SAFETY_BLOCKED') {
+          setReflectionError({
+            code: 'MODEL_SAFETY_BLOCKED',
+            message: '安全性フィルタにより生成できませんでした。日記の内容を変更してお試しください。',
+            retryable: false,
+          });
+        } else {
+          setReflectionError({
+            code: error,
+            message: '生成に失敗しました。もう一度お試しください。',
+            retryable: true,
+          });
+        }
       }
     });
 

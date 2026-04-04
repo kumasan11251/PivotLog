@@ -639,6 +639,17 @@ E) 人とのつながり
 const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
 
 /**
+ * Gemini API共通の安全性設定
+ * 全関数（リフレクション・インサイト）で共有
+ */
+const DEFAULT_SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
+];
+
+/**
  * サポートするAIモデルの型
  */
 type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-3-flash-preview' | 'gemini-3-flash';
@@ -1279,12 +1290,7 @@ export const generateReflection = onCall(
           required: ['understanding'],
         },
       };
-      const safetySettings = [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' },
-      ];
+      const safetySettings = DEFAULT_SAFETY_SETTINGS;
       const fetchHeaders = { 'Content-Type': 'application/json' };
 
       // systemInstruction方式の有効/無効（環境変数で恒久切替可能）
@@ -1362,6 +1368,17 @@ export const generateReflection = onCall(
           // デバッグ: レスポンス全体をログ出力
           console.log('[generateReflection] Full response:', JSON.stringify(responseData, null, 2));
 
+          // promptFeedback.blockReasonをチェック（プロンプト自体がブロックされた場合）
+          // candidates が空になるケースで、リトライしても無駄なので即座にHttpsErrorを投げる
+          const blockReason = responseData.promptFeedback?.blockReason;
+          if (blockReason && blockReason !== 'BLOCK_REASON_UNSPECIFIED') {
+            console.warn(`[generateReflection] Prompt blocked by safety filter: ${blockReason}`);
+            throw new HttpsError('internal', '安全性フィルタにより生成できませんでした。日記の内容を変更してお試しください。', {
+              code: 'MODEL_SAFETY_BLOCKED',
+              retryable: false,
+            });
+          }
+
           // finishReasonをチェック
           const candidate = responseData.candidates?.[0];
           const finishReason = candidate?.finishReason;
@@ -1419,6 +1436,10 @@ export const generateReflection = onCall(
           console.log('[generateReflection] Success');
           return result;
         } catch (retryError) {
+          // HttpsErrorは即座に外側に伝播（リトライ不要なエラー）
+          if (retryError instanceof HttpsError) {
+            throw retryError;
+          }
           lastError = retryError instanceof Error ? retryError : new Error(String(retryError));
           console.error(`[generateReflection] Attempt ${attempt} failed:`, lastError.message);
 
@@ -2082,6 +2103,7 @@ export const generateWeeklyInsight = onCall(
                 parts: [{ text: combinedPrompt }],
               },
             ],
+            safetySettings: DEFAULT_SAFETY_SETTINGS,
             generationConfig: {
               temperature: 0.8, // 創造性と安定性のバランス
               maxOutputTokens: 8192, // 十分な出力枠を確保
@@ -2150,6 +2172,13 @@ export const generateWeeklyInsight = onCall(
       }
 
       const responseData = await response.json();
+
+      // promptFeedback.blockReasonをチェック（プロンプト自体がブロックされた場合）
+      const blockReason = responseData.promptFeedback?.blockReason;
+      if (blockReason && blockReason !== 'BLOCK_REASON_UNSPECIFIED') {
+        console.warn(`[generateWeeklyInsight] Prompt blocked by safety filter: ${blockReason}`);
+        return generateFallbackWeeklyInsight(data);
+      }
 
       // レスポンスの詳細をログ出力（デバッグ用）
       const finishReason = responseData.candidates?.[0]?.finishReason;
@@ -2570,6 +2599,7 @@ export const generateWeeklyInsightV2 = onCall(
                 parts: [{ text: combinedPrompt }],
               },
             ],
+            safetySettings: DEFAULT_SAFETY_SETTINGS,
             generationConfig: {
               temperature: 0.8,
               maxOutputTokens: 8192,
@@ -2656,6 +2686,15 @@ export const generateWeeklyInsightV2 = onCall(
       }
 
       const responseData = await response.json();
+
+      // promptFeedback.blockReasonをチェック（プロンプト自体がブロックされた場合）
+      const blockReasonV2 = responseData.promptFeedback?.blockReason;
+      if (blockReasonV2 && blockReasonV2 !== 'BLOCK_REASON_UNSPECIFIED') {
+        console.warn(`[generateWeeklyInsightV2] Prompt blocked by safety filter: ${blockReasonV2}`);
+        await recordWeeklyInsightUsage(uid, weekKey, isRegenerate);
+        return generateFallbackWeeklyInsightV2(data);
+      }
+
       const finishReason = responseData.candidates?.[0]?.finishReason;
       console.log('[generateWeeklyInsightV2] Finish reason:', finishReason);
 
@@ -3736,6 +3775,7 @@ export const generateMonthlyInsight = onCall(
                 parts: [{ text: combinedPrompt }],
               },
             ],
+            safetySettings: DEFAULT_SAFETY_SETTINGS,
             generationConfig: {
               temperature: 0.8, // 創造性を高めて手紙の質を向上
               maxOutputTokens: 16384, // 出力量増加に対応
@@ -3886,6 +3926,13 @@ export const generateMonthlyInsight = onCall(
       }
 
       const responseData = await response.json();
+
+      // promptFeedback.blockReasonをチェック（プロンプト自体がブロックされた場合）
+      const monthlyBlockReason = responseData.promptFeedback?.blockReason;
+      if (monthlyBlockReason && monthlyBlockReason !== 'BLOCK_REASON_UNSPECIFIED') {
+        console.warn(`[generateMonthlyInsight] Prompt blocked by safety filter: ${monthlyBlockReason}`);
+        return generateFallbackMonthlyInsight(data);
+      }
 
       const finishReason = responseData.candidates?.[0]?.finishReason;
       console.log('[generateMonthlyInsight] Finish reason:', finishReason);
