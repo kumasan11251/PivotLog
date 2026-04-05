@@ -21,10 +21,10 @@ import type { PurchasesPackage } from '../services/revenueCat';
 import { LEGAL_URLS } from '../constants/legal';
 
 const FEATURES = [
-  { icon: 'sparkles-outline' as const, text: 'AIふりかえり 無制限' },
-  { icon: 'bar-chart-outline' as const, text: '週間インサイト 無制限' },
-  { icon: 'calendar-outline' as const, text: '月間インサイト 利用可能' },
-  { icon: 'refresh-outline' as const, text: 'AIふりかえり再生成' },
+  { icon: 'sparkles-outline' as const, text: '今日の気づき 無制限' },
+  { icon: 'bar-chart-outline' as const, text: '週間ふりかえり 無制限' },
+  { icon: 'calendar-outline' as const, text: '月間ふりかえり 無制限' },
+  { icon: 'refresh-outline' as const, text: '今日の気づき再生成' },
 ];
 
 export default function PaywallScreen() {
