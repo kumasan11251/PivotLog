@@ -20,7 +20,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import type { WidgetSettingsScreenNavigationProp } from '../types/navigation';
 import type { MessageSource, WidgetCountdownMode } from '../types/widget';
-import { getColors, fonts, spacing } from '../theme';
+import { getColors, fonts, spacing, textBase } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 import {
@@ -498,6 +498,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    ...textBase,
   },
 
   // --- セグメントコントロール ---
@@ -520,12 +521,14 @@ const styles = StyleSheet.create({
   segmentLabel: {
     fontSize: 12,
     fontFamily: fonts.family.bold,
+    ...textBase,
   },
   segmentDescription: {
     fontSize: 12,
     fontFamily: fonts.family.regular,
     marginTop: spacing.sm,
     marginLeft: spacing.xs,
+    ...textBase,
   },
 
   // --- カスタムテキスト入力 ---
@@ -537,17 +540,20 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     minHeight: 80,
     textAlignVertical: 'top',
+    includeFontPadding: false,
   },
   charCount: {
     fontSize: 12,
     fontFamily: fonts.family.regular,
     marginRight: spacing.xs,
+    ...textBase,
   },
   inputHint: {
     fontSize: 11,
     fontFamily: fonts.family.regular,
     marginTop: spacing.xs,
     marginLeft: spacing.xs,
+    ...textBase,
   },
 
   // --- カウントダウンモード ---
@@ -576,11 +582,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.bold,
     marginBottom: 2,
     textAlign: 'center',
+    ...textBase,
   },
   countdownCardPreview: {
     fontSize: 9,
     fontFamily: fonts.family.regular,
     textAlign: 'center',
+    ...textBase,
   },
   selectedIndicator: {
     position: 'absolute',
@@ -621,11 +629,13 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 15,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   toggleDescription: {
     fontSize: 11,
     fontFamily: fonts.family.regular,
     marginTop: 2,
+    ...textBase,
   },
 
   // --- アコーディオン・ヘルプ ---
@@ -666,6 +676,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.family.regular,
     flex: 1,
+    ...textBase,
   },
   bottomSpacer: {
     height: 40,

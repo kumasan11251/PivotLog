@@ -20,7 +20,7 @@ let initializationPromise: Promise<void> | null = null;
  * 初期化完了を待つ（他の関数からのフォールバック用）
  * initializeRevenueCat()が呼ばれていなければ自動で開始する
  */
-async function ensureInitialized(): Promise<boolean> {
+export async function ensureInitialized(): Promise<boolean> {
   if (isInitialized) return true;
   if (initializationPromise) {
     await initializationPromise;
@@ -78,6 +78,21 @@ export async function identifyUser(userId: string): Promise<void> {
   } catch (error) {
     console.error('[RevenueCat] ユーザー特定に失敗しました:', error);
     throw error;
+  }
+}
+
+/**
+ * CustomerInfoキャッシュを無効化
+ * 次回getCustomerInfo()呼び出し時にサーバーから最新情報を取得する
+ */
+export async function invalidateCustomerInfoCache(): Promise<void> {
+  if (!(await ensureInitialized())) return;
+
+  try {
+    Purchases.invalidateCustomerInfoCache();
+    console.log('[RevenueCat] CustomerInfoキャッシュを無効化しました');
+  } catch (error) {
+    console.error('[RevenueCat] キャッシュ無効化に失敗しました:', error);
   }
 }
 
@@ -202,8 +217,14 @@ export async function logoutRevenueCat(): Promise<void> {
 export function addCustomerInfoUpdateListener(
   listener: (info: CustomerInfo) => void,
 ): () => void {
-  if (!isInitialized) return () => {};
-  return Purchases.addCustomerInfoUpdateListener(listener);
+  if (!isInitialized) {
+    console.warn('[RevenueCat] SDK未初期化のためリスナー登録をスキップしました');
+    return () => {};
+  }
+  Purchases.addCustomerInfoUpdateListener(listener);
+  return () => {
+    Purchases.removeCustomerInfoUpdateListener(listener);
+  };
 }
 
 // 型の再エクスポート

@@ -134,6 +134,9 @@ export type UsageLimitReason =
 /** 購入復元の結果 */
 export type RestoreResult = 'restored' | 'not_found' | 'unavailable';
 
+/** パッケージ購入の結果 */
+export type PurchaseResult = 'purchased' | 'cancelled' | 'pending';
+
 /**
  * AI生成失敗系エラーコード
  */

@@ -89,11 +89,22 @@ export default function PaywallScreen() {
     if (!pkg) return;
 
     try {
-      const success = await purchasePackage(pkg);
-      if (success) {
-        navigation.goBack();
+      const result = await purchasePackage(pkg);
+      switch (result) {
+        case 'purchased':
+          navigation.goBack();
+          break;
+        case 'pending':
+          Alert.alert(
+            '処理中',
+            '購入は完了しましたが、プレミアム機能の有効化に少し時間がかかる場合があります。しばらくお待ちください。',
+            [{ text: 'OK', onPress: () => navigation.goBack() }],
+          );
+          break;
+        case 'cancelled':
+          // 何もしない
+          break;
       }
-      // false = キャンセル → 何もしない
     } catch {
       Alert.alert(
         '購入エラー',

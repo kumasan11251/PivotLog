@@ -20,7 +20,7 @@ import Constants from 'expo-constants';
 import type { ReminderSettingsScreenNavigationProp } from '../types/navigation';
 import type { ReminderSettings } from '../types/reminder';
 import { DEFAULT_REMINDER_SETTINGS } from '../types/reminder';
-import { getColors, fonts, spacing } from '../theme';
+import { getColors, fonts, spacing, textBase } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import ScreenHeader from '../components/common/ScreenHeader';
 import {
@@ -421,6 +421,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    ...textBase,
   },
 
   // --- トグルカード ---
@@ -448,12 +449,14 @@ const styles = StyleSheet.create({
   toggleLabel: {
     fontSize: 16,
     fontFamily: fonts.family.bold,
+    ...textBase,
   },
   toggleDescription: {
     fontSize: 12,
     fontFamily: fonts.family.regular,
     marginTop: spacing.xs,
     marginLeft: 30,
+    ...textBase,
   },
 
   // --- 時刻表示 ---
@@ -472,11 +475,13 @@ const styles = StyleSheet.create({
   timeDisplayText: {
     fontSize: 32,
     fontFamily: fonts.family.bold,
+    ...textBase,
   },
   timeDisplaySubtext: {
     fontSize: 12,
     fontFamily: fonts.family.regular,
     marginTop: spacing.xs,
+    ...textBase,
   },
 
   // --- ピッカーグリッド ---
@@ -498,11 +503,13 @@ const styles = StyleSheet.create({
   pickerItemText: {
     fontSize: 15,
     fontFamily: fonts.family.regular,
+    ...textBase,
   },
   pickerItemSuffix: {
     fontSize: 11,
     fontFamily: fonts.family.regular,
     marginLeft: 2,
+    ...textBase,
   },
 
   // --- 説明カード ---
@@ -521,11 +528,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.family.bold,
     marginBottom: spacing.xs,
+    ...textBase,
   },
   infoText: {
     fontSize: 12,
     fontFamily: fonts.family.regular,
     lineHeight: 18,
+    ...textBase,
   },
 
   bottomSpacer: {

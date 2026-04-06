@@ -16,4 +16,4 @@ if (__DEV__) {
   });
 }
 
-export const ENTITLEMENT_ID = 'premium';
+export const ENTITLEMENT_ID = 'Premium';

@@ -14,6 +14,7 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import firestore from '@react-native-firebase/firestore';
 import type {
@@ -21,14 +22,16 @@ import type {
   SubscriptionStatus,
   AIUsageLimits,
   RestoreResult,
+  PurchaseResult,
 } from '../types/subscription';
 import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
 import { useAuth } from './AuthContext';
 import { COLLECTIONS } from '../services/firebase/config';
 import {
-  initializeRevenueCat,
+  ensureInitialized as ensureRevenueCatInitialized,
   identifyUser,
   getCustomerInfo,
+  invalidateCustomerInfoCache,
   isSubscriptionActive,
   extractSubscriptionDetails,
   restorePurchases as restorePurchasesService,
@@ -58,8 +61,8 @@ interface SubscriptionContextType {
   restorePurchases: () => Promise<RestoreResult>;
   /** 復元処理中かどうか */
   isRestoring: boolean;
-  /** パッケージ購入（成功時はtrue、キャンセル時はfalse） */
-  purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
+  /** パッケージ購入 */
+  purchasePackage: (pkg: PurchasesPackage) => Promise<PurchaseResult>;
   /** 購入処理中かどうか */
   isPurchasing: boolean;
   /** RevenueCat SDKの初期化が完了しているか */
@@ -89,7 +92,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   isLoading: true,
   restorePurchases: async () => 'unavailable' as const,
   isRestoring: false,
-  purchasePackage: async () => false,
+  purchasePackage: async () => 'cancelled' as const,
   isPurchasing: false,
   isRevenueCatReady: false,
   isDevMode: false,
@@ -185,19 +188,35 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
 
       try {
         // SDK初期化（冪等。既に初期化済みなら即リターン）
-        await initializeRevenueCat();
+        const sdkReady = await ensureRevenueCatInitialized();
 
         if (!cancelled) {
-          setIsRevenueCatReady(true);
+          setIsRevenueCatReady(sdkReady);
+        }
+
+        // SDK初期化失敗 → 無料ティアのまま終了
+        if (!sdkReady) {
+          if (!cancelled) {
+            const freeStatus: SubscriptionStatus = {
+              tier: 'free',
+              isPremium: false,
+              updatedAt: new Date().toISOString(),
+            };
+            setStatus(freeStatus);
+            setIsLoading(false);
+          }
+          return;
         }
 
         // Firebase Auth UIDでRevenueCatユーザーを特定
         await identifyUser(user.uid);
 
-        // サブスクリプション状態を取得
+        // キャッシュを無効化して最新のサブスクリプション状態を取得
+        // 払い戻し・キャンセル等の変更がキャッシュで隠れることを防ぐ
+        await invalidateCustomerInfoCache();
         const customerInfo = await getCustomerInfo();
 
-        // SDK未初期化（APIキー未設定等）→ 無料ティアのまま、リスナー登録もスキップ
+        // customerInfo取得失敗 → 無料ティアのまま、リスナー登録もスキップ
         if (!customerInfo) {
           if (!cancelled) {
             const freeStatus: SubscriptionStatus = {
@@ -264,6 +283,39 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     };
   }, [isAuthenticated, user, syncSubscriptionToFirestore]);
 
+  // フォアグラウンド復帰時にサブスクリプション状態を再チェック
+  // 払い戻し・キャンセル等がバックグラウンド中に処理された場合に反映する
+  useEffect(() => {
+    if (!isAuthenticated || !user || !isRevenueCatReady) return;
+
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
+      if (nextAppState !== 'active') return;
+
+      try {
+        await invalidateCustomerInfoCache();
+        const customerInfo = await getCustomerInfo();
+        if (!customerInfo) return;
+
+        const isPremiumNow = isSubscriptionActive(customerInfo);
+        const details = extractSubscriptionDetails(customerInfo);
+        const newStatus: SubscriptionStatus = {
+          tier: isPremiumNow ? 'premium' : 'free',
+          isPremium: isPremiumNow,
+          ...details,
+          updatedAt: new Date().toISOString(),
+        };
+
+        setStatus(newStatus);
+        await syncSubscriptionToFirestore(user.uid, newStatus);
+      } catch (error) {
+        console.error('[Subscription] フォアグラウンド復帰時のサブスクリプション再チェックに失敗:', error);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [isAuthenticated, user, isRevenueCatReady, syncSubscriptionToFirestore]);
+
   // 購入復元
   const restorePurchases = useCallback(async (): Promise<RestoreResult> => {
     setIsRestoring(true);
@@ -297,11 +349,11 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   }, [user, syncSubscriptionToFirestore]);
 
   // パッケージ購入
-  const purchaseSubscription = useCallback(async (pkg: PurchasesPackage): Promise<boolean> => {
+  const purchaseSubscription = useCallback(async (pkg: PurchasesPackage): Promise<PurchaseResult> => {
     setIsPurchasing(true);
     try {
       const customerInfo = await purchasePackageService(pkg);
-      if (!customerInfo) return false; // ユーザーキャンセル
+      if (!customerInfo) return 'cancelled'; // ユーザーキャンセル
 
       // 購入成功 → Context状態を即座に更新（リスナー発火を待たない）
       const isPremiumNow = isSubscriptionActive(customerInfo);
@@ -319,7 +371,12 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
         await syncSubscriptionToFirestore(user.uid, newStatus);
       }
 
-      return true;
+      if (!isPremiumNow) {
+        console.warn('[Subscription] 購入成功だがエンタイトルメント未確認。pending状態として返却');
+        return 'pending';
+      }
+
+      return 'purchased';
     } catch (error) {
       console.error('[Subscription] 購入に失敗:', error);
       throw error; // PaywallScreenでAlert表示するためre-throw
