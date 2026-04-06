@@ -232,6 +232,13 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
+  const PREMIUM_FEATURES = [
+    { text: '今日の気づき 無制限' },
+    { text: '週間ふりかえり 無制限' },
+    { text: '月間ふりかえり 無制限' },
+    { text: '今日の気づき再生成' },
+  ];
+
   // expiresAt は時刻付き ISO 8601 文字列のため new Date() で直接パースして問題なし。
   // getFullYear/getMonth/getDate はローカル時刻で返す。本アプリは日本向けのため
   // UTC との差異が表示上の問題になることはないが、意図を明示するため getDate() を使用。
@@ -303,6 +310,19 @@ const SettingsScreen: React.FC = () => {
     },
     modalOptionText: {
       color: themeColors.text.primary,
+    },
+    premiumIconCircle: {
+      backgroundColor: `${themeColors.primary}15`,
+    },
+    premiumFeaturesCard: {
+      backgroundColor: `${themeColors.primary}08`,
+    },
+    premiumFeatureRowBorder: {
+      borderBottomColor: `${themeColors.primary}15`,
+    },
+    premiumSubscriptionCard: {
+      backgroundColor: themeColors.surface,
+      borderColor: themeColors.border,
     },
   };
 
@@ -806,42 +826,71 @@ const SettingsScreen: React.FC = () => {
             activeOpacity={1}
             onPress={() => {}}
           >
-            {/* ヘッダー */}
-            <View style={[styles.modalHeader, dynamicStyles.modalHeader]}>
-              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>プレミアムプラン</Text>
-              <TouchableOpacity onPress={() => setShowPremiumInfoModal(false)}>
-                <Ionicons name="close" size={24} color={themeColors.text.secondary} />
-              </TouchableOpacity>
-            </View>
-
             <ScrollView style={styles.premiumModalBody} showsVerticalScrollIndicator={false}>
-              {/* ステータスバッジ */}
-              <View style={styles.premiumStatusRow}>
-                <View style={[styles.premiumStatusBadge, { backgroundColor: `${themeColors.primary}15` }]}>
-                  <Ionicons name="checkmark-circle" size={16} color={themeColors.primary} />
-                  <Text style={[styles.premiumStatusText, { color: themeColors.primary }]}>利用中</Text>
+              {/* セクション1: プレミアムヘッダー */}
+              <View style={styles.premiumHeader}>
+                <TouchableOpacity
+                  style={styles.premiumCloseIcon}
+                  onPress={() => setShowPremiumInfoModal(false)}
+                  hitSlop={{ top: 12, right: 12, bottom: 12, left: 12 }}
+                >
+                  <Ionicons name="close" size={22} color={themeColors.text.secondary} />
+                </TouchableOpacity>
+                <View style={[styles.premiumIconCircle, dynamicStyles.premiumIconCircle]}>
+                  <Ionicons name="diamond" size={36} color={themeColors.primary} />
                 </View>
-              </View>
-
-              {/* 有効期限 */}
-              <View style={[styles.premiumInfoRow, { borderBottomColor: themeColors.border }]}>
-                <Text style={[styles.premiumInfoLabel, { color: themeColors.text.secondary }]}>有効期限</Text>
-                <Text style={[styles.premiumInfoValue, { color: themeColors.text.primary }]}>
-                  {formatExpiresAt(status.expiresAt)}
+                <Text style={[styles.premiumHeaderTitle, { color: themeColors.text.primary }]}>
+                  PivotLog Premium
+                </Text>
+                <View style={[styles.premiumActiveBadge, { backgroundColor: `${themeColors.primary}20` }]}>
+                  <Ionicons name="checkmark-circle" size={14} color={themeColors.primary} />
+                  <Text style={[styles.premiumActiveBadgeText, { color: themeColors.primary }]}>利用中</Text>
+                </View>
+                <Text style={[styles.premiumThankYouText, { color: themeColors.text.secondary }]}>
+                  ご利用ありがとうございます
                 </Text>
               </View>
 
-              {/* 自動更新 */}
-              {status.isAutoRenewEnabled !== undefined && (
-                <View style={[styles.premiumInfoRow, { borderBottomColor: themeColors.border }]}>
-                  <Text style={[styles.premiumInfoLabel, { color: themeColors.text.secondary }]}>自動更新</Text>
-                  <Text style={[styles.premiumInfoValue, { color: themeColors.text.primary }]}>
-                    {status.isAutoRenewEnabled ? 'オン' : 'オフ'}
+              {/* セクション2: 特典一覧カード */}
+              <View style={[styles.premiumFeaturesCard, dynamicStyles.premiumFeaturesCard]}>
+                {PREMIUM_FEATURES.map((feature, index) => (
+                  <View
+                    key={feature.text}
+                    style={[
+                      styles.premiumFeatureRow,
+                      index < PREMIUM_FEATURES.length - 1 && [
+                        { borderBottomWidth: StyleSheet.hairlineWidth },
+                        dynamicStyles.premiumFeatureRowBorder,
+                      ],
+                    ]}
+                  >
+                    <Ionicons name="checkmark-circle" size={18} color={themeColors.primary} />
+                    <Text style={[styles.premiumFeatureText, { color: themeColors.text.primary }]}>
+                      {feature.text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* セクション3: サブスクリプション情報カード */}
+              <View style={[styles.premiumSubscriptionCard, dynamicStyles.premiumSubscriptionCard]}>
+                <View style={styles.premiumSubInfoRow}>
+                  <Text style={[styles.premiumSubInfoLabel, { color: themeColors.text.secondary }]}>有効期限</Text>
+                  <Text style={[styles.premiumSubInfoValue, { color: themeColors.text.primary }]}>
+                    {formatExpiresAt(status.expiresAt)}
                   </Text>
                 </View>
-              )}
+                {status.isAutoRenewEnabled !== undefined && (
+                  <View style={styles.premiumSubInfoRow}>
+                    <Text style={[styles.premiumSubInfoLabel, { color: themeColors.text.secondary }]}>自動更新</Text>
+                    <Text style={[styles.premiumSubInfoValue, { color: themeColors.text.primary }]}>
+                      {status.isAutoRenewEnabled ? 'オン' : 'オフ'}
+                    </Text>
+                  </View>
+                )}
+              </View>
 
-              {/* App Storeで管理（iOSのみ） */}
+              {/* セクション4: App Store管理ボタン（iOSのみ） */}
               {/* Android向けは market://subscriptions または https://play.google.com/store/account/subscriptions を将来対応 */}
               {Platform.OS === 'ios' && (
                 <TouchableOpacity
@@ -856,7 +905,7 @@ const SettingsScreen: React.FC = () => {
                 </TouchableOpacity>
               )}
 
-              {/* 閉じるボタン */}
+              {/* セクション5: 閉じるボタン */}
               <TouchableOpacity
                 style={[styles.premiumCloseButton, { backgroundColor: themeColors.primary }]}
                 onPress={() => setShowPremiumInfoModal(false)}
@@ -1169,43 +1218,90 @@ const styles = StyleSheet.create({
   },
   premiumModalContent: {
     width: '88%',
-    maxHeight: '75%',
+    maxHeight: '80%',
   },
   premiumModalBody: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
   },
-  premiumStatusRow: {
-    alignItems: 'flex-start',
+  premiumHeader: {
+    alignItems: 'center',
     marginBottom: spacing.lg,
   },
-  premiumStatusBadge: {
+  premiumIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  premiumHeaderTitle: {
+    fontSize: fonts.size.title,
+    fontFamily: fonts.family.bold,
+    marginBottom: spacing.sm,
+    ...textBase,
+  },
+  premiumActiveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     paddingHorizontal: spacing.md,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 20,
+    marginBottom: spacing.sm,
   },
-  premiumStatusText: {
-    fontSize: fonts.size.label,
+  premiumActiveBadgeText: {
+    fontSize: fonts.size.labelSmall,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
-  premiumInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-  },
-  premiumInfoLabel: {
+  premiumThankYouText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,
     ...textBase,
   },
-  premiumInfoValue: {
+  premiumCloseIcon: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  premiumFeaturesCard: {
+    borderRadius: spacing.borderRadius.medium,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  premiumFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  premiumFeatureText: {
+    fontSize: fonts.size.body,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  premiumSubscriptionCard: {
+    borderRadius: spacing.borderRadius.medium,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  premiumSubInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  premiumSubInfoLabel: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  premiumSubInfoValue: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
     ...textBase,
@@ -1215,7 +1311,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    marginTop: spacing.xl,
+    marginTop: spacing.md,
     paddingVertical: spacing.md,
     borderRadius: spacing.borderRadius.medium,
     borderWidth: 1,
