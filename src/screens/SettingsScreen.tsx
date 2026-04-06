@@ -352,9 +352,24 @@ const SettingsScreen: React.FC = () => {
               onPress={isPremium
                 ? () => setShowPremiumInfoModal(true)
                 : () => navigation.navigate('Paywall', { source: 'settings' })}
-              isLast
+              isLast={!isPremium}
               themeColors={themeColors}
             />
+            {isPremium && (
+              <SettingItem
+                icon="storefront-outline"
+                label="サブスクリプション管理"
+                value={Platform.OS === 'ios' ? 'App Store' : 'Google Play'}
+                onPress={() => {
+                  const url = Platform.OS === 'ios'
+                    ? 'itms-apps://apps.apple.com/account/subscriptions'
+                    : 'https://play.google.com/store/account/subscriptions';
+                  Linking.openURL(url);
+                }}
+                isLast
+                themeColors={themeColors}
+              />
+            )}
           </View>
         </View>
 
@@ -890,20 +905,22 @@ const SettingsScreen: React.FC = () => {
                 )}
               </View>
 
-              {/* セクション4: App Store管理ボタン（iOSのみ） */}
-              {/* Android向けは market://subscriptions または https://play.google.com/store/account/subscriptions を将来対応 */}
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity
-                  style={[styles.premiumManageButton, { borderColor: themeColors.primary }]}
-                  onPress={() => Linking.openURL('itms-apps://apps.apple.com/account/subscriptions')}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="storefront-outline" size={16} color={themeColors.primary} />
-                  <Text style={[styles.premiumManageButtonText, { color: themeColors.primary }]}>
-                    App Storeでサブスクを管理
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {/* セクション4: ストア管理ボタン（iOS / Android） */}
+              <TouchableOpacity
+                style={[styles.premiumManageButton, { borderColor: themeColors.primary }]}
+                onPress={() => {
+                  const url = Platform.OS === 'ios'
+                    ? 'itms-apps://apps.apple.com/account/subscriptions'
+                    : 'https://play.google.com/store/account/subscriptions';
+                  Linking.openURL(url);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="storefront-outline" size={16} color={themeColors.primary} />
+                <Text style={[styles.premiumManageButtonText, { color: themeColors.primary }]}>
+                  {Platform.OS === 'ios' ? 'App Storeでサブスクを管理' : 'Google Playでサブスクを管理'}
+                </Text>
+              </TouchableOpacity>
 
               {/* セクション5: 閉じるボタン */}
               <TouchableOpacity
