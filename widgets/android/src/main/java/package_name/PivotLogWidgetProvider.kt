@@ -9,6 +9,9 @@ import android.graphics.drawable.GradientDrawable
 import org.json.JSONException
 import org.json.JSONObject
 import android.util.Log
+import android.app.PendingIntent
+import android.content.Intent
+import android.net.Uri
 
 /**
  * PivotLog ウィジェット
@@ -118,16 +121,109 @@ internal fun updateAppWidget(
             // プログレスバーを設定（max=1000で0.1%単位の精度）
             views.setProgressBar(R.id.progress_bar, 1000, (lifeProgress * 10).toInt(), false)
 
-            // カスタムテキストがあれば設定
-            if (data.has("customText") && data.getString("customText").isNotEmpty()) {
-                views.setTextViewText(R.id.custom_text, data.getString("customText"))
+            // 表示要素フラグの読み取り（デフォルト=true）
+            val showDateHeader = !data.has("showDateHeader") || data.getBoolean("showDateHeader")
+            val showDiaryStatus = !data.has("showDiaryStatus") || data.getBoolean("showDiaryStatus")
+            val showStreak = !data.has("showStreak") || data.getBoolean("showStreak")
+
+            // 日付ヘッダー + 日記記入状態アイコン
+            if (showDateHeader) {
+                val todayDateLabel = data.optString("todayDateLabel", "")
+                if (todayDateLabel.isNotEmpty()) {
+                    views.setViewVisibility(R.id.date_header_row, android.view.View.VISIBLE)
+                    views.setTextViewText(R.id.date_header_text, todayDateLabel)
+                    views.setTextColor(R.id.date_header_text, textSecondaryColor)
+
+                    // 日記記入状態アイコン
+                    if (showDiaryStatus) {
+                        val hasTodayEntry = data.has("hasTodayEntry") && data.getBoolean("hasTodayEntry")
+                        if (hasTodayEntry) {
+                            views.setTextViewText(R.id.diary_status_icon, "✔")
+                            views.setTextColor(R.id.diary_status_icon, primaryColor)
+                        } else {
+                            views.setTextViewText(R.id.diary_status_icon, "○")
+                            views.setTextColor(R.id.diary_status_icon, textSecondaryColor)
+                        }
+                        views.setViewVisibility(R.id.diary_status_icon, android.view.View.VISIBLE)
+                    } else {
+                        views.setViewVisibility(R.id.diary_status_icon, android.view.View.GONE)
+                    }
+                } else {
+                    views.setViewVisibility(R.id.date_header_row, android.view.View.GONE)
+                }
+            } else {
+                views.setViewVisibility(R.id.date_header_row, android.view.View.GONE)
+            }
+
+            // 連続記録
+            val streakDays = if (data.has("streakDays")) data.getInt("streakDays") else 0
+            if (showStreak && streakDays > 0) {
+                views.setViewVisibility(R.id.streak_row, android.view.View.VISIBLE)
+                views.setTextViewText(R.id.streak_emoji, data.optString("streakEmoji", "📝"))
+                views.setTextViewText(R.id.streak_text, "${streakDays}日連続")
+                views.setTextColor(R.id.streak_text, textSecondaryColor)
+            } else {
+                views.setViewVisibility(R.id.streak_row, android.view.View.GONE)
+            }
+
+            // メッセージソースに応じて表示テキストを決定
+            val messageSource = data.optString("messageSource", "custom")
+            val perspectiveMainText = data.optString("perspectiveMainText", "")
+            val perspectiveEmoji = data.optString("perspectiveEmoji", "")
+            val dailyMessage = data.optString("dailyMessage", "")
+            val customTextValue = data.optString("customText", "")
+
+            val displayText = when (messageSource) {
+                "perspective" -> {
+                    if (perspectiveEmoji.isNotEmpty()) "$perspectiveEmoji $perspectiveMainText"
+                    else perspectiveMainText
+                }
+                "daily" -> dailyMessage
+                else -> { // "custom"
+                    if (customTextValue.isEmpty()) {
+                        if (perspectiveEmoji.isNotEmpty()) "$perspectiveEmoji $perspectiveMainText"
+                        else perspectiveMainText
+                    } else customTextValue
+                }
+            }
+
+            if (displayText.isNotEmpty()) {
+                views.setTextViewText(R.id.custom_text, displayText)
                 views.setTextColor(R.id.custom_text, textSecondaryColor)
                 views.setViewVisibility(R.id.custom_text, android.view.View.VISIBLE)
             } else {
                 views.setViewVisibility(R.id.custom_text, android.view.View.GONE)
             }
+
+            // PendingIntent: ウィジェットタップでアプリにディープリンク
+            val hasTodayEntry = data.has("hasTodayEntry") && data.getBoolean("hasTodayEntry")
+            val deepLinkUri = if (hasTodayEntry) {
+                Uri.parse("pivotlog://home")
+            } else {
+                val effectiveTodayDate = data.optString("effectiveTodayDate", "")
+                if (effectiveTodayDate.isNotEmpty()) {
+                    Uri.parse("pivotlog://diary/$effectiveTodayDate")
+                } else {
+                    Uri.parse("pivotlog://home")
+                }
+            }
+
+            val intent = Intent(Intent.ACTION_VIEW, deepLinkUri).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                appWidgetId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
+
         } else {
             Log.d(TAG, "No data found in JSON, showing placeholder")
+            // データがない場合は新しいビューを非表示
+            views.setViewVisibility(R.id.date_header_row, android.view.View.GONE)
+            views.setViewVisibility(R.id.streak_row, android.view.View.GONE)
             // データがない場合はプレースホルダーを表示
             views.setTextViewText(R.id.remaining_years_number, "--")
             views.setTextColor(R.id.remaining_years_number, primaryColor)
@@ -141,6 +237,18 @@ internal fun updateAppWidget(
             views.setTextViewText(R.id.custom_text, "アプリを開いて設定を完了してください")
             views.setTextColor(R.id.custom_text, textSecondaryColor)
             views.setViewVisibility(R.id.custom_text, android.view.View.VISIBLE)
+
+            // データがない場合もアプリを開くPendingIntent
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("pivotlog://home")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                appWidgetId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
         }
 
         // ウィジェットを更新

@@ -23,6 +23,7 @@ module.exports = {
   expo: {
     name: 'PivotLog',
     slug: 'pivot-log',
+    scheme: 'pivotlog',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
