@@ -341,38 +341,6 @@ const SettingsScreen: React.FC = () => {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* ⓪ プランセクション */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>プラン</Text>
-          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
-            <SettingItem
-              icon="diamond-outline"
-              label="プレミアムプラン"
-              value={isPremium ? '利用中' : 'アップグレード'}
-              onPress={isPremium
-                ? () => setShowPremiumInfoModal(true)
-                : () => navigation.navigate('Paywall', { source: 'settings' })}
-              isLast={!isPremium}
-              themeColors={themeColors}
-            />
-            {isPremium && (
-              <SettingItem
-                icon="storefront-outline"
-                label="サブスクリプション管理"
-                value={Platform.OS === 'ios' ? 'App Store' : 'Google Play'}
-                onPress={() => {
-                  const url = Platform.OS === 'ios'
-                    ? 'itms-apps://apps.apple.com/account/subscriptions'
-                    : 'https://play.google.com/store/account/subscriptions';
-                  Linking.openURL(url);
-                }}
-                isLast
-                themeColors={themeColors}
-              />
-            )}
-          </View>
-        </View>
-
         {/* ① ウィジェット・通知セクション */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>ウィジェット・通知</Text>
@@ -442,6 +410,38 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* プランセクション */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>プラン</Text>
+          <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
+            <SettingItem
+              icon="diamond-outline"
+              label="プレミアムプラン"
+              value={isPremium ? '利用中' : 'アップグレード'}
+              onPress={isPremium
+                ? () => setShowPremiumInfoModal(true)
+                : () => navigation.navigate('Paywall', { source: 'settings' })}
+              isLast={!isPremium}
+              themeColors={themeColors}
+            />
+            {isPremium && (
+              <SettingItem
+                icon="storefront-outline"
+                label="サブスクリプション管理"
+                value={Platform.OS === 'ios' ? 'App Store' : 'Google Play'}
+                onPress={() => {
+                  const url = Platform.OS === 'ios'
+                    ? 'itms-apps://apps.apple.com/account/subscriptions'
+                    : 'https://play.google.com/store/account/subscriptions';
+                  Linking.openURL(url);
+                }}
+                isLast
+                themeColors={themeColors}
+              />
+            )}
+          </View>
+        </View>
+
         {/* ④ アカウントセクション（フィードバックを統合） */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>アカウント</Text>
@@ -507,15 +507,6 @@ const SettingsScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={18} color={themeColors.text.secondary} />
               </TouchableOpacity>
             )}
-            {/* フィードバック */}
-            <SettingItem
-              icon="chatbubble-ellipses-outline"
-              label="ご意見・ご要望を送る"
-              value="不具合報告や機能改善など"
-              onPress={() => navigation.navigate('Feedback')}
-              isLast
-              themeColors={themeColors}
-            />
           </View>
         </View>
 
@@ -523,8 +514,16 @@ const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>その他</Text>
           <View style={[styles.sectionCard, dynamicStyles.sectionCard]}>
-            {/* バージョン（タップで開発者メニューをトグル） */}
-            {__DEV__ ? (
+            {/* フィードバック */}
+            <SettingItem
+              icon="chatbubble-ellipses-outline"
+              label="ご意見・ご要望を送る"
+              value="不具合報告や機能改善など"
+              onPress={() => navigation.navigate('Feedback')}
+              themeColors={themeColors}
+            />
+            {/* バージョン（タップで開発者メニューをトグル、開発モードのみ表示） */}
+            {__DEV__ && (
               <TouchableOpacity
                 style={[styles.settingItem, dynamicStyles.settingItem]}
                 onPress={toggleDebugSection}
@@ -543,16 +542,6 @@ const SettingsScreen: React.FC = () => {
                   color={themeColors.text.secondary}
                 />
               </TouchableOpacity>
-            ) : (
-              <View style={[styles.settingItem, dynamicStyles.settingItem]}>
-                <View style={[styles.settingIconContainer, dynamicStyles.settingIconContainer]}>
-                  <Ionicons name="information-circle-outline" size={20} color={themeColors.primary} />
-                </View>
-                <View style={styles.settingContent}>
-                  <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>バージョン</Text>
-                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>1.0.0</Text>
-                </View>
-              </View>
             )}
 
             {/* 開発者メニュー（アニメーション付きトグル） */}

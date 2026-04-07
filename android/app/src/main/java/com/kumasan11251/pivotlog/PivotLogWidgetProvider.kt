@@ -118,6 +118,51 @@ internal fun updateAppWidget(
             // プログレスバーを設定（max=1000で0.1%単位の精度）
             views.setProgressBar(R.id.progress_bar, 1000, (lifeProgress * 10).toInt(), false)
 
+            // 表示要素フラグの読み取り（デフォルト=true）
+            val showDateHeader = !data.has("showDateHeader") || data.getBoolean("showDateHeader")
+            val showDiaryStatus = !data.has("showDiaryStatus") || data.getBoolean("showDiaryStatus")
+            val showStreak = !data.has("showStreak") || data.getBoolean("showStreak")
+
+            // 日付ヘッダー + 日記記入状態アイコン
+            if (showDateHeader) {
+                val todayDateLabel = data.optString("todayDateLabel", "")
+                if (todayDateLabel.isNotEmpty()) {
+                    views.setViewVisibility(R.id.date_header_row, android.view.View.VISIBLE)
+                    views.setTextViewText(R.id.date_header_text, todayDateLabel)
+                    views.setTextColor(R.id.date_header_text, textSecondaryColor)
+
+                    // 日記記入状態アイコン
+                    if (showDiaryStatus) {
+                        val hasTodayEntry = data.has("hasTodayEntry") && data.getBoolean("hasTodayEntry")
+                        if (hasTodayEntry) {
+                            views.setTextViewText(R.id.diary_status_icon, "✔")
+                            views.setTextColor(R.id.diary_status_icon, primaryColor)
+                        } else {
+                            views.setTextViewText(R.id.diary_status_icon, "○")
+                            views.setTextColor(R.id.diary_status_icon, textSecondaryColor)
+                        }
+                        views.setViewVisibility(R.id.diary_status_icon, android.view.View.VISIBLE)
+                    } else {
+                        views.setViewVisibility(R.id.diary_status_icon, android.view.View.GONE)
+                    }
+                } else {
+                    views.setViewVisibility(R.id.date_header_row, android.view.View.GONE)
+                }
+            } else {
+                views.setViewVisibility(R.id.date_header_row, android.view.View.GONE)
+            }
+
+            // 連続記録
+            val streakDays = if (data.has("streakDays")) data.getInt("streakDays") else 0
+            if (showStreak && streakDays > 0) {
+                views.setViewVisibility(R.id.streak_row, android.view.View.VISIBLE)
+                views.setTextViewText(R.id.streak_emoji, data.optString("streakEmoji", "📝"))
+                views.setTextViewText(R.id.streak_text, "${streakDays}日連続")
+                views.setTextColor(R.id.streak_text, textSecondaryColor)
+            } else {
+                views.setViewVisibility(R.id.streak_row, android.view.View.GONE)
+            }
+
             // カスタムテキストがあれば設定
             if (data.has("customText") && data.getString("customText").isNotEmpty()) {
                 views.setTextViewText(R.id.custom_text, data.getString("customText"))
@@ -128,6 +173,9 @@ internal fun updateAppWidget(
             }
         } else {
             Log.d(TAG, "No data found in JSON, showing placeholder")
+            // データがない場合は新しいビューを非表示
+            views.setViewVisibility(R.id.date_header_row, android.view.View.GONE)
+            views.setViewVisibility(R.id.streak_row, android.view.View.GONE)
             // データがない場合はプレースホルダーを表示
             views.setTextViewText(R.id.remaining_years_number, "--")
             views.setTextColor(R.id.remaining_years_number, primaryColor)

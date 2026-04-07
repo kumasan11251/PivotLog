@@ -4,8 +4,39 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
+    android:padding="16dp"
     android:background="@drawable/widget_background_light">
+
+    <!-- 日付ヘッダー行（日付 + 日記記入状態） -->
+    <LinearLayout
+        android:id="@+id/date_header_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="2dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/date_header_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text=""
+            android:textSize="10sp"
+            android:textColor="@color/widget_text_secondary"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:id="@+id/diary_status_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="10sp"
+            android:textColor="@color/widget_text_secondary"
+            android:includeFontPadding="false" />
+
+    </LinearLayout>
 
     <!-- 上部: 残り時間と進捗率を横並び -->
     <LinearLayout
@@ -96,6 +127,36 @@
         android:progress="0"
         android:progressDrawable="@drawable/progress_bar_drawable"
         android:layout_marginTop="10dp" />
+
+    <!-- 連続記録行 -->
+    <LinearLayout
+        android:id="@+id/streak_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="4dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/streak_emoji"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="11sp"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:id="@+id/streak_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="@color/widget_text_secondary"
+            android:layout_marginStart="2dp"
+            android:includeFontPadding="false" />
+
+    </LinearLayout>
 
     <!-- カスタムテキスト（左揃え、残りスペースを使用） -->
     <TextView
