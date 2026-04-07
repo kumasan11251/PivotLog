@@ -166,9 +166,12 @@ const SettingsScreen: React.FC = () => {
   };
 
   const handleDeleteAccount = () => {
+    const subscriptionNote = isPremium
+      ? '\n\n※ プレミアムプランのサブスクリプションは自動的には解約されません。解約する場合は、お使いの端末の設定から別途手続きが必要です。'
+      : '';
     Alert.alert(
       'アカウント削除',
-      'アカウントを削除すると、すべてのデータが完全に削除され、復元できません。本当に削除しますか？',
+      `アカウントを削除すると、すべてのデータが完全に削除され、復元できません。${subscriptionNote}\n\n本当に削除しますか？`,
       [
         { text: 'キャンセル', style: 'cancel' },
         {
