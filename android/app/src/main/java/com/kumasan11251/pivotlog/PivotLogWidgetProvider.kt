@@ -9,6 +9,7 @@ import android.graphics.drawable.GradientDrawable
 import org.json.JSONException
 import org.json.JSONObject
 import android.util.Log
+import java.text.NumberFormat
 import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
@@ -97,22 +98,49 @@ internal fun updateAppWidget(
             val remainingYears = data.getDouble("remainingYears").toInt()
             val remainingDays = data.getInt("remainingDays")
             val lifeProgress = data.getDouble("lifeProgress")
+            val countdownMode = data.optString("countdownMode", "detailed")
+            val numberFormat = NumberFormat.getNumberInstance()
 
-            Log.d(TAG, "Data found: remainingYears=$remainingYears, remainingDays=$remainingDays, lifeProgress=$lifeProgress")
+            Log.d(TAG, "Data found: remainingYears=$remainingYears, remainingDays=$remainingDays, lifeProgress=$lifeProgress, countdownMode=$countdownMode")
 
-            // 残り年数を設定（数字のみ）
-            views.setTextViewText(R.id.remaining_years_number, "$remainingYears")
-            views.setTextColor(R.id.remaining_years_number, primaryColor)
-
-            // 年ラベルの色を設定
-            views.setTextColor(R.id.remaining_years_label, textPrimaryColor)
-
-            // 残り日数を設定（年の残り、数字のみ）
-            views.setTextViewText(R.id.remaining_days_number, "${remainingDays % 365}")
-            views.setTextColor(R.id.remaining_days_number, primaryColor)
-
-            // 日ラベルの色を設定
-            views.setTextColor(R.id.remaining_days_label, textPrimaryColor)
+            when (countdownMode) {
+                "yearsOnly" -> {
+                    views.setTextViewText(R.id.remaining_years_number, "$remainingYears")
+                    views.setTextColor(R.id.remaining_years_number, primaryColor)
+                    views.setTextViewText(R.id.remaining_years_label, "年")
+                    views.setTextColor(R.id.remaining_years_label, textPrimaryColor)
+                    views.setViewVisibility(R.id.remaining_days_number, android.view.View.GONE)
+                    views.setViewVisibility(R.id.remaining_days_label, android.view.View.GONE)
+                }
+                "weeksOnly" -> {
+                    val totalWeeks = if (data.has("totalWeeks")) data.getDouble("totalWeeks").toLong() else (remainingDays.toLong() / 7)
+                    views.setTextViewText(R.id.remaining_years_number, numberFormat.format(totalWeeks))
+                    views.setTextColor(R.id.remaining_years_number, primaryColor)
+                    views.setTextViewText(R.id.remaining_years_label, "週")
+                    views.setTextColor(R.id.remaining_years_label, textPrimaryColor)
+                    views.setViewVisibility(R.id.remaining_days_number, android.view.View.GONE)
+                    views.setViewVisibility(R.id.remaining_days_label, android.view.View.GONE)
+                }
+                "daysOnly" -> {
+                    views.setTextViewText(R.id.remaining_years_number, numberFormat.format(remainingDays.toLong()))
+                    views.setTextColor(R.id.remaining_years_number, primaryColor)
+                    views.setTextViewText(R.id.remaining_years_label, "日")
+                    views.setTextColor(R.id.remaining_years_label, textPrimaryColor)
+                    views.setViewVisibility(R.id.remaining_days_number, android.view.View.GONE)
+                    views.setViewVisibility(R.id.remaining_days_label, android.view.View.GONE)
+                }
+                else -> { // "detailed"
+                    views.setTextViewText(R.id.remaining_years_number, "$remainingYears")
+                    views.setTextColor(R.id.remaining_years_number, primaryColor)
+                    views.setTextViewText(R.id.remaining_years_label, "年")
+                    views.setTextColor(R.id.remaining_years_label, textPrimaryColor)
+                    views.setTextViewText(R.id.remaining_days_number, "${remainingDays % 365}")
+                    views.setTextColor(R.id.remaining_days_number, primaryColor)
+                    views.setTextColor(R.id.remaining_days_label, textPrimaryColor)
+                    views.setViewVisibility(R.id.remaining_days_number, android.view.View.VISIBLE)
+                    views.setViewVisibility(R.id.remaining_days_label, android.view.View.VISIBLE)
+                }
+            }
 
             // 進捗率を設定
             views.setTextViewText(R.id.life_progress, String.format("%.1f%%", lifeProgress))
@@ -227,10 +255,13 @@ internal fun updateAppWidget(
             // データがない場合はプレースホルダーを表示
             views.setTextViewText(R.id.remaining_years_number, "--")
             views.setTextColor(R.id.remaining_years_number, primaryColor)
+            views.setTextViewText(R.id.remaining_years_label, "年")
             views.setTextColor(R.id.remaining_years_label, textPrimaryColor)
             views.setTextViewText(R.id.remaining_days_number, "--")
             views.setTextColor(R.id.remaining_days_number, primaryColor)
             views.setTextColor(R.id.remaining_days_label, textPrimaryColor)
+            views.setViewVisibility(R.id.remaining_days_number, android.view.View.VISIBLE)
+            views.setViewVisibility(R.id.remaining_days_label, android.view.View.VISIBLE)
             views.setTextViewText(R.id.life_progress, "--%")
             views.setTextColor(R.id.life_progress, primaryColor)
             views.setProgressBar(R.id.progress_bar, 100, 0, false)

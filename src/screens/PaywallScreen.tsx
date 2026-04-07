@@ -37,6 +37,8 @@ export default function PaywallScreen() {
     restorePurchases,
     isRestoring,
     isRevenueCatReady,
+    isLoading: isSubscriptionLoading,
+    retryInitialization,
   } = useSubscription();
 
   const [monthlyPackage, setMonthlyPackage] = useState<PurchasesPackage | null>(null);
@@ -72,8 +74,22 @@ export default function PaywallScreen() {
   useEffect(() => {
     if (isRevenueCatReady) {
       loadOfferings();
+    } else if (!isSubscriptionLoading) {
+      // Context初期化は完了したがSDK準備不可 → エラー表示
+      setIsLoadingOfferings(false);
+      setOfferingError(true);
     }
-  }, [isRevenueCatReady, loadOfferings]);
+  }, [isRevenueCatReady, isSubscriptionLoading, loadOfferings]);
+
+  // タイムアウト（安全策: 15秒でローディング強制終了）
+  useEffect(() => {
+    if (!isLoadingOfferings) return;
+    const timeout = setTimeout(() => {
+      setIsLoadingOfferings(false);
+      setOfferingError(true);
+    }, 15000);
+    return () => clearTimeout(timeout);
+  }, [isLoadingOfferings]);
 
   // 年額の割引率を動的に計算
   const discountPercent = (() => {
@@ -134,6 +150,18 @@ export default function PaywallScreen() {
     }
   };
 
+  // 再試行ボタン: SDK未初期化ならretryInitialization、初期化済みならloadOfferings
+  const handleRetry = useCallback(async () => {
+    if (!isRevenueCatReady) {
+      setIsLoadingOfferings(true);
+      setOfferingError(false);
+      await retryInitialization();
+      // 成功すれば isRevenueCatReady=true → useEffectが loadOfferings() を自動発火
+    } else {
+      loadOfferings();
+    }
+  }, [isRevenueCatReady, retryInitialization, loadOfferings]);
+
   const isProcessing = isPurchasing || isRestoring;
   const canPurchase = !isProcessing && !isLoadingOfferings && (monthlyPackage || annualPackage);
 
@@ -191,7 +219,10 @@ export default function PaywallScreen() {
         ) : offeringError ? (
           <View style={styles.errorContainer}>
             <Text style={[styles.errorText, { color: themeColors.text.secondary }, textBase]}>
-              プランの読み込みに失敗しました。{'\n'}再度お試しください。
+              {isRevenueCatReady
+                ? 'プランの読み込みに失敗しました。'
+                : 'ストアとの接続に失敗しました。'}
+              {'\n'}再度お試しください。
             </Text>
             {__DEV__ && (
               <Text style={[styles.errorText, { color: themeColors.text.placeholder, fontSize: 11 }, textBase]}>
@@ -200,7 +231,7 @@ export default function PaywallScreen() {
             )}
             <TouchableOpacity
               style={[styles.retryButton, { borderColor: themeColors.primary }]}
-              onPress={loadOfferings}
+              onPress={handleRetry}
             >
               <Text style={[styles.retryButtonText, { color: themeColors.primary }, textBase]}>
                 再試行

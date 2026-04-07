@@ -67,6 +67,8 @@ interface SubscriptionContextType {
   isPurchasing: boolean;
   /** RevenueCat SDKの初期化が完了しているか */
   isRevenueCatReady: boolean;
+  /** SDK初期化の再試行 */
+  retryInitialization: () => Promise<void>;
 
   // === 開発用機能 ===
   /** 開発モードが有効かどうか */
@@ -95,6 +97,7 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   purchasePackage: async () => 'cancelled' as const,
   isPurchasing: false,
   isRevenueCatReady: false,
+  retryInitialization: async () => {},
   isDevMode: false,
   devSetTier: () => {},
   devResetOverride: () => {},
@@ -120,6 +123,10 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   const devOverrideTierRef = useRef<SubscriptionTier | null>(null);
   // Firestore同期の冪等性チェック用
   const lastSyncedTierRef = useRef<SubscriptionTier | null>(null);
+  // レース条件防止用
+  const cancelledRef = useRef(false);
+  // リスナー解除関数保持用（二重登録防止）
+  const listenerRemoverRef = useRef<(() => void) | null>(null);
 
   /**
    * Firestoreにサブスクリプション状態を同期
@@ -175,113 +182,131 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
   }, []);
 
   // サブスクリプション状態を読み込み（RevenueCat連携）
-  useEffect(() => {
-    let cancelled = false;
-    let removeListener: (() => void) | null = null;
+  const loadSubscriptionStatus = useCallback(async () => {
+    // 前回のリスナーを解除（二重登録防止）
+    listenerRemoverRef.current?.();
+    listenerRemoverRef.current = null;
 
-    const loadSubscriptionStatus = async () => {
-      if (!isAuthenticated || !user) {
-        setStatus(defaultStatus);
-        setIsLoading(false);
+    // cancelledフラグをリセット
+    cancelledRef.current = false;
+
+    if (!isAuthenticated || !user) {
+      setStatus(defaultStatus);
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // SDK初期化（冪等。既に初期化済みなら即リターン）
+      const sdkReady = await ensureRevenueCatInitialized();
+
+      if (!cancelledRef.current) {
+        setIsRevenueCatReady(sdkReady);
+      }
+
+      // SDK初期化失敗 → 無料ティアのまま終了
+      if (!sdkReady) {
+        if (!cancelledRef.current) {
+          const freeStatus: SubscriptionStatus = {
+            tier: 'free',
+            isPremium: false,
+            updatedAt: new Date().toISOString(),
+          };
+          setStatus(freeStatus);
+          setIsLoading(false);
+        }
         return;
       }
 
-      try {
-        // SDK初期化（冪等。既に初期化済みなら即リターン）
-        const sdkReady = await ensureRevenueCatInitialized();
+      // Firebase Auth UIDでRevenueCatユーザーを特定
+      await identifyUser(user.uid);
 
-        if (!cancelled) {
-          setIsRevenueCatReady(sdkReady);
+      // キャッシュを無効化して最新のサブスクリプション状態を取得
+      // 払い戻し・キャンセル等の変更がキャッシュで隠れることを防ぐ
+      await invalidateCustomerInfoCache();
+      const customerInfo = await getCustomerInfo();
+
+      // customerInfo取得失敗 → 無料ティアのまま、リスナー登録もスキップ
+      if (!customerInfo) {
+        if (!cancelledRef.current) {
+          const freeStatus: SubscriptionStatus = {
+            tier: 'free',
+            isPremium: false,
+            updatedAt: new Date().toISOString(),
+          };
+          setStatus(freeStatus);
+          setIsLoading(false);
         }
+        return;
+      }
 
-        // SDK初期化失敗 → 無料ティアのまま終了
-        if (!sdkReady) {
-          if (!cancelled) {
-            const freeStatus: SubscriptionStatus = {
-              tier: 'free',
-              isPremium: false,
-              updatedAt: new Date().toISOString(),
-            };
-            setStatus(freeStatus);
-            setIsLoading(false);
-          }
-          return;
-        }
+      if (cancelledRef.current) return;
 
-        // Firebase Auth UIDでRevenueCatユーザーを特定
-        await identifyUser(user.uid);
+      // プレミアム判定と状態構築
+      const isPremium = isSubscriptionActive(customerInfo);
+      const details = extractSubscriptionDetails(customerInfo);
+      const newStatus: SubscriptionStatus = {
+        tier: isPremium ? 'premium' : 'free',
+        isPremium,
+        ...details,
+        updatedAt: new Date().toISOString(),
+      };
 
-        // キャッシュを無効化して最新のサブスクリプション状態を取得
-        // 払い戻し・キャンセル等の変更がキャッシュで隠れることを防ぐ
-        await invalidateCustomerInfoCache();
-        const customerInfo = await getCustomerInfo();
+      setStatus(newStatus);
+      setIsLoading(false);
 
-        // customerInfo取得失敗 → 無料ティアのまま、リスナー登録もスキップ
-        if (!customerInfo) {
-          if (!cancelled) {
-            const freeStatus: SubscriptionStatus = {
-              tier: 'free',
-              isPremium: false,
-              updatedAt: new Date().toISOString(),
-            };
-            setStatus(freeStatus);
-            setIsLoading(false);
-          }
-          return;
-        }
+      // Firestoreに同期
+      await syncSubscriptionToFirestore(user.uid, newStatus);
 
-        if (cancelled) return;
+      // 初期化・identify完了後にリスナー登録（refで保持して後で解除可能にする）
+      listenerRemoverRef.current = addCustomerInfoUpdateListener((info) => {
+        if (cancelledRef.current) return;
 
-        // プレミアム判定と状態構築
-        const isPremium = isSubscriptionActive(customerInfo);
-        const details = extractSubscriptionDetails(customerInfo);
-        const newStatus: SubscriptionStatus = {
-          tier: isPremium ? 'premium' : 'free',
-          isPremium,
-          ...details,
+        const listenerIsPremium = isSubscriptionActive(info);
+        const listenerDetails = extractSubscriptionDetails(info);
+        const listenerStatus: SubscriptionStatus = {
+          tier: listenerIsPremium ? 'premium' : 'free',
+          isPremium: listenerIsPremium,
+          ...listenerDetails,
           updatedAt: new Date().toISOString(),
         };
 
-        setStatus(newStatus);
+        setStatus(listenerStatus);
+
+        // Firestoreに同期（user.uidはクロージャでキャプチャ済み）
+        syncSubscriptionToFirestore(user.uid, listenerStatus);
+      });
+    } catch (error) {
+      console.error('[Subscription] サブスクリプション状態の取得に失敗:', error);
+      if (!cancelledRef.current) {
+        setStatus(defaultStatus);
         setIsLoading(false);
-
-        // Firestoreに同期
-        await syncSubscriptionToFirestore(user.uid, newStatus);
-
-        // 初期化・identify完了後にリスナー登録
-        removeListener = addCustomerInfoUpdateListener((info) => {
-          if (cancelled) return;
-
-          const listenerIsPremium = isSubscriptionActive(info);
-          const listenerDetails = extractSubscriptionDetails(info);
-          const listenerStatus: SubscriptionStatus = {
-            tier: listenerIsPremium ? 'premium' : 'free',
-            isPremium: listenerIsPremium,
-            ...listenerDetails,
-            updatedAt: new Date().toISOString(),
-          };
-
-          setStatus(listenerStatus);
-
-          // Firestoreに同期（user.uidはクロージャでキャプチャ済み）
-          syncSubscriptionToFirestore(user.uid, listenerStatus);
-        });
-      } catch (error) {
-        console.error('[Subscription] サブスクリプション状態の取得に失敗:', error);
-        if (!cancelled) {
-          setStatus(defaultStatus);
-          setIsLoading(false);
-        }
       }
-    };
+    }
+  }, [isAuthenticated, user, syncSubscriptionToFirestore]);
 
+  // SDK初期化の再試行（PaywallScreenから呼べるように公開）
+  const retryInitialization = useCallback(async () => {
+    // 進行中の処理をキャンセル
+    cancelledRef.current = true;
+    // リスナー解除
+    listenerRemoverRef.current?.();
+    listenerRemoverRef.current = null;
+
+    setIsLoading(true);
+    setIsRevenueCatReady(false);
+    await loadSubscriptionStatus();
+  }, [loadSubscriptionStatus]);
+
+  useEffect(() => {
     loadSubscriptionStatus();
 
     return () => {
-      cancelled = true;
-      removeListener?.();
+      cancelledRef.current = true;
+      listenerRemoverRef.current?.();
+      listenerRemoverRef.current = null;
     };
-  }, [isAuthenticated, user, syncSubscriptionToFirestore]);
+  }, [loadSubscriptionStatus]);
 
   // フォアグラウンド復帰時にサブスクリプション状態を再チェック
   // 払い戻し・キャンセル等がバックグラウンド中に処理された場合に反映する
@@ -478,11 +503,12 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     purchasePackage: purchaseSubscription,
     isPurchasing,
     isRevenueCatReady,
+    retryInitialization,
     isDevMode: __DEV_MODE__,
     devSetTier,
     devResetOverride,
     isDevOverrideActive: __DEV_MODE__ && devOverrideTier !== null,
-  }), [status, effectiveTier, isLoading, restorePurchases, isRestoring, purchaseSubscription, isPurchasing, isRevenueCatReady, devSetTier, devResetOverride, devOverrideTier]);
+  }), [status, effectiveTier, isLoading, restorePurchases, isRestoring, purchaseSubscription, isPurchasing, isRevenueCatReady, retryInitialization, devSetTier, devResetOverride, devOverrideTier]);
 
   return (
     <SubscriptionContext.Provider value={value}>
