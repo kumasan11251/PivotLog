@@ -224,18 +224,25 @@ export default function PaywallScreen() {
                 : 'ストアとの接続に失敗しました。'}
               {'\n'}再度お試しください。
             </Text>
-            {__DEV__ && (
-              <Text style={[styles.errorText, { color: themeColors.text.placeholder, fontSize: 11 }, textBase]}>
-                SDK初期化: {isRevenueCatReady ? 'OK' : 'NG'} / コンソールログを確認してください
-              </Text>
-            )}
+            <Text style={[styles.errorText, { color: themeColors.text.placeholder, fontSize: 11 }, textBase]}>
+              SDK初期化: {isRevenueCatReady ? 'OK' : 'NG'}
+            </Text>
             <TouchableOpacity
-              style={[styles.retryButton, { borderColor: themeColors.primary }]}
+              style={[
+                styles.retryButton,
+                { borderColor: themeColors.primary },
+                isLoadingOfferings && styles.retryButtonDisabled,
+              ]}
               onPress={handleRetry}
+              disabled={isLoadingOfferings}
             >
-              <Text style={[styles.retryButtonText, { color: themeColors.primary }, textBase]}>
-                再試行
-              </Text>
+              {isLoadingOfferings ? (
+                <ActivityIndicator size="small" color={themeColors.primary} />
+              ) : (
+                <Text style={[styles.retryButtonText, { color: themeColors.primary }, textBase]}>
+                  再試行
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         ) : (
@@ -444,6 +451,9 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.bold,
+  },
+  retryButtonDisabled: {
+    opacity: 0.5,
   },
   planContainer: {
     gap: spacing.md,

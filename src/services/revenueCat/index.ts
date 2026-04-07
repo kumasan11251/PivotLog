@@ -11,7 +11,7 @@ import Purchases, {
   LOG_LEVEL,
   PURCHASES_ERROR_CODE,
 } from 'react-native-purchases';
-import { REVENUECAT_API_KEY, ENTITLEMENT_ID } from '../../constants/revenueCat';
+import { getRevenueCatApiKey, ENTITLEMENT_ID } from '../../constants/revenueCat';
 
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
@@ -43,7 +43,9 @@ export function initializeRevenueCat(): Promise<void> {
   initializationPromise = (async () => {
     console.log(`[RevenueCat] SDK初期化開始 (Platform: ${Platform.OS}, Version: ${Platform.Version})`);
 
-    if (!REVENUECAT_API_KEY) {
+    const apiKey = getRevenueCatApiKey();
+
+    if (!apiKey) {
       console.warn('[RevenueCat] APIキーが設定されていません。SDK初期化をスキップします。');
       console.warn(`[RevenueCat] Platform: ${Platform.OS}, __DEV__: ${__DEV__}`);
       return;
@@ -54,17 +56,20 @@ export function initializeRevenueCat(): Promise<void> {
         Purchases.setLogLevel(LOG_LEVEL.DEBUG);
       }
 
-      console.log(`[RevenueCat] Purchases.configure() 呼び出し (APIキー先頭: ${REVENUECAT_API_KEY.substring(0, 8)}...)`);
+      console.log(`[RevenueCat] Purchases.configure() 呼び出し (APIキー先頭: ${apiKey.substring(0, 8)}...)`);
       Purchases.configure({
-        apiKey: REVENUECAT_API_KEY,
+        apiKey,
       });
 
       isInitialized = true;
       console.log('[RevenueCat] SDK初期化完了');
     } catch (error) {
       console.error(`[RevenueCat] SDK初期化に失敗しました (Platform: ${Platform.OS}):`, error);
-      // 失敗時はPromiseをリセットして再試行可能にする
-      initializationPromise = null;
+    } finally {
+      // 初期化失敗時はPromiseをリセットして再試行可能にする
+      if (!isInitialized) {
+        initializationPromise = null;
+      }
     }
   })();
 
