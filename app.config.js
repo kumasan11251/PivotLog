@@ -84,6 +84,12 @@ module.exports = {
       ],
       '@bacons/apple-targets',
       './plugins/withAndroidWidget',
+      [
+        'expo-notifications',
+        {
+          sounds: [],
+        },
+      ],
     ],
     extra: {
       geminiApiKey: env.GEMINI_API_KEY || '',
