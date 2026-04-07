@@ -18,6 +18,7 @@ import {
 import type { AIReflectionData } from '../types/aiReflection';
 import type { AIConsentStatus } from '../types/aiConsent';
 import { CURRENT_CONSENT_VERSION } from '../types/aiConsent';
+import { addToSyncQueue, clearSyncQueue } from './syncQueue';
 
 export interface UserSettings {
   birthday: string; // ISO 8601 format (YYYY-MM-DD)
@@ -58,6 +59,15 @@ const AI_CONSENT_KEY = '@pivot_log_ai_consent';
  */
 const isLoggedIn = (): boolean => {
   return getCurrentUser() !== null;
+};
+
+/**
+ * UID付きキャッシュキーを生成（ログイン前データとの衝突回避）
+ * isLoggedIn()チェックの内側でのみ呼ぶ前提
+ */
+const getCacheKey = (suffix: string): string => {
+  const user = getCurrentUser();
+  return `@pivot_log_cache_${user!.uid}_${suffix}`;
 };
 
 /**
@@ -199,16 +209,21 @@ export const isMigrationComplete = async (): Promise<boolean> => {
  * ユーザー設定を保存する
  */
 export const saveUserSettings = async (settings: UserSettings): Promise<void> => {
+  if (!isLoggedIn()) {
+    const jsonValue = JSON.stringify(settings);
+    await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
+    return;
+  }
+
+  // 1. AsyncStorageキャッシュに即座に保存
+  const cacheKey = getCacheKey('settings');
+  await AsyncStorage.setItem(cacheKey, JSON.stringify(settings));
+
+  // 2. Firestore書き込み（失敗時は同期キューへ）
   try {
-    if (isLoggedIn()) {
-      await saveUserSettingsToFirestore(settings);
-    } else {
-      const jsonValue = JSON.stringify(settings);
-      await AsyncStorage.setItem(STORAGE_KEY, jsonValue);
-    }
-  } catch (error) {
-    console.error('設定の保存に失敗しました:', error);
-    throw error;
+    await saveUserSettingsToFirestore(settings);
+  } catch {
+    await addToSyncQueue({ type: 'saveSettings', data: settings });
   }
 };
 
@@ -216,16 +231,22 @@ export const saveUserSettings = async (settings: UserSettings): Promise<void> =>
  * ユーザー設定を読み込む
  */
 export const loadUserSettings = async (): Promise<UserSettings | null> => {
+  if (!isLoggedIn()) {
+    const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : null;
+  }
+
+  const cacheKey = getCacheKey('settings');
+
   try {
-    if (isLoggedIn()) {
-      return await loadUserSettingsFromFirestore();
-    } else {
-      const jsonValue = await AsyncStorage.getItem(STORAGE_KEY);
-      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    const result = await loadUserSettingsFromFirestore();
+    if (result) {
+      AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => {});
     }
-  } catch (error) {
-    console.error('設定の読み込みに失敗しました:', error);
-    return null;
+    return result;
+  } catch {
+    const cached = await AsyncStorage.getItem(cacheKey);
+    return cached ? JSON.parse(cached) : null;
   }
 };
 
@@ -233,16 +254,21 @@ export const loadUserSettings = async (): Promise<UserSettings | null> => {
  * ホーム画面の表示設定を保存する
  */
 export const saveHomeDisplaySettings = async (settings: HomeDisplaySettings): Promise<void> => {
+  if (!isLoggedIn()) {
+    const jsonValue = JSON.stringify(settings);
+    await AsyncStorage.setItem(HOME_DISPLAY_KEY, jsonValue);
+    return;
+  }
+
+  // 1. AsyncStorageキャッシュに即座に保存
+  const cacheKey = getCacheKey('display');
+  await AsyncStorage.setItem(cacheKey, JSON.stringify(settings));
+
+  // 2. Firestore書き込み（失敗時は同期キューへ）
   try {
-    if (isLoggedIn()) {
-      await saveHomeDisplaySettingsToFirestore(settings);
-    } else {
-      const jsonValue = JSON.stringify(settings);
-      await AsyncStorage.setItem(HOME_DISPLAY_KEY, jsonValue);
-    }
-  } catch (error) {
-    console.error('ホーム画面表示設定の保存に失敗しました:', error);
-    throw error;
+    await saveHomeDisplaySettingsToFirestore(settings);
+  } catch {
+    await addToSyncQueue({ type: 'saveDisplaySettings', data: settings });
   }
 };
 
@@ -250,16 +276,22 @@ export const saveHomeDisplaySettings = async (settings: HomeDisplaySettings): Pr
  * ホーム画面の表示設定を読み込む
  */
 export const loadHomeDisplaySettings = async (): Promise<HomeDisplaySettings | null> => {
+  if (!isLoggedIn()) {
+    const jsonValue = await AsyncStorage.getItem(HOME_DISPLAY_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : null;
+  }
+
+  const cacheKey = getCacheKey('display');
+
   try {
-    if (isLoggedIn()) {
-      return await loadHomeDisplaySettingsFromFirestore();
-    } else {
-      const jsonValue = await AsyncStorage.getItem(HOME_DISPLAY_KEY);
-      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    const result = await loadHomeDisplaySettingsFromFirestore();
+    if (result) {
+      AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => {});
     }
-  } catch (error) {
-    console.error('ホーム画面表示設定の読み込みに失敗しました:', error);
-    return null;
+    return result;
+  } catch {
+    const cached = await AsyncStorage.getItem(cacheKey);
+    return cached ? JSON.parse(cached) : null;
   }
 };
 
@@ -279,30 +311,39 @@ export const clearUserSettings = async (): Promise<void> => {
  * 日記を保存する（新規作成または更新）
  */
 export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
-  try {
-    if (isLoggedIn()) {
-      await saveDiaryEntryToFirestore(entry);
+  if (!isLoggedIn()) {
+    const existingDiaries = await loadDiaryEntries();
+    const index = existingDiaries.findIndex((e) => e.id === entry.id);
+
+    if (index >= 0) {
+      existingDiaries[index] = { ...entry, updatedAt: new Date().toISOString() };
     } else {
-      const existingDiaries = await loadDiaryEntries();
-      const index = existingDiaries.findIndex((e) => e.id === entry.id);
-
-      if (index >= 0) {
-        // 既存の日記を更新
-        existingDiaries[index] = { ...entry, updatedAt: new Date().toISOString() };
-      } else {
-        // 新しい日記を追加
-        existingDiaries.push(entry);
-      }
-
-      // 日付順でソート（新しい順）
-      existingDiaries.sort((a, b) => b.date.localeCompare(a.date));
-
-      const jsonValue = JSON.stringify(existingDiaries);
-      await AsyncStorage.setItem(DIARY_KEY, jsonValue);
+      existingDiaries.push(entry);
     }
-  } catch (error) {
-    console.error('日記の保存に失敗しました:', error);
-    throw error;
+
+    existingDiaries.sort((a, b) => b.date.localeCompare(a.date));
+    await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(existingDiaries));
+    return;
+  }
+
+  // 1. キャッシュの日記配列を更新
+  const cacheKey = getCacheKey('diaries');
+  const cachedJson = await AsyncStorage.getItem(cacheKey);
+  const cachedDiaries: DiaryEntry[] = cachedJson ? JSON.parse(cachedJson) : [];
+  const index = cachedDiaries.findIndex((e) => e.id === entry.id);
+  if (index >= 0) {
+    cachedDiaries[index] = { ...entry, updatedAt: new Date().toISOString() };
+  } else {
+    cachedDiaries.push(entry);
+  }
+  cachedDiaries.sort((a, b) => b.date.localeCompare(a.date));
+  await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedDiaries));
+
+  // 2. Firestore書き込み（失敗時は同期キューへ）
+  try {
+    await saveDiaryEntryToFirestore(entry);
+  } catch {
+    await addToSyncQueue({ type: 'saveDiary', targetId: entry.id, data: entry });
   }
 };
 
@@ -310,16 +351,20 @@ export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
  * すべての日記を読み込む
  */
 export const loadDiaryEntries = async (): Promise<DiaryEntry[]> => {
+  if (!isLoggedIn()) {
+    const jsonValue = await AsyncStorage.getItem(DIARY_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : [];
+  }
+
+  const cacheKey = getCacheKey('diaries');
+
   try {
-    if (isLoggedIn()) {
-      return await loadDiaryEntriesFromFirestore();
-    } else {
-      const jsonValue = await AsyncStorage.getItem(DIARY_KEY);
-      return jsonValue != null ? JSON.parse(jsonValue) : [];
-    }
-  } catch (error) {
-    console.error('日記の読み込みに失敗しました:', error);
-    return [];
+    const result = await loadDiaryEntriesFromFirestore();
+    AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => {});
+    return result;
+  } catch {
+    const cached = await AsyncStorage.getItem(cacheKey);
+    return cached ? JSON.parse(cached) : [];
   }
 };
 
@@ -327,23 +372,32 @@ export const loadDiaryEntries = async (): Promise<DiaryEntry[]> => {
  * 月別で日記を読み込む（Firestore最適化版）
  */
 export const loadDiaryEntriesByMonth = async (year: number, month: number): Promise<DiaryEntry[]> => {
+  if (!isLoggedIn()) {
+    const jsonValue = await AsyncStorage.getItem(DIARY_KEY);
+    const allDiaries: DiaryEntry[] = jsonValue != null ? JSON.parse(jsonValue) : [];
+    const monthStr = String(month).padStart(2, '0');
+    const prefix = `${year}-${monthStr}`;
+    return allDiaries
+      .filter((diary) => diary.date.startsWith(prefix))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  const cacheKey = getCacheKey('diaries');
+
   try {
-    if (isLoggedIn()) {
-      // Firestoreから月別で取得（読み取り回数を削減）
-      return await getDiariesByMonthFromFirestore(year, month);
-    } else {
-      // ローカルストレージの場合は全件取得してフィルタ
-      const jsonValue = await AsyncStorage.getItem(DIARY_KEY);
-      const allDiaries: DiaryEntry[] = jsonValue != null ? JSON.parse(jsonValue) : [];
-      const monthStr = String(month).padStart(2, '0');
-      const prefix = `${year}-${monthStr}`;
-      return allDiaries
-        .filter((diary) => diary.date.startsWith(prefix))
-        .sort((a, b) => b.date.localeCompare(a.date));
-    }
-  } catch (error) {
-    console.error('月別日記の読み込みに失敗しました:', error);
-    return [];
+    const result = await getDiariesByMonthFromFirestore(year, month);
+    // 月別取得成功時は全件キャッシュを更新しない（部分データのため）
+    return result;
+  } catch {
+    // Firestore失敗時は全件キャッシュからフィルタ
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (!cached) return [];
+    const allDiaries: DiaryEntry[] = JSON.parse(cached);
+    const monthStr = String(month).padStart(2, '0');
+    const prefix = `${year}-${monthStr}`;
+    return allDiaries
+      .filter((diary) => diary.date.startsWith(prefix))
+      .sort((a, b) => b.date.localeCompare(a.date));
   }
 };
 
@@ -351,16 +405,22 @@ export const loadDiaryEntriesByMonth = async (year: number, month: number): Prom
  * 特定の日付の日記を取得
  */
 export const getDiaryByDate = async (date: string): Promise<DiaryEntry | null> => {
+  if (!isLoggedIn()) {
+    const diaries = await loadDiaryEntries();
+    return diaries.find((entry) => entry.id === date) || null;
+  }
+
+  const cacheKey = getCacheKey('diaries');
+
   try {
-    if (isLoggedIn()) {
-      return await getDiaryByDateFromFirestore(date);
-    } else {
-      const diaries = await loadDiaryEntries();
-      return diaries.find((entry) => entry.id === date) || null;
-    }
-  } catch (error) {
-    console.error('日記の取得に失敗しました:', error);
-    return null;
+    const result = await getDiaryByDateFromFirestore(date);
+    return result;
+  } catch {
+    // Firestore失敗時は全件キャッシュから検索
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (!cached) return null;
+    const allDiaries: DiaryEntry[] = JSON.parse(cached);
+    return allDiaries.find((entry) => entry.id === date) || null;
   }
 };
 
@@ -391,26 +451,30 @@ export const getRecentDiaryEntries = async (
   excludeDate: string,
   days: number = 3
 ): Promise<DiaryEntry[]> => {
-  try {
-    // excludeDateの1日前から、days日分の範囲を計算
-    const endDate = getDateBefore(excludeDate, 1); // 昨日
-    const startDate = getDateBefore(excludeDate, days); // N日前
+  // excludeDateの1日前から、days日分の範囲を計算
+  const endDate = getDateBefore(excludeDate, 1); // 昨日
+  const startDate = getDateBefore(excludeDate, days); // N日前
 
-    if (isLoggedIn()) {
-      // Firestore: 日付範囲クエリで効率的に取得
-      const entries = await getDiariesByDateRangeFromFirestore(startDate, endDate);
-      // 降順（新しい順）でソート
-      return entries.sort((a, b) => b.date.localeCompare(a.date));
-    } else {
-      // AsyncStorage: 全件取得後にフィルタリング
-      const allDiaries = await loadDiaryEntries();
-      return allDiaries
-        .filter((diary) => diary.date >= startDate && diary.date <= endDate)
-        .sort((a, b) => b.date.localeCompare(a.date));
-    }
-  } catch (error) {
-    console.error('直近の日記取得に失敗しました:', error);
-    return [];
+  if (!isLoggedIn()) {
+    const allDiaries = await loadDiaryEntries();
+    return allDiaries
+      .filter((diary) => diary.date >= startDate && diary.date <= endDate)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  const cacheKey = getCacheKey('diaries');
+
+  try {
+    const entries = await getDiariesByDateRangeFromFirestore(startDate, endDate);
+    return entries.sort((a, b) => b.date.localeCompare(a.date));
+  } catch {
+    // Firestore失敗時は全件キャッシュからフィルタ
+    const cached = await AsyncStorage.getItem(cacheKey);
+    if (!cached) return [];
+    const allDiaries: DiaryEntry[] = JSON.parse(cached);
+    return allDiaries
+      .filter((diary) => diary.date >= startDate && diary.date <= endDate)
+      .sort((a, b) => b.date.localeCompare(a.date));
   }
 };
 
@@ -418,19 +482,27 @@ export const getRecentDiaryEntries = async (
  * 日記を削除する
  */
 export const deleteDiaryEntry = async (id: string): Promise<void> => {
-  try {
-    if (isLoggedIn()) {
-      await deleteDiaryEntryFromFirestore(id);
-    } else {
-      const existingDiaries = await loadDiaryEntries();
-      const filteredDiaries = existingDiaries.filter((entry) => entry.id !== id);
+  if (!isLoggedIn()) {
+    const existingDiaries = await loadDiaryEntries();
+    const filteredDiaries = existingDiaries.filter((entry) => entry.id !== id);
+    await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(filteredDiaries));
+    return;
+  }
 
-      const jsonValue = JSON.stringify(filteredDiaries);
-      await AsyncStorage.setItem(DIARY_KEY, jsonValue);
-    }
-  } catch (error) {
-    console.error('日記の削除に失敗しました:', error);
-    throw error;
+  // 1. キャッシュから除去
+  const cacheKey = getCacheKey('diaries');
+  const cachedJson = await AsyncStorage.getItem(cacheKey);
+  if (cachedJson) {
+    const cachedDiaries: DiaryEntry[] = JSON.parse(cachedJson);
+    const filtered = cachedDiaries.filter((entry) => entry.id !== id);
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(filtered));
+  }
+
+  // 2. Firestore削除（失敗時は同期キューへ）
+  try {
+    await deleteDiaryEntryFromFirestore(id);
+  } catch {
+    await addToSyncQueue({ type: 'deleteDiary', targetId: id, data: { id } });
   }
 };
 
@@ -440,6 +512,13 @@ export const deleteDiaryEntry = async (id: string): Promise<void> => {
 export const deleteAllUserData = async (): Promise<void> => {
   try {
     if (isLoggedIn()) {
+      // UID付きキャッシュキーを削除
+      const cacheKeys = ['settings', 'display', 'diaries', 'ai_consent'].map(getCacheKey);
+      await AsyncStorage.multiRemove(cacheKeys);
+
+      // 同期キューを削除
+      await clearSyncQueue();
+
       // Firestoreのデータを削除
       await deleteAllUserDataFromFirestore();
     }
@@ -487,16 +566,22 @@ export const saveThemeSettings = async (settings: ThemeSettings): Promise<void> 
  * AI機能の同意状態を読み込む
  */
 export const loadAIConsent = async (): Promise<AIConsentStatus | null> => {
+  if (!isLoggedIn()) {
+    const jsonValue = await AsyncStorage.getItem(AI_CONSENT_KEY);
+    return jsonValue != null ? JSON.parse(jsonValue) : null;
+  }
+
+  const cacheKey = getCacheKey('ai_consent');
+
   try {
-    if (isLoggedIn()) {
-      return await loadAIConsentFromFirestore();
-    } else {
-      const jsonValue = await AsyncStorage.getItem(AI_CONSENT_KEY);
-      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    const result = await loadAIConsentFromFirestore();
+    if (result) {
+      AsyncStorage.setItem(cacheKey, JSON.stringify(result)).catch(() => {});
     }
-  } catch (error) {
-    console.error('AI同意状態の読み込みに失敗しました:', error);
-    return null;
+    return result;
+  } catch {
+    const cached = await AsyncStorage.getItem(cacheKey);
+    return cached ? JSON.parse(cached) : null;
   }
 };
 

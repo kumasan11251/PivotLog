@@ -8,6 +8,7 @@ import DiaryListContent from '../components/DiaryListContent';
 import { colors, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import type { RootStackParamList } from '../types/navigation';
+import { useSyncOnReconnect } from '../hooks/useSyncOnReconnect';
 
 type TabType = 'home' | 'diaryList';
 type MainTabScreenRouteProp = RouteProp<RootStackParamList, 'Home'>;
@@ -18,6 +19,7 @@ const MainTabScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+  useSyncOnReconnect();
 
   const [shouldRefresh, setShouldRefresh] = useState(false);
 

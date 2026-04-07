@@ -81,27 +81,22 @@ export const saveUserSettingsToFirestore = async (
  * ユーザー設定を読み込み
  */
 export const loadUserSettingsFromFirestore = async (): Promise<UserSettings | null> => {
-  try {
-    const userDoc = getUserDocRef();
+  const userDoc = getUserDocRef();
 
-    return await withRetry(
-      async () => {
-        const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('user').get();
-        const docData = doc.data();
-        return docData ? (docData as UserSettings) : null;
+  return await withRetry(
+    async () => {
+      const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('user').get();
+      const docData = doc.data();
+      return docData ? (docData as UserSettings) : null;
+    },
+    {
+      maxRetries: 1,
+      baseDelayMs: 1000,
+      onRetry: (attempt, error) => {
+        console.warn(`[Firestore] 設定読み込みリトライ (${attempt}/1):`, error.message);
       },
-      {
-        maxRetries: 3,
-        baseDelayMs: 1000,
-        onRetry: (attempt, error) => {
-          console.warn(`[Firestore] 設定読み込みリトライ (${attempt}/3):`, error.message);
-        },
-      }
-    );
-  } catch (error) {
-    console.error('設定の読み込みに失敗しました:', error);
-    return null;
-  }
+    }
+  );
 };
 
 // =============== 表示設定 ===============
@@ -131,19 +126,14 @@ export const saveHomeDisplaySettingsToFirestore = async (
  * ホーム画面の表示設定を読み込み
  */
 export const loadHomeDisplaySettingsFromFirestore = async (): Promise<HomeDisplaySettings | null> => {
-  try {
-    const userDoc = getUserDocRef();
-    const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('display').get();
-    const docData = doc.data();
+  const userDoc = getUserDocRef();
+  const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('display').get();
+  const docData = doc.data();
 
-    if (docData) {
-      return docData as HomeDisplaySettings;
-    }
-    return null;
-  } catch (error) {
-    console.error('表示設定の読み込みに失敗しました:', error);
-    return null;
+  if (docData) {
+    return docData as HomeDisplaySettings;
   }
+  return null;
 };
 
 // =============== ウィジェット設定 ===============
@@ -238,29 +228,24 @@ export const saveDiaryEntryToFirestore = async (
  * すべての日記を読み込み（日付降順）
  */
 export const loadDiaryEntriesFromFirestore = async (): Promise<DiaryEntry[]> => {
-  try {
-    const userDoc = getUserDocRef();
+  const userDoc = getUserDocRef();
 
-    return await withRetry(
-      async () => {
-        const snapshot = await userDoc
-          .collection(COLLECTIONS.DIARIES)
-          .orderBy('date', 'desc')
-          .get();
-        return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+  return await withRetry(
+    async () => {
+      const snapshot = await userDoc
+        .collection(COLLECTIONS.DIARIES)
+        .orderBy('date', 'desc')
+        .get();
+      return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+    },
+    {
+      maxRetries: 1,
+      baseDelayMs: 1000,
+      onRetry: (attempt, error) => {
+        console.warn(`[Firestore] 日記一覧読み込みリトライ (${attempt}/1):`, error.message);
       },
-      {
-        maxRetries: 3,
-        baseDelayMs: 1000,
-        onRetry: (attempt, error) => {
-          console.warn(`[Firestore] 日記一覧読み込みリトライ (${attempt}/3):`, error.message);
-        },
-      }
-    );
-  } catch (error) {
-    console.error('日記の読み込みに失敗しました:', error);
-    return [];
-  }
+    }
+  );
 };
 
 /**
@@ -269,27 +254,22 @@ export const loadDiaryEntriesFromFirestore = async (): Promise<DiaryEntry[]> => 
 export const getDiaryByDateFromFirestore = async (
   date: string
 ): Promise<DiaryEntry | null> => {
-  try {
-    const userDoc = getUserDocRef();
+  const userDoc = getUserDocRef();
 
-    return await withRetry(
-      async () => {
-        const doc = await userDoc.collection(COLLECTIONS.DIARIES).doc(date).get();
-        const docData = doc.data();
-        return docData ? (docData as DiaryEntry) : null;
+  return await withRetry(
+    async () => {
+      const doc = await userDoc.collection(COLLECTIONS.DIARIES).doc(date).get();
+      const docData = doc.data();
+      return docData ? (docData as DiaryEntry) : null;
+    },
+    {
+      maxRetries: 1,
+      baseDelayMs: 1000,
+      onRetry: (attempt, error) => {
+        console.warn(`[Firestore] 日記取得リトライ (${attempt}/1):`, error.message);
       },
-      {
-        maxRetries: 3,
-        baseDelayMs: 1000,
-        onRetry: (attempt, error) => {
-          console.warn(`[Firestore] 日記取得リトライ (${attempt}/3):`, error.message);
-        },
-      }
-    );
-  } catch (error) {
-    console.error('日記の取得に失敗しました:', error);
-    return null;
-  }
+    }
+  );
 };
 
 /**
@@ -341,33 +321,28 @@ export const getDiariesByMonthFromFirestore = async (
   year: number,
   month: number
 ): Promise<DiaryEntry[]> => {
-  try {
-    const userDoc = getUserDocRef();
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
+  const userDoc = getUserDocRef();
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = `${year}-${String(month).padStart(2, '0')}-31`;
 
-    return await withRetry(
-      async () => {
-        const snapshot = await userDoc
-          .collection(COLLECTIONS.DIARIES)
-          .where('date', '>=', startDate)
-          .where('date', '<=', endDate)
-          .orderBy('date', 'desc')
-          .get();
-        return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+  return await withRetry(
+    async () => {
+      const snapshot = await userDoc
+        .collection(COLLECTIONS.DIARIES)
+        .where('date', '>=', startDate)
+        .where('date', '<=', endDate)
+        .orderBy('date', 'desc')
+        .get();
+      return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+    },
+    {
+      maxRetries: 1,
+      baseDelayMs: 1000,
+      onRetry: (attempt, error) => {
+        console.warn(`[Firestore] 月別日記取得リトライ (${attempt}/1):`, error.message);
       },
-      {
-        maxRetries: 3,
-        baseDelayMs: 1000,
-        onRetry: (attempt, error) => {
-          console.warn(`[Firestore] 月別日記取得リトライ (${attempt}/3):`, error.message);
-        },
-      }
-    );
-  } catch (error) {
-    console.error('月別日記の取得に失敗しました:', error);
-    return [];
-  }
+    }
+  );
 };
 
 /**
@@ -544,31 +519,26 @@ export const getDiariesByDateRangeFromFirestore = async (
   startDate: string,
   endDate: string
 ): Promise<DiaryEntry[]> => {
-  try {
-    const userDoc = getUserDocRef();
+  const userDoc = getUserDocRef();
 
-    return await withRetry(
-      async () => {
-        const snapshot = await userDoc
-          .collection(COLLECTIONS.DIARIES)
-          .where('date', '>=', startDate)
-          .where('date', '<=', endDate)
-          .orderBy('date', 'asc')
-          .get();
-        return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+  return await withRetry(
+    async () => {
+      const snapshot = await userDoc
+        .collection(COLLECTIONS.DIARIES)
+        .where('date', '>=', startDate)
+        .where('date', '<=', endDate)
+        .orderBy('date', 'asc')
+        .get();
+      return snapshot.docs.map((doc) => doc.data() as DiaryEntry);
+    },
+    {
+      maxRetries: 1,
+      baseDelayMs: 1000,
+      onRetry: (attempt, error) => {
+        console.warn(`[Firestore] 期間指定日記取得リトライ (${attempt}/1):`, error.message);
       },
-      {
-        maxRetries: 3,
-        baseDelayMs: 1000,
-        onRetry: (attempt, error) => {
-          console.warn(`[Firestore] 期間指定日記取得リトライ (${attempt}/3):`, error.message);
-        },
-      }
-    );
-  } catch (error) {
-    console.error('期間指定日記の取得に失敗しました:', error);
-    return [];
-  }
+    }
+  );
 };
 
 // =============== 月次インサイト ===============
@@ -789,17 +759,12 @@ export const saveAIConsentToFirestore = async (
  * AI同意状態を読み込み
  */
 export const loadAIConsentFromFirestore = async (): Promise<AIConsentStatus | null> => {
-  try {
-    const userDoc = getUserDocRef();
-    const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('aiConsent').get();
-    const docData = doc.data();
+  const userDoc = getUserDocRef();
+  const doc = await userDoc.collection(COLLECTIONS.SETTINGS).doc('aiConsent').get();
+  const docData = doc.data();
 
-    if (docData) {
-      return docData as AIConsentStatus;
-    }
-    return null;
-  } catch (error) {
-    console.error('AI同意状態の読み込みに失敗しました:', error);
-    return null;
+  if (docData) {
+    return docData as AIConsentStatus;
   }
+  return null;
 };
