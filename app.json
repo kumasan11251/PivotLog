@@ -60,6 +60,8 @@
       ]
     ],
     "extra": {
+      "revenueCatApiKeyIos": "appl_tyRwghfySgKjGWDeSnUaoyTvWEY",
+      "revenueCatApiKeyAndroid": "goog_BgPtWfPjdttWiUTypfTsigXHoGd",
       "eas": {
         "projectId": "41c32323-fec2-4cb3-bed7-afd879da5ea4"
       }
