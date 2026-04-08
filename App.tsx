@@ -28,6 +28,7 @@ import { MonthlyInsightProvider } from './src/contexts/MonthlyInsightContext';
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 import { AIReflectionProvider } from './src/contexts/AIReflectionContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
+import { OfflineBanner } from './src/components/common/OfflineBanner';
 import { getEffectiveToday } from './src/utils/dateUtils';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
@@ -133,50 +134,53 @@ function MainNavigator() {
   const initialRouteName = isSetupComplete ? 'Home' : showOnboarding ? 'Onboarding' : 'InitialSetup';
 
   return (
-    <Stack.Navigator
-      initialRouteName={initialRouteName}
-      screenOptions={{
-        headerShown: false,
-        gestureEnabled: true,
-        animation: 'slide_from_right',
-      }}
-    >
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
-      <Stack.Screen name="Home" component={MainTabScreen} />
-      <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
-      <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
-      <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
-      <Stack.Screen name="Feedback" component={FeedbackScreen} />
-      <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} />
-      <Stack.Screen name="ReminderSettings" component={ReminderSettingsScreen} />
-      <Stack.Screen
-        name="WeeklyInsight"
-        component={WeeklyInsightScreen}
-        options={{
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
+    <View style={styles.navigatorWrapper}>
+      <Stack.Navigator
+        initialRouteName={initialRouteName}
+        screenOptions={{
+          headerShown: false,
+          gestureEnabled: true,
+          animation: 'slide_from_right',
         }}
-      />
-      <Stack.Screen
-        name="MonthlyInsight"
-        component={MonthlyInsightScreen}
-        options={{
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
-        }}
-      />
-      <Stack.Screen
-        name="Paywall"
-        component={PaywallScreen}
-        options={{
-          presentation: 'modal',
-          animation: 'slide_from_bottom',
-        }}
-      />
-    </Stack.Navigator>
+      >
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
+        <Stack.Screen name="Home" component={MainTabScreen} />
+        <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
+        <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
+        <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
+        <Stack.Screen name="Feedback" component={FeedbackScreen} />
+        <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} />
+        <Stack.Screen name="ReminderSettings" component={ReminderSettingsScreen} />
+        <Stack.Screen
+          name="WeeklyInsight"
+          component={WeeklyInsightScreen}
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="MonthlyInsight"
+          component={MonthlyInsightScreen}
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="Paywall"
+          component={PaywallScreen}
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+      </Stack.Navigator>
+      <OfflineBanner />
+    </View>
   );
 }
 
@@ -298,5 +302,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
+  },
+  navigatorWrapper: {
+    flex: 1,
   },
 });
