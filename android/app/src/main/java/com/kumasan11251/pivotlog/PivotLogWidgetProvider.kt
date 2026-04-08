@@ -149,6 +149,23 @@ internal fun updateAppWidget(
             // プログレスバーを設定（max=1000で0.1%単位の精度）
             views.setProgressBar(R.id.progress_bar, 1000, (lifeProgress * 10).toInt(), false)
 
+            // プログレスバーの色をテーマに合わせて設定
+            // Android 12+（API 31+）ではMaterial Youがシステムtintを適用してカスタムdrawableの色を上書きするため、
+            // アプリ独自のcolorScheme設定に基づいて動的にtintを設定する
+            val progressBgColor = Color.parseColor(if (isDarkMode) "#4A4A4A" else "#D5D5D5")
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                views.setColorStateList(
+                    R.id.progress_bar,
+                    "setProgressBackgroundTintList",
+                    android.content.res.ColorStateList.valueOf(progressBgColor)
+                )
+                views.setColorStateList(
+                    R.id.progress_bar,
+                    "setProgressTintList",
+                    android.content.res.ColorStateList.valueOf(primaryColor)
+                )
+            }
+
             // 表示要素フラグの読み取り（デフォルト=true）
             val showDateHeader = !data.has("showDateHeader") || data.getBoolean("showDateHeader")
             val showDiaryStatus = !data.has("showDiaryStatus") || data.getBoolean("showDiaryStatus")

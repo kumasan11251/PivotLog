@@ -126,6 +126,8 @@
         android:max="1000"
         android:progress="0"
         android:progressDrawable="@drawable/progress_bar_drawable"
+        android:progressBackgroundTint="@color/widget_progress_background"
+        android:progressTint="@color/widget_primary"
         android:layout_marginTop="10dp" />
 
     <!-- 連続記録行 -->
