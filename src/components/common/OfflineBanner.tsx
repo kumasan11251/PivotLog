@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#FFFFFF',
-    fontFamily: fonts.notoSansJP.medium,
+    fontFamily: fonts.family.regular,
     fontSize: 13,
   },
 });
