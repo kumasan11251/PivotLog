@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { getColors, fonts, spacing } from '../../theme';
+import { getColors, fonts, spacing, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -246,10 +246,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   valueNumber: {
+    ...textBase,
     fontSize: 56,
     fontFamily: fonts.family.bold,
   },
   valueUnit: {
+    ...textBase,
     fontSize: 24,
     fontFamily: fonts.family.regular,
     marginLeft: 4,
@@ -263,15 +265,18 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   remainingLabel: {
+    ...textBase,
     fontSize: 14,
     fontFamily: fonts.family.regular,
     marginRight: 4,
   },
   remainingValue: {
+    ...textBase,
     fontSize: 20,
     fontFamily: fonts.family.bold,
   },
   remainingUnit: {
+    ...textBase,
     fontSize: 14,
     fontFamily: fonts.family.regular,
     marginLeft: 2,
@@ -326,6 +331,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   rangeLabel: {
+    ...textBase,
     fontSize: 12,
     fontFamily: fonts.family.regular,
   },
@@ -341,6 +347,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   presetText: {
+    ...textBase,
     fontSize: 14,
     fontFamily: fonts.family.regular,
   },

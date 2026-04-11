@@ -117,6 +117,7 @@ const InitialSetupScreen: React.FC = () => {
 
   // 年選択ScrollViewのref
   const yearScrollRef = useRef<ScrollView>(null);
+  const initialScrollDone = useRef(false);
 
   // 目標寿命の状態
   const [targetLifespan, setTargetLifespan] = useState<number>(80);
@@ -176,9 +177,9 @@ const InitialSetupScreen: React.FC = () => {
     return targetLifespan < minLifespan ? minLifespan : targetLifespan;
   }, [targetLifespan, minLifespan]);
 
-  // 年選択の初期スクロール位置設定
+  // 年選択の初期スクロール位置設定（初回のみ）
   useEffect(() => {
-    if (yearScrollRef.current && currentStepIndex === 0) {
+    if (yearScrollRef.current && currentStepIndex === 0 && !initialScrollDone.current) {
       const yearIndex = YEARS.findIndex((y) => y === selectedYear);
       if (yearIndex > 0) {
         const itemWidth = 72; // pickerItemの幅 + gap
@@ -187,8 +188,10 @@ const InitialSetupScreen: React.FC = () => {
           yearScrollRef.current?.scrollTo({ x: Math.max(0, scrollX), animated: false });
         }, 100);
       }
+      initialScrollDone.current = true;
     }
-  }, [currentStepIndex, selectedYear]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 初回表示時のみスクロールするため、selectedYearは意図的に除外
+  }, [currentStepIndex]);
 
   // ハプティックフィードバック付きのセッター
   const handleYearSelect = useCallback((year: number) => {
@@ -395,22 +398,28 @@ const InitialSetupScreen: React.FC = () => {
 
   // 目標寿命ステップのレンダリング
   const renderLifespanStep = () => (
-    <Animated.View style={[styles.lifespanContent, { transform: [{ scale: celebrationScale }] }]}>
-      <LifespanSlider
-        value={adjustedLifespan}
-        onValueChange={handleLifespanChange}
-        minValue={minLifespan}
-        maxValue={120}
-        currentAge={currentAge}
-        forceLightMode
-      />
+    <ScrollView
+      style={styles.lifespanScrollView}
+      contentContainerStyle={styles.lifespanScrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      <Animated.View style={{ transform: [{ scale: celebrationScale }] }}>
+        <LifespanSlider
+          value={adjustedLifespan}
+          onValueChange={handleLifespanChange}
+          minValue={minLifespan}
+          maxValue={120}
+          currentAge={currentAge}
+          forceLightMode
+        />
 
-      <View style={styles.motivationContainer}>
-        <Text style={styles.motivationText}>
-          この{adjustedLifespan - currentAge}年を、最高の時間にしよう
-        </Text>
-      </View>
-    </Animated.View>
+        <View style={styles.motivationContainer}>
+          <Text style={styles.motivationText}>
+            この{adjustedLifespan - currentAge}年を、最高の時間にしよう
+          </Text>
+        </View>
+      </Animated.View>
+    </ScrollView>
   );
 
   return (
@@ -559,9 +568,13 @@ const styles = StyleSheet.create({
   stepScrollContent: {
     paddingBottom: spacing.lg,
   },
-  lifespanContent: {
+  lifespanScrollView: {
     flex: 1,
+  },
+  lifespanScrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingBottom: spacing.lg,
   },
   pickerSection: {
     marginBottom: spacing.lg,
