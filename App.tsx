@@ -13,7 +13,6 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import EditBirthdayScreen from './src/screens/EditBirthdayScreen';
 import EditLifespanScreen from './src/screens/EditLifespanScreen';
 import LinkAccountScreen from './src/screens/LinkAccountScreen';
-import FeedbackScreen from './src/screens/FeedbackScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import WidgetSettingsScreen from './src/screens/WidgetSettingsScreen';
 import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
@@ -151,7 +150,6 @@ function MainNavigator() {
         <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
         <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
         <Stack.Screen name="LinkAccount" component={LinkAccountScreen} />
-        <Stack.Screen name="Feedback" component={FeedbackScreen} />
         <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} />
         <Stack.Screen name="ReminderSettings" component={ReminderSettingsScreen} />
         <Stack.Screen

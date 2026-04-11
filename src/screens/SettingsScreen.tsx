@@ -522,7 +522,7 @@ const SettingsScreen: React.FC = () => {
               icon="chatbubble-ellipses-outline"
               label="ご意見・ご要望を送る"
               value="不具合報告や機能改善など"
-              onPress={() => navigation.navigate('Feedback')}
+              onPress={() => Linking.openURL('https://forms.gle/jAxfCEiMS9As6EtC7')}
               themeColors={themeColors}
             />
             {/* バージョン（タップで開発者メニューをトグル、開発モードのみ表示） */}
