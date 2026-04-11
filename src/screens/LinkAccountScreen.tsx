@@ -136,11 +136,7 @@ const LinkAccountScreen: React.FC = () => {
       Alert.alert(
         'アカウント連携完了',
         'メールアドレスで連携されました。今後はこのメールアドレスでもログインできます。',
-        [
-          {
-            text: 'OK',
-          },
-        ]
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
       // フォームをクリア
       setEmail('');
@@ -163,11 +159,7 @@ const LinkAccountScreen: React.FC = () => {
       Alert.alert(
         'アカウント連携完了',
         'Googleアカウントと連携されました。今後はGoogleアカウントでもログインできます。',
-        [
-          {
-            text: 'OK',
-          },
-        ]
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (err) {
       setError(getErrorMessage(err));
@@ -214,7 +206,7 @@ const LinkAccountScreen: React.FC = () => {
       Alert.alert(
         'ログイン成功',
         'アカウントにログインしました。データが復元されました。',
-        [{ text: 'OK' }]
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (err) {
       setLoginError(getErrorMessage(err));
@@ -251,7 +243,7 @@ const LinkAccountScreen: React.FC = () => {
       Alert.alert(
         'ログイン成功',
         'Googleアカウントでログインしました。データが復元されました。',
-        [{ text: 'OK' }]
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (err) {
       setLoginError(getErrorMessage(err));

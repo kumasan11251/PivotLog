@@ -75,8 +75,17 @@ const getCacheKey = (suffix: string): string => {
  */
 export const isOnboardingComplete = async (): Promise<boolean> => {
   try {
-    const value = await AsyncStorage.getItem(ONBOARDING_KEY);
-    return value === 'true';
+    const key = getCacheKey('onboarding');
+    const value = await AsyncStorage.getItem(key);
+    if (value === 'true') return true;
+    // レガシーのグローバルキーをチェック → 見つかったら新キーへ移行
+    const legacyValue = await AsyncStorage.getItem(ONBOARDING_KEY);
+    if (legacyValue === 'true') {
+      await AsyncStorage.setItem(key, 'true');
+      await AsyncStorage.removeItem(ONBOARDING_KEY);
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error('オンボーディング状態の読み込みに失敗:', error);
     return false;
@@ -88,7 +97,10 @@ export const isOnboardingComplete = async (): Promise<boolean> => {
  */
 export const setOnboardingComplete = async (): Promise<void> => {
   try {
-    await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+    const key = getCacheKey('onboarding');
+    await AsyncStorage.setItem(key, 'true');
+    // レガシーのグローバルキーを削除
+    await AsyncStorage.removeItem(ONBOARDING_KEY).catch(() => {});
   } catch (error) {
     console.error('オンボーディング状態の保存に失敗:', error);
     throw error;
@@ -100,7 +112,8 @@ export const setOnboardingComplete = async (): Promise<void> => {
  */
 export const resetOnboarding = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(ONBOARDING_KEY);
+    const key = getCacheKey('onboarding');
+    await AsyncStorage.removeItem(key);
   } catch (error) {
     console.error('オンボーディング状態のリセットに失敗:', error);
     throw error;
@@ -513,7 +526,7 @@ export const deleteAllUserData = async (): Promise<void> => {
   try {
     if (isLoggedIn()) {
       // UID付きキャッシュキーを削除
-      const cacheKeys = ['settings', 'display', 'diaries', 'ai_consent'].map(getCacheKey);
+      const cacheKeys = ['settings', 'display', 'diaries', 'ai_consent', 'onboarding'].map(getCacheKey);
       await AsyncStorage.multiRemove(cacheKeys);
 
       // 同期キューを削除
@@ -523,7 +536,7 @@ export const deleteAllUserData = async (): Promise<void> => {
       await deleteAllUserDataFromFirestore();
     }
     // ローカルストレージもクリア
-    await AsyncStorage.multiRemove([STORAGE_KEY, DIARY_KEY, HOME_DISPLAY_KEY, MIGRATION_KEY]);
+    await AsyncStorage.multiRemove([STORAGE_KEY, DIARY_KEY, HOME_DISPLAY_KEY, MIGRATION_KEY, ONBOARDING_KEY]);
     console.log('すべてのユーザーデータを削除しました');
   } catch (error) {
     console.error('ユーザーデータの削除に失敗しました:', error);
