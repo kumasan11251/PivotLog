@@ -81,6 +81,10 @@ function MainNavigator() {
       try {
         // オンボーディングが完了しているかチェック
         const onboardingDone = await isOnboardingComplete();
+        // オンボーディングが完了していない場合は最初に設定（後続のエラーに影響されないようにする）
+        if (!onboardingDone) {
+          setShowOnboarding(true);
+        }
 
         // ローカルデータがあり、まだ移行されていない場合は移行を実行
         const hasLocal = await hasLocalData();
@@ -97,19 +101,19 @@ function MainNavigator() {
         const settings = await loadUserSettings();
         setIsSetupComplete(settings !== null);
 
-        // オンボーディングが完了していない場合は表示（設定の有無に関係なく）
-        if (!onboardingDone) {
-          setShowOnboarding(true);
-        }
-
         // リマインダー通知を初期化（設定済みの場合は再スケジュール）
-        await initializeReminder();
+        try {
+          await initializeReminder();
+        } catch (reminderError) {
+          console.error('リマインダー初期化エラー:', reminderError);
+        }
 
         // アプリ起動時にバッジをクリア
         await clearBadge();
       } catch (error) {
         console.error('初期化エラー:', error);
         setIsSetupComplete(false);
+        setIsMigrating(false);
       } finally {
         setIsLoading(false);
       }
