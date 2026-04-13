@@ -101,14 +101,14 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
             <View style={[styles.content, { backgroundColor: themeColors.surface }]}>
               <View style={styles.header}>
                 <Text style={[styles.title, { color: themeColors.text.primary }]}>年月を選択</Text>
-                <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close" size={18} color={themeColors.text.primary} />
+                <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                  <Ionicons name="close" size={24} color={themeColors.text.primary} />
                 </TouchableOpacity>
               </View>
 
               <View style={styles.yearRow}>
                 <TouchableOpacity onPress={() => handleYearChange(-1)} style={[styles.yearButton, { backgroundColor: themeColors.background }]}>
-                  <Ionicons name="chevron-back" size={18} color={themeColors.text.primary} />
+                  <Ionicons name="chevron-back" size={22} color={themeColors.text.primary} />
                 </TouchableOpacity>
                 <Text style={[styles.yearText, { color: themeColors.text.primary }]}>{year}年</Text>
                 <TouchableOpacity
@@ -122,7 +122,7 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
                 >
                   <Ionicons
                     name="chevron-forward"
-                    size={18}
+                    size={22}
                     color={nextYearDisabled ? themeColors.text.secondary : themeColors.text.primary}
                   />
                 </TouchableOpacity>
@@ -141,7 +141,7 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
                         styles.monthCell,
                         { backgroundColor: themeColors.background },
                         isSelected && { backgroundColor: themeColors.primary },
-                        isDisabled && { backgroundColor: themeColors.surface, borderWidth: spacing.borderWidth, borderColor: themeColors.border },
+                        isDisabled && styles.monthCellDisabled,
                       ]}
                       onPress={() => handleSelectMonth(monthNumber)}
                       disabled={isDisabled}
@@ -151,7 +151,6 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
                           styles.monthText,
                           { color: themeColors.text.primary },
                           isSelected && { color: themeColors.text.inverse },
-                          isDisabled && { color: themeColors.text.secondary },
                         ]}
                       >
                         {monthNumber}月
@@ -184,9 +183,9 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: 300,
-    borderRadius: spacing.borderRadius.medium,
-    padding: spacing.md,
+    maxWidth: 360,
+    borderRadius: spacing.borderRadius.large,
+    padding: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -197,10 +196,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: fonts.size.body,
+    fontSize: fonts.size.sectionTitle,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
@@ -208,36 +207,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   yearButton: {
-    padding: spacing.xs,
-    borderRadius: spacing.borderRadius.small,
+    padding: spacing.md,
+    borderRadius: spacing.borderRadius.medium,
   },
   yearButtonDisabled: {
     opacity: 0.3,
   },
   yearText: {
-    fontSize: fonts.size.body,
+    fontSize: fonts.size.sectionTitle,
     fontFamily: fonts.family.bold,
-    marginHorizontal: spacing.md,
+    marginHorizontal: spacing.lg,
     ...textBase,
   },
   monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   monthCell: {
     width: '23%',
-    marginBottom: spacing.xs,
-    paddingVertical: spacing.sm,
-    borderRadius: spacing.borderRadius.small,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.lg,
+    borderRadius: spacing.borderRadius.medium,
     alignItems: 'center',
   },
+  monthCellDisabled: {
+    opacity: 0.3,
+  },
   monthText: {
-    fontSize: fonts.size.label,
+    fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
@@ -246,13 +248,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    borderRadius: spacing.borderRadius.small,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: spacing.borderRadius.medium,
+    minWidth: 160,
+    alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: fonts.size.label,
+    fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
+    textAlign: 'center',
     ...textBase,
   },
 });
