@@ -13,6 +13,12 @@ import Purchases, {
 } from 'react-native-purchases';
 import { getRevenueCatApiKey, ENTITLEMENT_ID } from '../../constants/revenueCat';
 
+/** purchasePackageの戻り値型 */
+export type PurchasePackageResult = {
+  customerInfo: CustomerInfo;
+  source: 'purchase' | 'restored_from_receipt';
+} | null;
+
 let isInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
@@ -83,7 +89,18 @@ export async function identifyUser(userId: string): Promise<void> {
   if (!(await ensureInitialized())) return;
 
   try {
-    await Purchases.logIn(userId);
+    const { customerInfo, created } = await Purchases.logIn(userId);
+    if (__DEV__) {
+      console.log(`[RevenueCat] identifyUser完了: userId=${userId}, created=${created}`);
+      console.log('[RevenueCat] identifyUser customerInfo:', {
+        activeSubscriptions: customerInfo.activeSubscriptions,
+        activeEntitlements: Object.keys(customerInfo.entitlements.active),
+        allEntitlements: Object.keys(customerInfo.entitlements.all),
+      });
+    }
+    if (created) {
+      console.warn('[RevenueCat] 新規RevenueCatユーザーが作成されました。匿名時の購入が引き継がれていない可能性があります。');
+    }
   } catch (error) {
     console.error('[RevenueCat] ユーザー特定に失敗しました:', error);
     throw error;
@@ -142,16 +159,36 @@ export async function getOfferings(): Promise<PurchasesOfferings | null> {
 
 /**
  * パッケージ購入
- * @returns 購入成功時のCustomerInfo、キャンセル時はnull
+ * @returns 購入成功時の { customerInfo, source }、キャンセル時はnull
+ * RECEIPT_ALREADY_IN_USE_ERROR 発生時は自動でrestorePurchasesを試みる
  */
-export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerInfo | null> {
+export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchasePackageResult> {
   if (!(await ensureInitialized())) {
     throw new Error('RevenueCat SDKが初期化されていません');
   }
 
   try {
+    if (__DEV__) {
+      console.log('[RevenueCat] purchasePackage開始:', {
+        packageId: pkg.identifier,
+        productId: pkg.product.identifier,
+        packageType: pkg.packageType,
+        price: pkg.product.priceString,
+      });
+    }
+
     const { customerInfo } = await Purchases.purchasePackage(pkg);
-    return customerInfo;
+
+    if (__DEV__) {
+      console.log('[RevenueCat] purchasePackage完了:', {
+        activeSubscriptions: customerInfo.activeSubscriptions,
+        allPurchasedProductIdentifiers: customerInfo.allPurchasedProductIdentifiers,
+        activeEntitlements: Object.keys(customerInfo.entitlements.active),
+        allEntitlements: Object.keys(customerInfo.entitlements.all),
+      });
+    }
+
+    return { customerInfo, source: 'purchase' };
   } catch (error: unknown) {
     // ユーザーキャンセルの場合はnullを返す
     if (
@@ -162,6 +199,26 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<CustomerIn
     ) {
       return null;
     }
+
+    // レシートが別ユーザーに紐付いている場合、restorePurchasesで移転を試みる
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === PURCHASES_ERROR_CODE.RECEIPT_ALREADY_IN_USE_ERROR ||
+       (error as { code: string }).code === PURCHASES_ERROR_CODE.RECEIPT_IN_USE_BY_OTHER_SUBSCRIBER_ERROR)
+    ) {
+      console.warn('[RevenueCat] レシートが別ユーザーに紐付いています。restorePurchasesで復元を試みます...');
+      try {
+        const restoredInfo = await Purchases.restorePurchases();
+        console.log('[RevenueCat] restorePurchasesによる復元成功');
+        return { customerInfo: restoredInfo, source: 'restored_from_receipt' };
+      } catch (restoreError) {
+        console.error('[RevenueCat] restorePurchasesによる復元も失敗:', restoreError);
+        throw error; // 元のエラーをthrow
+      }
+    }
+
     throw error;
   }
 }
@@ -182,13 +239,32 @@ export async function restorePurchases(): Promise<CustomerInfo | null> {
 
 /**
  * premiumエンタイトルメントのアクティブ判定
+ * Entitlement未設定時はactiveSubscriptionsでフォールバック判定
  */
 export function isSubscriptionActive(info: CustomerInfo): boolean {
-  return info.entitlements.active[ENTITLEMENT_ID] !== undefined;
+  if (__DEV__) {
+    console.log('[RevenueCat] isSubscriptionActive判定:', {
+      activeEntitlementKeys: Object.keys(info.entitlements.active),
+      allEntitlementKeys: Object.keys(info.entitlements.all),
+      activeSubscriptions: info.activeSubscriptions,
+    });
+  }
+
+  // 一次判定: Entitlement
+  if (info.entitlements.active[ENTITLEMENT_ID] !== undefined) return true;
+
+  // 二次判定: activeSubscriptions（Entitlement設定不備時のフォールバック）
+  if (info.activeSubscriptions.length > 0) {
+    console.warn('[RevenueCat] entitlement未設定だがactiveSubscriptionsあり。RevenueCatダッシュボードのEntitlement設定を確認してください。');
+    return true;
+  }
+
+  return false;
 }
 
 /**
  * CustomerInfoからSubscriptionStatus用の情報を抽出
+ * Entitlement未設定時はactiveSubscriptionsからフォールバック
  */
 export function extractSubscriptionDetails(info: CustomerInfo): {
   expiresAt?: string;
@@ -196,13 +272,23 @@ export function extractSubscriptionDetails(info: CustomerInfo): {
   platform?: 'ios' | 'android';
 } {
   const entitlement = info.entitlements.active[ENTITLEMENT_ID];
-  if (!entitlement) return {};
+  if (entitlement) {
+    return {
+      expiresAt: entitlement.expirationDate ?? undefined,
+      isAutoRenewEnabled: !entitlement.willRenew ? false : true,
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    };
+  }
 
-  return {
-    expiresAt: entitlement.expirationDate ?? undefined,
-    isAutoRenewEnabled: !entitlement.willRenew ? false : true,
-    platform: Platform.OS === 'ios' ? 'ios' : 'android',
-  };
+  // フォールバック: Entitlement未設定だがactiveSubscriptionsがある場合
+  // 詳細情報は取得できないが、platformだけは返す
+  if (info.activeSubscriptions.length > 0) {
+    return {
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    };
+  }
+
+  return {};
 }
 
 /**

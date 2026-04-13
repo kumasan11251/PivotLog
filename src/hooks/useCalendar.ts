@@ -6,6 +6,7 @@ interface CalendarDay {
   hasDiary: boolean;
   dateString: string | null;
   isToday: boolean;
+  isFuture: boolean;
   dayOfWeek: number;
 }
 
@@ -50,6 +51,15 @@ export const useCalendar = ({
     const isCurrentMonth =
       selectedYear === today.getFullYear() && selectedMonth === today.getMonth() + 1;
     const todayDate = today.getDate();
+    const todayEnd = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
 
     const result: CalendarWeek[] = [];
     let currentWeek: CalendarDay[] = [];
@@ -61,6 +71,7 @@ export const useCalendar = ({
         hasDiary: false,
         dateString: null,
         isToday: false,
+        isFuture: false,
         dayOfWeek: i,
       });
     }
@@ -71,12 +82,14 @@ export const useCalendar = ({
       const monthStr = String(selectedMonth).padStart(2, '0');
       const dayStr = String(day).padStart(2, '0');
       const dateString = `${selectedYear}-${monthStr}-${dayStr}`;
+      const target = new Date(selectedYear, selectedMonth - 1, day, 0, 0, 0, 0);
 
       currentWeek.push({
         day,
         hasDiary: diaryDates.has(day),
         dateString,
         isToday: isCurrentMonth && day === todayDate,
+        isFuture: target > todayEnd,
         dayOfWeek,
       });
 
@@ -95,6 +108,7 @@ export const useCalendar = ({
           hasDiary: false,
           dateString: null,
           isToday: false,
+          isFuture: false,
           dayOfWeek,
         });
         dayOfWeek++;
@@ -114,6 +128,12 @@ export const useCalendar = ({
     const monthStr = String(selectedMonth).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
     const dateStr = `${selectedYear}-${monthStr}-${dayStr}`;
+
+    // 未来日は選択不可
+    const target = new Date(selectedYear, selectedMonth - 1, day, 0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    if (target > todayEnd) return;
 
     onSelectedDateChange(selectedDate === dateStr ? null : dateStr);
   }, [selectedYear, selectedMonth, selectedDate, onSelectedDateChange]);

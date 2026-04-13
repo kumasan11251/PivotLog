@@ -120,7 +120,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       {weeks.map((week, weekIndex) => (
         <View key={weekIndex} style={styles.weekRow}>
           {week.days.map((calendarDay, dayIndex) => {
-            const { day, hasDiary, dateString, isToday, dayOfWeek } =
+            const { day, hasDiary, dateString, isToday, isFuture, dayOfWeek } =
               calendarDay;
             const isSelected = dateString === selectedDate;
 
@@ -129,7 +129,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                 key={dayIndex}
                 style={styles.dayCell}
                 onPress={() => day !== null && handleDayPress(day)}
-                disabled={day === null}
+                disabled={day === null || isFuture}
               >
                 {day !== null && (
                   <View
@@ -138,17 +138,19 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                       hasDiary && !isToday && !isSelected && { backgroundColor: `${themeColors.primary}40` },
                       isToday && { backgroundColor: themeColors.primary },
                       isSelected && !isToday && { backgroundColor: themeColors.text.secondary },
+                      isFuture && styles.futureDayContent,
                     ]}
                   >
                     <Text
                       style={[
                         styles.dayNumber,
                         { color: themeColors.text.primary },
-                        dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && styles.sundayText,
-                        dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && styles.saturdayText,
+                        dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && !isFuture && styles.sundayText,
+                        dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && !isFuture && styles.saturdayText,
                         hasDiary && !isToday && !isSelected && { color: themeColors.primary, fontFamily: fonts.family.bold },
                         isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
                         isSelected && !isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
+                        isFuture && { color: themeColors.text.secondary },
                       ]}
                     >
                       {day}
@@ -213,6 +215,9 @@ const styles = StyleSheet.create({
   hasDiaryContent: {},
   todayContent: {},
   selectedContent: {},
+  futureDayContent: {
+    opacity: 0.3,
+  },
   dayNumber: {
     fontSize: fonts.size.label,
     fontFamily: fonts.family.regular,

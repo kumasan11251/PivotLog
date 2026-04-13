@@ -135,7 +135,7 @@ export type UsageLimitReason =
 export type RestoreResult = 'restored' | 'not_found' | 'unavailable';
 
 /** パッケージ購入の結果 */
-export type PurchaseResult = 'purchased' | 'cancelled' | 'pending';
+export type PurchaseResult = 'purchased' | 'cancelled' | 'pending' | 'restored';
 
 /**
  * AI生成失敗系エラーコード

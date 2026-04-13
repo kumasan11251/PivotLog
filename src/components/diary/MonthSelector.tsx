@@ -48,7 +48,7 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onNextMonth}
-          style={styles.arrowButton}
+          style={[styles.arrowButton, isNextDisabled && styles.arrowButtonDisabled]}
           disabled={isNextDisabled}
         >
           <Ionicons
@@ -107,6 +107,9 @@ const styles = StyleSheet.create({
   },
   arrowButton: {
     padding: spacing.xs,
+  },
+  arrowButtonDisabled: {
+    opacity: 0.3,
   },
   monthButton: {
     paddingVertical: spacing.xs,

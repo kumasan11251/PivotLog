@@ -113,7 +113,11 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
                 <Text style={[styles.yearText, { color: themeColors.text.primary }]}>{year}年</Text>
                 <TouchableOpacity
                   onPress={() => handleYearChange(1)}
-                  style={[styles.yearButton, { backgroundColor: themeColors.background }]}
+                  style={[
+                    styles.yearButton,
+                    { backgroundColor: themeColors.background },
+                    nextYearDisabled && styles.yearButtonDisabled,
+                  ]}
                   disabled={nextYearDisabled}
                 >
                   <Ionicons
@@ -209,6 +213,9 @@ const styles = StyleSheet.create({
   yearButton: {
     padding: spacing.xs,
     borderRadius: spacing.borderRadius.small,
+  },
+  yearButtonDisabled: {
+    opacity: 0.3,
   },
   yearText: {
     fontSize: fonts.size.body,

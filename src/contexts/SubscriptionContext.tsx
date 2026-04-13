@@ -373,16 +373,71 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     }
   }, [user, syncSubscriptionToFirestore]);
 
-  // パッケージ購入
+  // パッケージ購入（entitlement未反映時のリトライ付き）
   const purchaseSubscription = useCallback(async (pkg: PurchasesPackage): Promise<PurchaseResult> => {
     setIsPurchasing(true);
     try {
-      const customerInfo = await purchasePackageService(pkg);
-      if (!customerInfo) return 'cancelled'; // ユーザーキャンセル
+      const result = await purchasePackageService(pkg);
+      if (!result) return 'cancelled'; // ユーザーキャンセル
+
+      const { customerInfo, source } = result;
+
+      // レシート復元による購入の場合、プレミアム有効なら'restored'を返す
+      if (source === 'restored_from_receipt') {
+        const isPremiumRestored = isSubscriptionActive(customerInfo);
+        if (isPremiumRestored) {
+          const restoredDetails = extractSubscriptionDetails(customerInfo);
+          const restoredStatus: SubscriptionStatus = {
+            tier: 'premium',
+            isPremium: true,
+            ...restoredDetails,
+            updatedAt: new Date().toISOString(),
+          };
+          setStatus(restoredStatus);
+          if (user) {
+            await syncSubscriptionToFirestore(user.uid, restoredStatus);
+          }
+          return 'restored';
+        }
+      }
 
       // 購入成功 → Context状態を即座に更新（リスナー発火を待たない）
-      const isPremiumNow = isSubscriptionActive(customerInfo);
-      const details = extractSubscriptionDetails(customerInfo);
+      let isPremiumNow = isSubscriptionActive(customerInfo);
+      let details = extractSubscriptionDetails(customerInfo);
+
+      // entitlement未反映時のリトライ（Sandbox遅延対応）
+      if (!isPremiumNow) {
+        console.warn('[Subscription] 購入成功だがentitlement未確認。リトライ開始...');
+        const retryDelays = [1000, 2000, 3000];
+        for (let i = 0; i < retryDelays.length; i++) {
+          if (cancelledRef.current) break;
+
+          await new Promise(resolve => setTimeout(resolve, retryDelays[i]));
+          if (cancelledRef.current) break;
+
+          try {
+            await invalidateCustomerInfoCache();
+            const retryInfo = await getCustomerInfo();
+            if (!retryInfo) continue;
+
+            isPremiumNow = isSubscriptionActive(retryInfo);
+            details = extractSubscriptionDetails(retryInfo);
+
+            if (__DEV__) {
+              console.log(`[Subscription] リトライ ${i + 1}/${retryDelays.length}:`, {
+                isPremiumNow,
+                activeSubscriptions: retryInfo.activeSubscriptions,
+                activeEntitlements: Object.keys(retryInfo.entitlements.active),
+              });
+            }
+
+            if (isPremiumNow) break;
+          } catch (retryError) {
+            console.error(`[Subscription] リトライ ${i + 1} 失敗:`, retryError);
+          }
+        }
+      }
+
       const newStatus: SubscriptionStatus = {
         tier: isPremiumNow ? 'premium' : 'free',
         isPremium: isPremiumNow,
@@ -397,7 +452,7 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
       }
 
       if (!isPremiumNow) {
-        console.warn('[Subscription] 購入成功だがエンタイトルメント未確認。pending状態として返却');
+        console.warn('[Subscription] リトライ後もentitlement未確認。pending状態として返却');
         return 'pending';
       }
 

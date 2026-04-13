@@ -87,6 +87,13 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
     onSelectedDateChange: setInternalSelectedDate,
   });
 
+  const isNextMonthDisabled = useMemo(() => {
+    const nextDate = new Date(displayYear, displayMonth, 1);
+    const today = new Date();
+    const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    return nextDate > thisMonth;
+  }, [displayYear, displayMonth]);
+
   const handleMonthChange = useCallback(
     (delta: number) => {
       const nextDate = new Date(displayYear, displayMonth - 1 + delta, 1);
@@ -135,8 +142,20 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                   <Ionicons name="chevron-back" size={20} color={themeColors.text.primary} />
                 </TouchableOpacity>
                 <Text style={[styles.monthLabel, { color: themeColors.text.primary }]}>{monthLabel}</Text>
-                <TouchableOpacity onPress={() => handleMonthChange(1)}>
-                  <Ionicons name="chevron-forward" size={20} color={themeColors.text.primary} />
+                <TouchableOpacity
+                  onPress={() => handleMonthChange(1)}
+                  disabled={isNextMonthDisabled}
+                  style={[isNextMonthDisabled && styles.arrowButtonDisabled]}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={
+                      isNextMonthDisabled
+                        ? themeColors.text.secondary
+                        : themeColors.text.primary
+                    }
+                  />
                 </TouchableOpacity>
               </View>
 
@@ -172,7 +191,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                       <View key={`week-${weekIndex}`} style={styles.weekRow}>
                         {week ? (
                           week.days.map((calendarDay, dayIndex) => {
-                            const { day, hasDiary, dateString, isToday, dayOfWeek } = calendarDay;
+                            const { day, hasDiary, dateString, isToday, isFuture, dayOfWeek } = calendarDay;
                             const isSelected = dateString === internalSelectedDate;
 
                             return (
@@ -180,7 +199,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                                 key={`day-${dayIndex}`}
                                 style={styles.dayCell}
                                 onPress={() => handleDayPress(day)}
-                                disabled={day === null}
+                                disabled={day === null || isFuture}
                               >
                                 {day !== null && (
                                   <View
@@ -189,17 +208,19 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({
                                       hasDiary && !isToday && !isSelected && { backgroundColor: `${themeColors.primary}33` },
                                       isToday && { backgroundColor: themeColors.primary },
                                       isSelected && !isToday && { backgroundColor: themeColors.text.secondary },
+                                      isFuture && styles.futureDayContent,
                                     ]}
                                   >
                                     <Text
                                       style={[
                                         styles.dayNumber,
                                         { color: themeColors.text.primary },
-                                        dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && styles.sundayText,
-                                        dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && styles.saturdayText,
+                                        dayOfWeek === 0 && !hasDiary && !isToday && !isSelected && !isFuture && styles.sundayText,
+                                        dayOfWeek === 6 && !hasDiary && !isToday && !isSelected && !isFuture && styles.saturdayText,
                                         hasDiary && !isToday && !isSelected && { color: themeColors.primary, fontFamily: fonts.family.bold },
                                         isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
                                         isSelected && !isToday && { color: themeColors.text.inverse, fontFamily: fonts.family.bold },
+                                        isFuture && { color: themeColors.text.secondary },
                                       ]}
                                     >
                                       {day}
@@ -297,6 +318,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 4,
+  },
+  futureDayContent: {
+    opacity: 0.3,
+  },
+  arrowButtonDisabled: {
+    opacity: 0.3,
   },
   dayNumber: {
     fontSize: 13,

@@ -113,7 +113,17 @@ export default function PaywallScreen() {
         case 'pending':
           Alert.alert(
             '処理中',
-            '購入は完了しましたが、プレミアム機能の有効化に少し時間がかかる場合があります。しばらくお待ちください。',
+            '購入は完了しましたが、プレミアム機能の反映に時間がかかっています。「購入を復元」ボタンをお試しください。',
+            [
+              { text: '購入を復元', onPress: handleRestore },
+              { text: 'OK', onPress: () => navigation.goBack() },
+            ],
+          );
+          break;
+        case 'restored':
+          Alert.alert(
+            '復元完了',
+            '以前のサブスクリプションが復元されました。',
             [{ text: 'OK', onPress: () => navigation.goBack() }],
           );
           break;
