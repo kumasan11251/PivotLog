@@ -46,6 +46,8 @@ export interface ThemeSettings {
   themeMode: 'light' | 'dark' | 'system'; // テーマモード
 }
 
+export type DiaryViewMode = 'list' | 'calendar';
+
 const STORAGE_KEY = '@pivot_log_settings';
 const DIARY_KEY = '@pivot_log_diaries';
 const HOME_DISPLAY_KEY = '@pivot_log_home_display';
@@ -53,6 +55,7 @@ const MIGRATION_KEY = '@pivot_log_migrated';
 const ONBOARDING_KEY = '@pivot_log_onboarding_complete';
 const THEME_KEY = '@pivot_log_theme';
 const AI_CONSENT_KEY = '@pivot_log_ai_consent';
+const DIARY_VIEW_MODE_KEY = '@pivot_log_diary_view_mode';
 
 /**
  * Firebaseにログイン中かどうかを確認
@@ -570,6 +573,33 @@ export const saveThemeSettings = async (settings: ThemeSettings): Promise<void> 
   } catch (error) {
     console.error('テーマ設定の保存に失敗しました:', error);
     throw error;
+  }
+};
+
+/**
+ * 記録一覧画面の表示モードを保存（ローカルのみ）
+ */
+export const saveDiaryViewMode = async (mode: DiaryViewMode): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(DIARY_VIEW_MODE_KEY, mode);
+  } catch (error) {
+    console.error('Failed to save diary view mode:', error);
+  }
+};
+
+/**
+ * 記録一覧画面の表示モードを読み込み（未設定時は 'calendar'）
+ */
+export const loadDiaryViewMode = async (): Promise<DiaryViewMode> => {
+  try {
+    const value = await AsyncStorage.getItem(DIARY_VIEW_MODE_KEY);
+    if (value === 'list' || value === 'calendar') {
+      return value;
+    }
+    return 'calendar';
+  } catch (error) {
+    console.error('Failed to load diary view mode:', error);
+    return 'calendar';
   }
 };
 

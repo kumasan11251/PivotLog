@@ -1,11 +1,16 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, StyleSheet, FlatList, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 import { spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { DiaryEntry } from '../utils/storage';
+import {
+  DiaryEntry,
+  loadDiaryViewMode,
+  saveDiaryViewMode,
+  type DiaryViewMode,
+} from '../utils/storage';
 import { useDiaryList } from '../hooks/useDiaryList';
 import { useWeeklyInsight } from '../hooks/useWeeklyInsight';
 import { useMonthlyInsight } from '../hooks/useMonthlyInsight';
@@ -18,8 +23,6 @@ import {
   YearMonthPickerModal,
 } from './diary';
 import { CompactInsightButtons } from './insight';
-
-type ViewMode = 'list' | 'calendar';
 
 interface DiaryListContentProps {
   /** 外部からのリフレッシュトリガー */
@@ -35,9 +38,17 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
   const { isPremium } = useSubscription();
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useState<DiaryViewMode>('calendar');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isYearMonthPickerVisible, setYearMonthPickerVisible] = useState(false);
+
+  // 起動時に保存済みの表示モードを復元
+  useEffect(() => {
+    (async () => {
+      const saved = await loadDiaryViewMode();
+      setViewMode(saved);
+    })();
+  }, []);
 
   // 日記データの取得・管理
   const {
@@ -150,8 +161,9 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   // ビューモード切り替え
   // ========================================
 
-  const handleViewModeChange = useCallback((mode: ViewMode) => {
+  const handleViewModeChange = useCallback((mode: DiaryViewMode) => {
     setViewMode(mode);
+    saveDiaryViewMode(mode); // fire-and-forget（失敗時は関数内で console.error）
   }, []);
 
   // ========================================
