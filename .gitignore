@@ -25,6 +25,8 @@ expo-env.d.ts
 *.aab
 *.apk
 *.ipa
+build/
+*.xcarchive
 
 # Metro
 .metro-health-check*

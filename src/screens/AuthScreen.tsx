@@ -19,6 +19,7 @@ import {
   signUpWithEmail,
   signInAnonymously,
   signInWithGoogle,
+  signInWithApple,
   sendPasswordResetEmail,
   getErrorMessage,
 } from '../services/firebase';
@@ -47,6 +48,18 @@ const GoogleIcon: React.FC<{ size?: number }> = ({ size = 24 }) => (
   </Svg>
 );
 
+const AppleIcon: React.FC<{ size?: number; color?: string }> = ({
+  size = 24,
+  color = '#000000',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+      fill={color}
+    />
+  </Svg>
+);
+
 const AuthScreen: React.FC = () => {
   const { isReturningUser } = useAuth();
   const [mode, setMode] = useState<AuthMode>(isReturningUser ? 'login' : 'signup');
@@ -55,6 +68,7 @@ const AuthScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
@@ -118,6 +132,20 @@ const AuthScreen: React.FC = () => {
       setError(getErrorMessage(err));
     } finally {
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setError(null);
+    setIsAppleLoading(true);
+
+    try {
+      await signInWithApple();
+      // 認証成功後はAuthProviderが自動的に状態を更新
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsAppleLoading(false);
     }
   };
 
@@ -265,7 +293,7 @@ const AuthScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleLogin}
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading || isGoogleLoading || isAppleLoading}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator color={colors.text.primary} size="small" />
@@ -277,11 +305,29 @@ const AuthScreen: React.FC = () => {
               )}
             </TouchableOpacity>
 
+            {/* Appleログイン（iOSのみ） */}
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={styles.appleButton}
+                onPress={handleAppleLogin}
+                disabled={isLoading || isGoogleLoading || isAppleLoading}
+              >
+                {isAppleLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <AppleIcon size={20} color="#FFFFFF" />
+                    <Text style={styles.appleButtonText}>Appleでログイン</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
             {/* 匿名ログイン */}
             <TouchableOpacity
               style={styles.anonymousButton}
               onPress={handleAnonymousLogin}
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading || isGoogleLoading || isAppleLoading}
             >
               <Text style={styles.anonymousButtonText}>
                 ログインせずに始める
@@ -437,6 +483,25 @@ const styles = StyleSheet.create({
   googleButtonText: {
     fontSize: fonts.size.body,
     color: colors.text.primary,
+    fontFamily: fonts.family.regular,
+    fontWeight: fonts.weight.medium,
+    ...textBase,
+  },
+  appleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#000000',
+    borderRadius: spacing.borderRadius.medium,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    width: '100%',
+    marginBottom: spacing.sm,
+  },
+  appleButtonText: {
+    fontSize: fonts.size.body,
+    color: '#FFFFFF',
     fontFamily: fonts.family.regular,
     fontWeight: fonts.weight.medium,
     ...textBase,

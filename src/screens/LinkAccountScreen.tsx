@@ -23,11 +23,13 @@ import ScreenHeader from '../components/common/ScreenHeader';
 import {
   linkAccountWithEmail,
   linkAccountWithGoogle,
+  linkAnonymousAccountWithApple,
   getLinkedProviders,
   isAnonymousUser,
   getErrorMessage,
   signInWithEmail,
   signInWithGoogle,
+  signInWithApple,
 } from '../services/firebase';
 import type { AuthProvider } from '../services/firebase';
 import type { LinkAccountScreenNavigationProp } from '../types/navigation';
@@ -54,18 +56,18 @@ const GoogleIcon: React.FC<{ size?: number }> = ({ size = 24 }) => (
   </Svg>
 );
 
-// Appleアイコン - Apple Developer Program登録後に有効化
-// const AppleIcon: React.FC<{ size?: number; color?: string }> = ({
-//   size = 24,
-//   color = '#000000',
-// }) => (
-//   <Svg width={size} height={size} viewBox="0 0 24 24">
-//     <Path
-//       d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
-//       fill={color}
-//     />
-//   </Svg>
-// );
+// Appleアイコン
+const AppleIcon: React.FC<{ size?: number; color?: string }> = ({
+  size = 24,
+  color = '#000000',
+}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"
+      fill={color}
+    />
+  </Svg>
+);
 
 const LinkAccountScreen: React.FC = () => {
   const navigation = useNavigation<LinkAccountScreenNavigationProp>();
@@ -77,6 +79,7 @@ const LinkAccountScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [linkedProviders, setLinkedProviders] = useState<AuthProvider[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -88,8 +91,9 @@ const LinkAccountScreen: React.FC = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [isGoogleLoginLoading, setIsGoogleLoginLoading] = useState(false);
+  const [isAppleLoginLoading, setIsAppleLoginLoading] = useState(false);
 
-  const isAnyLoading = isLoading || isGoogleLoading || isLoginLoading || isGoogleLoginLoading;
+  const isAnyLoading = isLoading || isGoogleLoading || isAppleLoading || isLoginLoading || isGoogleLoginLoading || isAppleLoginLoading;
 
   // 連携状態を更新
   const updateLinkedProviders = useCallback(() => {
@@ -168,8 +172,24 @@ const LinkAccountScreen: React.FC = () => {
     }
   };
 
-  // Apple連携は Apple Developer Program 登録後に有効化
-  // const handleLinkWithApple = async () => { ... };
+  const handleLinkWithApple = async () => {
+    setError(null);
+    setIsAppleLoading(true);
+
+    try {
+      await linkAnonymousAccountWithApple();
+      updateLinkedProviders();
+      Alert.alert(
+        'アカウント連携完了',
+        'Appleアカウントと連携されました。今後はAppleアカウントでもログインできます。',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsAppleLoading(false);
+    }
+  };
 
   // 既存アカウントでログイン（メール）
   const handleLoginWithEmail = async () => {
@@ -249,6 +269,43 @@ const LinkAccountScreen: React.FC = () => {
       setLoginError(getErrorMessage(err));
     } finally {
       setIsGoogleLoginLoading(false);
+    }
+  };
+
+  // 既存アカウントでログイン（Apple）
+  const handleLoginWithApple = async () => {
+    setLoginError(null);
+
+    // サブスク保持中は確認ダイアログを表示
+    if (isPremium) {
+      const confirmed = await new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'サブスクリプションの確認',
+          'プレミアムプランは現在のアカウントに紐付いています。別のアカウントにログインすると、プレミアム機能が利用できなくなります。\n\nプレミアムを維持する場合は、キャンセルしてアカウント連携をご利用ください。',
+          [
+            { text: 'キャンセル', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'ログインを続ける', style: 'destructive', onPress: () => resolve(true) },
+          ],
+          { cancelable: false },
+        );
+      });
+      if (!confirmed) return;
+    }
+
+    setIsAppleLoginLoading(true);
+
+    try {
+      await signInWithApple();
+      setShowLoginModal(false);
+      Alert.alert(
+        'ログイン成功',
+        'Appleアカウントでログインしました。データが復元されました。',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (err) {
+      setLoginError(getErrorMessage(err));
+    } finally {
+      setIsAppleLoginLoading(false);
     }
   };
 
@@ -346,8 +403,8 @@ const LinkAccountScreen: React.FC = () => {
             </View>
           )}
 
-          {/* 区切り線 - Google未連携の場合のみ表示 */}
-          {!isLinkedWith('google.com') && (
+          {/* 区切り線 - Google または Apple 未連携の場合のみ表示 */}
+          {(!isLinkedWith('google.com') || (Platform.OS === 'ios' && !isLinkedWith('apple.com'))) && (
             <View style={styles.dividerContainer}>
               <View style={[styles.dividerLine, { backgroundColor: themeColors.border }]} />
               <Text style={[styles.dividerText, { color: themeColors.text.secondary }]}>または</Text>
@@ -380,11 +437,35 @@ const LinkAccountScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Apple連携は Apple Developer Program 登録後に有効化 */}
+            {/* Apple連携（iOSのみ） */}
+            {Platform.OS === 'ios' && (
+              !isLinkedWith('apple.com') ? (
+                <TouchableOpacity
+                  style={[styles.socialButton, styles.appleButton]}
+                  onPress={handleLinkWithApple}
+                  disabled={isAnyLoading}
+                  activeOpacity={0.7}
+                >
+                  {isAppleLoading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <>
+                      <AppleIcon size={20} color="#FFFFFF" />
+                      <Text style={[styles.socialButtonText, { color: '#FFFFFF' }]}>Appleで連携</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.socialButton, styles.linkedButton, { backgroundColor: themeColors.background, borderColor: themeColors.primary }]}>
+                  <AppleIcon size={20} color={themeColors.primary} />
+                  <Text style={[styles.linkedButtonText, { color: themeColors.primary }]}>Apple連携済み</Text>
+                </View>
+              )
+            )}
           </View>
 
           {/* 全て連携済みの場合のメッセージ */}
-          {isLinkedWith('google.com') && isLinkedWith('password') && (
+          {isLinkedWith('google.com') && isLinkedWith('password') && (Platform.OS !== 'ios' || isLinkedWith('apple.com')) && (
             <View style={[styles.allLinkedContainer, { backgroundColor: `${themeColors.primary}10` }]}>
               <Text style={[styles.allLinkedText, { color: themeColors.primary }]}>
                 ✅ すべての認証方法が連携されています
@@ -513,7 +594,7 @@ const LinkAccountScreen: React.FC = () => {
             <TouchableOpacity
               style={[styles.socialButton, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
               onPress={handleLoginWithGoogle}
-              disabled={isLoginLoading || isGoogleLoginLoading}
+              disabled={isLoginLoading || isGoogleLoginLoading || isAppleLoginLoading}
               activeOpacity={0.7}
             >
               {isGoogleLoginLoading ? (
@@ -525,6 +606,25 @@ const LinkAccountScreen: React.FC = () => {
                 </>
               )}
             </TouchableOpacity>
+
+            {/* Appleログイン（iOSのみ） */}
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                style={[styles.socialButton, styles.appleButton]}
+                onPress={handleLoginWithApple}
+                disabled={isLoginLoading || isGoogleLoginLoading || isAppleLoginLoading}
+                activeOpacity={0.7}
+              >
+                {isAppleLoginLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <AppleIcon size={20} color="#FFFFFF" />
+                    <Text style={[styles.socialButtonText, { color: '#FFFFFF' }]}>Appleでログイン</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -576,6 +676,10 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
     ...textBase,
+  },
+  appleButton: {
+    backgroundColor: '#000000',
+    borderColor: '#000000',
   },
   linkedButton: {
     borderWidth: 2,

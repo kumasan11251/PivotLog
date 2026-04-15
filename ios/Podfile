@@ -57,14 +57,12 @@ target 'PivotLog' do
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
 
-    # Workaround: Xcode 26.4 Clang consteval compatibility issue with fmt library
-    fmt_base_h = File.join(installer.sandbox.root.to_s, 'fmt', 'include', 'fmt', 'base.h')
-    if File.exist?(fmt_base_h)
-      content = File.read(fmt_base_h)
-      if content.include?('#  define FMT_USE_CONSTEVAL 1')
-        File.chmod(0644, fmt_base_h)
-        patched = content.gsub('#  define FMT_USE_CONSTEVAL 1', '#  define FMT_USE_CONSTEVAL 0  // Patched: consteval broken in Xcode 26.4')
-        File.write(fmt_base_h, patched)
+    # Fix fmt consteval error with Xcode 26 (facebook/react-native#55601)
+    installer.pods_project.targets.each do |target|
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
       end
     end
   end
