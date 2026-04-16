@@ -151,6 +151,12 @@ export default function PaywallScreen() {
           '復元できるサブスクリプションが見つかりませんでした。',
         );
         break;
+      case 'transfer_blocked':
+        Alert.alert(
+          '別のアカウントに紐付いています',
+          'このサブスクリプションは別のアカウントで購入されています。購入時に使用したアカウントでログインし直してください。',
+        );
+        break;
       case 'unavailable':
         Alert.alert(
           '復元エラー',

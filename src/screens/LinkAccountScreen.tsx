@@ -610,7 +610,7 @@ const LinkAccountScreen: React.FC = () => {
             {/* Appleログイン（iOSのみ） */}
             {Platform.OS === 'ios' && (
               <TouchableOpacity
-                style={[styles.socialButton, styles.appleButton]}
+                style={[styles.socialButton, styles.appleButton, { marginTop: spacing.sm }]}
                 onPress={handleLoginWithApple}
                 disabled={isLoginLoading || isGoogleLoginLoading || isAppleLoginLoading}
                 activeOpacity={0.7}

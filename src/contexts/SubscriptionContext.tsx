@@ -37,6 +37,7 @@ import {
   restorePurchases as restorePurchasesService,
   purchasePackage as purchasePackageService,
   addCustomerInfoUpdateListener,
+  PURCHASES_ERROR_CODE,
 } from '../services/revenueCat';
 import type { PurchasesPackage } from '../services/revenueCat';
 
@@ -367,6 +368,18 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
       return 'restored';
     } catch (error) {
       console.error('[Subscription] 購入復元に失敗:', error);
+
+      // レシートが別アカウントに紐付いている場合を区別
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        ((error as { code: string }).code === PURCHASES_ERROR_CODE.RECEIPT_ALREADY_IN_USE_ERROR ||
+         (error as { code: string }).code === PURCHASES_ERROR_CODE.RECEIPT_IN_USE_BY_OTHER_SUBSCRIBER_ERROR)
+      ) {
+        return 'transfer_blocked';
+      }
+
       return 'unavailable';
     } finally {
       setIsRestoring(false);

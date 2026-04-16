@@ -132,7 +132,7 @@ export type UsageLimitReason =
   | 'DAILY_LIMIT_REACHED';      // 1日の利用上限に達した
 
 /** 購入復元の結果 */
-export type RestoreResult = 'restored' | 'not_found' | 'unavailable';
+export type RestoreResult = 'restored' | 'not_found' | 'unavailable' | 'transfer_blocked';
 
 /** パッケージ購入の結果 */
 export type PurchaseResult = 'purchased' | 'cancelled' | 'pending' | 'restored';
