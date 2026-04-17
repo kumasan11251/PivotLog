@@ -239,7 +239,10 @@ export async function restorePurchases(): Promise<CustomerInfo | null> {
 
 /**
  * premiumエンタイトルメントのアクティブ判定
- * Entitlement未設定時はactiveSubscriptionsでフォールバック判定
+ *
+ * Entitlement `Premium` を単一の真実の情報源として使用する。
+ * かつて activeSubscriptions によるフォールバックがあったが、
+ * Sandbox で失効後も product ID が残ることがあり誤検知の温床だったため削除（不具合#3対応）
  */
 export function isSubscriptionActive(info: CustomerInfo): boolean {
   if (__DEV__) {
@@ -250,21 +253,12 @@ export function isSubscriptionActive(info: CustomerInfo): boolean {
     });
   }
 
-  // 一次判定: Entitlement
-  if (info.entitlements.active[ENTITLEMENT_ID] !== undefined) return true;
-
-  // 二次判定: activeSubscriptions（Entitlement設定不備時のフォールバック）
-  if (info.activeSubscriptions.length > 0) {
-    console.warn('[RevenueCat] entitlement未設定だがactiveSubscriptionsあり。RevenueCatダッシュボードのEntitlement設定を確認してください。');
-    return true;
-  }
-
-  return false;
+  return info.entitlements.active[ENTITLEMENT_ID] !== undefined;
 }
 
 /**
  * CustomerInfoからSubscriptionStatus用の情報を抽出
- * Entitlement未設定時はactiveSubscriptionsからフォールバック
+ * Entitlement未検出なら空オブジェクトを返す（不具合#3対応でフォールバック削除）
  */
 export function extractSubscriptionDetails(info: CustomerInfo): {
   expiresAt?: string;
@@ -272,23 +266,13 @@ export function extractSubscriptionDetails(info: CustomerInfo): {
   platform?: 'ios' | 'android';
 } {
   const entitlement = info.entitlements.active[ENTITLEMENT_ID];
-  if (entitlement) {
-    return {
-      expiresAt: entitlement.expirationDate ?? undefined,
-      isAutoRenewEnabled: !entitlement.willRenew ? false : true,
-      platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    };
-  }
+  if (!entitlement) return {};
 
-  // フォールバック: Entitlement未設定だがactiveSubscriptionsがある場合
-  // 詳細情報は取得できないが、platformだけは返す
-  if (info.activeSubscriptions.length > 0) {
-    return {
-      platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    };
-  }
-
-  return {};
+  return {
+    expiresAt: entitlement.expirationDate ?? undefined,
+    isAutoRenewEnabled: !entitlement.willRenew ? false : true,
+    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+  };
 }
 
 /**
