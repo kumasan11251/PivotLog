@@ -45,7 +45,7 @@ const MainTabScreen: React.FC = () => {
         {/* 両コンテンツを常にマウントしておき、表示/非表示を切り替える */}
         {/* これによりDiaryListのキャッシュが保持され、タブ切り替えが高速化される */}
         <View style={[styles.tabContent, activeTab !== 'home' && styles.hidden]}>
-          <HomeContent />
+          <HomeContent isActive={activeTab === 'home'} />
         </View>
         <View style={[styles.tabContent, activeTab !== 'diaryList' && styles.hidden]}>
           <DiaryListContent shouldRefresh={shouldRefresh} />

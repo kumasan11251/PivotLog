@@ -17,6 +17,7 @@ interface CalendarViewProps {
   selectedDate: string | null;
   onSelectedDateChange: (date: string | null) => void;
   onNavigateToEntry: (date: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
@@ -26,6 +27,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   selectedDate,
   onSelectedDateChange,
   onNavigateToEntry,
+  onDelete,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
@@ -62,6 +64,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           <DiaryCard
             entry={selectedDiary}
             onPress={() => onNavigateToEntry(selectedDate)}
+            onDelete={onDelete}
           />
         </View>
       );

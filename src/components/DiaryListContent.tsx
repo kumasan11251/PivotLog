@@ -263,6 +263,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
             selectedDate={selectedDate}
             onSelectedDateChange={setSelectedDate}
             onNavigateToEntry={handleNavigateToEntry}
+            onDelete={handleDeleteDiary}
           />
         </ScrollView>
       )}

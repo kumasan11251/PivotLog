@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -34,11 +34,15 @@ const CheckIcon: React.FC<{ size?: number; color?: string }> = ({
   <Ionicons name="checkmark" size={size} color={color} />
 );
 
+interface HomeContentProps {
+  isActive?: boolean;
+}
+
 /**
  * ホーム画面のメインコンテンツ
  * 残り時間のカウントダウンと人生の進捗を表示
  */
-const HomeContent: React.FC = () => {
+const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
@@ -121,6 +125,17 @@ const HomeContent: React.FC = () => {
       };
     }, [refreshTodayDiary, triggerFocusAnimation, clearJustCompleted])
   );
+
+  // タブ切り替えで非アクティブ → アクティブに変化した時に再読み込み
+  // （MainTabScreen では display: none で両タブがマウントされ続けるため、
+  //  useFocusEffect だけでは記録一覧タブでの削除反映を捕捉できない）
+  const prevIsActiveRef = useRef<boolean>(isActive);
+  useEffect(() => {
+    if (!prevIsActiveRef.current && isActive) {
+      refreshTodayDiary();
+    }
+    prevIsActiveRef.current = isActive;
+  }, [isActive, refreshTodayDiary]);
 
   // ナビゲーションハンドラ
   const handleNavigateToSettings = useCallback(() => {
