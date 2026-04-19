@@ -324,6 +324,21 @@ export const clearUserSettings = async (): Promise<void> => {
 };
 
 /**
+ * 日記保存／削除後にウィジェットを再同期する。
+ * widgetStorage.ts は storage.ts から静的 import しているため、
+ * 循環依存回避のためここでは動的 require を使う。
+ */
+const syncWidgetAfterDiaryChange = async (): Promise<void> => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { syncWidgetData } = require('./widgetStorage') as typeof import('./widgetStorage');
+    await syncWidgetData();
+  } catch (error) {
+    console.error('[storage] 日記変更後のウィジェット同期に失敗:', error);
+  }
+};
+
+/**
  * 日記を保存する（新規作成または更新）
  */
 export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
@@ -339,6 +354,7 @@ export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
 
     existingDiaries.sort((a, b) => b.date.localeCompare(a.date));
     await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(existingDiaries));
+    void syncWidgetAfterDiaryChange();
     return;
   }
 
@@ -361,6 +377,8 @@ export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
   } catch {
     await addToSyncQueue({ type: 'saveDiary', targetId: entry.id, data: entry });
   }
+
+  void syncWidgetAfterDiaryChange();
 };
 
 /**
@@ -502,6 +520,7 @@ export const deleteDiaryEntry = async (id: string): Promise<void> => {
     const existingDiaries = await loadDiaryEntries();
     const filteredDiaries = existingDiaries.filter((entry) => entry.id !== id);
     await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(filteredDiaries));
+    void syncWidgetAfterDiaryChange();
     return;
   }
 
@@ -520,6 +539,8 @@ export const deleteDiaryEntry = async (id: string): Promise<void> => {
   } catch {
     await addToSyncQueue({ type: 'deleteDiary', targetId: id, data: { id } });
   }
+
+  void syncWidgetAfterDiaryChange();
 };
 
 /**

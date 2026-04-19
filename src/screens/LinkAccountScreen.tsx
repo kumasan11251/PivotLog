@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { getColors, fonts, spacing, textBase } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -517,8 +518,9 @@ const LinkAccountScreen: React.FC = () => {
                 setLoginError(null);
               }}
               disabled={isLoginLoading || isGoogleLoginLoading}
+              style={styles.modalCloseButton}
             >
-              <Text style={[styles.modalCloseButton, { color: themeColors.primary }]}>キャンセル</Text>
+              <Ionicons name="close" size={24} color={themeColors.text.primary} />
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: themeColors.text.primary }]}>既存アカウントでログイン</Text>
             <View style={styles.modalHeaderSpacer} />
@@ -808,9 +810,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   modalCloseButton: {
-    fontSize: fonts.size.body,
-    fontFamily: fonts.family.regular,
-    ...textBase,
+    padding: spacing.xs,
   },
   modalTitle: {
     fontSize: fonts.size.body,
@@ -818,7 +818,7 @@ const styles = StyleSheet.create({
     ...textBase,
   },
   modalHeaderSpacer: {
-    width: 80,
+    width: 24 + spacing.xs * 2,
   },
   modalContent: {
     flex: 1,
