@@ -1,6 +1,6 @@
 /**
  * Firebase設定ファイル
- * @react-native-firebase/app は app.json のプラグイン設定で自動的に初期化されます
+ * @react-native-firebase/app は app.config.js のプラグイン設定で自動的に初期化されます
  */
 import firebase from '@react-native-firebase/app';
 import auth from '@react-native-firebase/auth';
