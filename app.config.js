@@ -2,6 +2,12 @@
 const fs = require('fs');
 const path = require('path');
 
+// version と runtimeVersion はここから常に同じ値を参照する。
+// version を上げるときはこの定数だけを更新すれば OK（runtimeVersion も自動追随）。
+// ※ version と runtimeVersion を意図的に分けたいケース（OTA で旧 native に新 JS を配信したい等）
+// が出てきた場合は、このポリシーを見直すこと。
+const APP_VERSION = '1.0.1';
+
 // .envファイルを読み込む
 const envPath = path.resolve(__dirname, '.env');
 const env = {};
@@ -24,7 +30,7 @@ module.exports = {
     name: 'PivotLog',
     slug: 'pivot-log',
     scheme: 'pivotlog',
-    version: '1.0.1',
+    version: APP_VERSION,
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
@@ -100,7 +106,7 @@ module.exports = {
         projectId: '41c32323-fec2-4cb3-bed7-afd879da5ea4',
       },
     },
-    runtimeVersion: '1.0.1',
+    runtimeVersion: APP_VERSION,
     updates: {
       url: 'https://u.expo.dev/41c32323-fec2-4cb3-bed7-afd879da5ea4',
     },
