@@ -4,5 +4,5 @@
   <string name="widget_description">残りの人生時間を表示するウィジェット</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
-  <string name="expo_runtime_version">1.0.0</string>
+  <string name="expo_runtime_version">1.0.1</string>
 </resources>

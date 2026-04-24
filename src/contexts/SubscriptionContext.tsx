@@ -263,19 +263,26 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
       listenerRemoverRef.current = addCustomerInfoUpdateListener((info) => {
         if (cancelledRef.current) return;
 
-        const listenerIsPremium = isSubscriptionActive(info);
-        const listenerDetails = extractSubscriptionDetails(info);
-        const listenerStatus: SubscriptionStatus = {
-          tier: listenerIsPremium ? 'premium' : 'free',
-          isPremium: listenerIsPremium,
-          ...listenerDetails,
-          updatedAt: new Date().toISOString(),
-        };
+        // info の形が想定外でもアプリ本体をクラッシュさせないよう全体を try/catch で保護
+        try {
+          const listenerIsPremium = isSubscriptionActive(info);
+          const listenerDetails = extractSubscriptionDetails(info);
+          const listenerStatus: SubscriptionStatus = {
+            tier: listenerIsPremium ? 'premium' : 'free',
+            isPremium: listenerIsPremium,
+            ...listenerDetails,
+            updatedAt: new Date().toISOString(),
+          };
 
-        setStatus(listenerStatus);
+          setStatus(listenerStatus);
 
-        // Firestoreに同期（user.uidはクロージャでキャプチャ済み）
-        syncSubscriptionToFirestore(user.uid, listenerStatus);
+          // Firestoreに同期（user.uidはクロージャでキャプチャ済み）
+          syncSubscriptionToFirestore(user.uid, listenerStatus).catch((syncError) => {
+            console.error('[Subscription] リスナー経由のFirestore同期に失敗:', syncError);
+          });
+        } catch (listenerError) {
+          console.error('[Subscription] CustomerInfoリスナーで例外:', listenerError);
+        }
       });
     } catch (error) {
       console.error('[Subscription] サブスクリプション状態の取得に失敗:', error);

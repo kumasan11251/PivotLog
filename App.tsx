@@ -78,40 +78,66 @@ function MainNavigator() {
 
   useEffect(() => {
     const initializeApp = async () => {
+      // どこか一つの初期化が失敗しても AuthScreen/MainNavigator までは必ず到達できるよう、
+      // 各ステップを個別の try/catch で包む（180c641 と同じ防御方針）
       try {
-        // オンボーディングが完了しているかチェック
-        const onboardingDone = await isOnboardingComplete();
-        // オンボーディングが完了していない場合は最初に設定（後続のエラーに影響されないようにする）
-        if (!onboardingDone) {
+        // 1. オンボーディング完了状態
+        try {
+          const onboardingDone = await isOnboardingComplete();
+          if (!onboardingDone) {
+            setShowOnboarding(true);
+          }
+        } catch (onboardingError) {
+          console.error('[Init] オンボーディング状態の取得に失敗:', onboardingError);
+          // 失敗時はデフォルト（false = オンボーディング未完了扱い）で続行
           setShowOnboarding(true);
         }
 
-        // ローカルデータがあり、まだ移行されていない場合は移行を実行
-        const hasLocal = await hasLocalData();
-        const migrationDone = await isMigrationComplete();
+        // 2. ローカルデータ移行判定と実行
+        try {
+          const hasLocal = await hasLocalData();
+          const migrationDone = await isMigrationComplete();
 
-        if (hasLocal && !migrationDone) {
-          setIsMigrating(true);
-          const result = await migrateDataToFirestore();
-          console.log('移行結果:', result);
+          if (hasLocal && !migrationDone) {
+            setIsMigrating(true);
+            try {
+              const result = await migrateDataToFirestore();
+              console.log('移行結果:', result);
+            } catch (migrationError) {
+              console.error('[Init] データ移行に失敗:', migrationError);
+            } finally {
+              setIsMigrating(false);
+            }
+          }
+        } catch (migrationCheckError) {
+          console.error('[Init] 移行チェックに失敗:', migrationCheckError);
           setIsMigrating(false);
         }
 
-        // 設定を読み込み（Firestoreから）
-        const settings = await loadUserSettings();
-        setIsSetupComplete(settings !== null);
+        // 3. 設定読み込み（Firestoreから）
+        try {
+          const settings = await loadUserSettings();
+          setIsSetupComplete(settings !== null);
+        } catch (settingsError) {
+          console.error('[Init] 設定読み込みに失敗:', settingsError);
+          setIsSetupComplete(false);
+        }
 
-        // リマインダー通知を初期化（設定済みの場合は再スケジュール）
+        // 4. リマインダー通知初期化
         try {
           await initializeReminder();
         } catch (reminderError) {
-          console.error('リマインダー初期化エラー:', reminderError);
+          console.error('[Init] リマインダー初期化エラー:', reminderError);
         }
 
-        // アプリ起動時にバッジをクリア
-        await clearBadge();
+        // 5. 起動時バッジクリア
+        try {
+          await clearBadge();
+        } catch (badgeError) {
+          console.warn('[Init] バッジクリアに失敗:', badgeError);
+        }
       } catch (error) {
-        console.error('初期化エラー:', error);
+        console.error('[Init] 初期化全体エラー:', error);
         setIsSetupComplete(false);
         setIsMigrating(false);
       } finally {
