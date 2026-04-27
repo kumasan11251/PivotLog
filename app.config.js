@@ -41,7 +41,7 @@ module.exports = {
       backgroundColor: '#ffffff',
     },
     ios: {
-      supportsTablet: true,
+      supportsTablet: false,
       bundleIdentifier: 'com.kumasan11251.pivotlog',
       googleServicesFile: './GoogleService-Info.plist',
       usesAppleSignIn: true,
