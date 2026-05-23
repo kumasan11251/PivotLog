@@ -257,11 +257,15 @@ struct PivotLogWidgetEntryView: View {
     }
 
     var textPrimaryColor: Color {
-        isDarkMode ? Color(red: 245 / 255, green: 245 / 255, blue: 245 / 255) : Color.primary
+        isDarkMode
+            ? Color(red: 245 / 255, green: 245 / 255, blue: 245 / 255)  // #F5F5F5（darkColors.text.primary）
+            : Color(red: 44 / 255, green: 44 / 255, blue: 44 / 255)     // #2C2C2C（lightColors.text.primary）
     }
 
     var textSecondaryColor: Color {
-        isDarkMode ? Color(red: 160 / 255, green: 160 / 255, blue: 160 / 255) : Color.secondary
+        isDarkMode
+            ? Color(red: 184 / 255, green: 184 / 255, blue: 184 / 255)  // #B8B8B8（darkColors.text.secondary、WCAG AAA準拠）
+            : Color(red: 119 / 255, green: 119 / 255, blue: 119 / 255)  // #777777（lightColors.text.secondary、WCAG AAA準拠）
     }
 
     // メッセージカード背景色
@@ -289,23 +293,28 @@ struct PivotLogWidgetEntryView: View {
     }
 
     var body: some View {
-        if let data = entry.widgetData {
-            Group {
-                switch widgetFamily {
-                case .systemSmall:
-                    smallWidgetView(data: data)
-                case .systemMedium:
-                    mediumWidgetView(data: data)
-                case .systemLarge:
-                    largeWidgetView(data: data)
-                default:
-                    smallWidgetView(data: data)
+        Group {
+            if let data = entry.widgetData {
+                Group {
+                    switch widgetFamily {
+                    case .systemSmall:
+                        smallWidgetView(data: data)
+                    case .systemMedium:
+                        mediumWidgetView(data: data)
+                    case .systemLarge:
+                        largeWidgetView(data: data)
+                    default:
+                        smallWidgetView(data: data)
+                    }
                 }
+                .widgetURL(widgetDeepLink(data: data))
+            } else {
+                placeholderView()
             }
-            .widgetURL(widgetDeepLink(data: data))
-        } else {
-            placeholderView()
         }
+        // ウィジェット内のシステムカラー（Color.primary 等）が端末colorSchemeに追従するのを抑止し、
+        // アプリ内テーマ設定に強制同期する
+        .environment(\.colorScheme, isDarkMode ? .dark : .light)
     }
 
     // MARK: - カウントダウン表示
