@@ -84,6 +84,13 @@ const withAndroidWidget = (config) => {
         fs.writeFileSync(targetFile, fs.readFileSync(bridgeModuleFile, "utf8"));
       }
 
+      // Copy PivotLogWidgetAlarmReceiver.kt to app package (0:00 跨ぎ自動更新用)
+      const alarmReceiverFile = path.join(javaSourcePath, "PivotLogWidgetAlarmReceiver.kt");
+      if (fs.existsSync(alarmReceiverFile)) {
+        const targetFile = path.join(javaTargetPath, "PivotLogWidgetAlarmReceiver.kt");
+        fs.writeFileSync(targetFile, fs.readFileSync(alarmReceiverFile, "utf8"));
+      }
+
       // Copy WidgetBridgePackage.kt to app package
       const bridgePackageFile = path.join(javaSourcePath, "WidgetBridgePackage.kt");
       if (fs.existsSync(bridgePackageFile)) {
@@ -295,36 +302,56 @@ const withAndroidWidget = (config) => {
     },
   ]);
 
-  // Step 2: Add widget receiver to AndroidManifest.xml
+  // Step 2: Add widget receiver / alarm receiver / permissions to AndroidManifest.xml
   config = withAndroidManifest(config, async (config) => {
     const manifest = config.modResults;
     const application = manifest.manifest.application[0];
 
-    // Check if receiver already exists
-    const receivers = application.receiver || [];
-    const widgetReceiverExists = receivers.some(
+    // ---- uses-permission: RECEIVE_BOOT_COMPLETED ----
+    if (!manifest.manifest["uses-permission"]) {
+      manifest.manifest["uses-permission"] = [];
+    }
+    const usesPerm = manifest.manifest["uses-permission"];
+    const hasBootPerm = usesPerm.some(
+      (p) => p.$["android:name"] === "android.permission.RECEIVE_BOOT_COMPLETED"
+    );
+    if (!hasBootPerm) {
+      usesPerm.push({
+        $: { "android:name": "android.permission.RECEIVE_BOOT_COMPLETED" },
+      });
+    }
+
+    // ---- widget receiver: intent-filter actions ----
+    if (!application.receiver) {
+      application.receiver = [];
+    }
+
+    // 0:00 跨ぎ自動更新で listen する system broadcasts
+    // ACTION_DATE_CHANGED は Android 8.0+ の implicit broadcast 制限で manifest receiver
+    // の例外一覧に含まれていないが、届けば使う補助として登録しておく
+    const widgetActions = [
+      "android.appwidget.action.APPWIDGET_UPDATE",
+      "android.intent.action.DATE_CHANGED",
+      "android.intent.action.TIMEZONE_CHANGED",
+      "android.intent.action.LOCALE_CHANGED",
+      "android.intent.action.BOOT_COMPLETED",
+      "android.intent.action.MY_PACKAGE_REPLACED",
+    ];
+
+    const receivers = application.receiver;
+    const widgetReceiverIndex = receivers.findIndex(
       (r) => r.$["android:name"] === ".PivotLogWidgetProvider"
     );
 
-    if (!widgetReceiverExists) {
-      if (!application.receiver) {
-        application.receiver = [];
-      }
-
-      application.receiver.push({
+    if (widgetReceiverIndex < 0) {
+      receivers.push({
         $: {
           "android:name": ".PivotLogWidgetProvider",
           "android:exported": "true",
         },
         "intent-filter": [
           {
-            action: [
-              {
-                $: {
-                  "android:name": "android.appwidget.action.APPWIDGET_UPDATE",
-                },
-              },
-            ],
+            action: widgetActions.map((name) => ({ $: { "android:name": name } })),
           },
         ],
         "meta-data": [
@@ -335,6 +362,34 @@ const withAndroidWidget = (config) => {
             },
           },
         ],
+      });
+    } else {
+      // 既存 receiver には不足 action を merge する
+      const receiver = receivers[widgetReceiverIndex];
+      if (!receiver["intent-filter"]) {
+        receiver["intent-filter"] = [{ action: [] }];
+      }
+      const filter = receiver["intent-filter"][0];
+      if (!filter.action) {
+        filter.action = [];
+      }
+      widgetActions.forEach((name) => {
+        if (!filter.action.some((a) => a.$["android:name"] === name)) {
+          filter.action.push({ $: { "android:name": name } });
+        }
+      });
+    }
+
+    // ---- alarm receiver (exported=false) ----
+    const alarmReceiverExists = receivers.some(
+      (r) => r.$["android:name"] === ".PivotLogWidgetAlarmReceiver"
+    );
+    if (!alarmReceiverExists) {
+      receivers.push({
+        $: {
+          "android:name": ".PivotLogWidgetAlarmReceiver",
+          "android:exported": "false",
+        },
       });
     }
 

@@ -5,6 +5,7 @@
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
   <uses-permission android:name="com.android.vending.BILLING"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <queries>
     <intent>
       <action android:name="android.intent.action.VIEW"/>
@@ -34,8 +35,14 @@
     <receiver android:name=".PivotLogWidgetProvider" android:exported="true">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+        <action android:name="android.intent.action.DATE_CHANGED"/>
+        <action android:name="android.intent.action.TIMEZONE_CHANGED"/>
+        <action android:name="android.intent.action.LOCALE_CHANGED"/>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/pivot_log_widget_info"/>
     </receiver>
+    <receiver android:name=".PivotLogWidgetAlarmReceiver" android:exported="false"/>
   </application>
 </manifest>

@@ -3,7 +3,7 @@
     android:minWidth="180dp"
     android:minHeight="110dp"
     android:updatePeriodMillis="1800000"
-    android:previewLayout="@layout/pivot_log_widget"
+    android:previewLayout="@layout/pivot_log_widget_preview"
     android:initialLayout="@layout/pivot_log_widget"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"

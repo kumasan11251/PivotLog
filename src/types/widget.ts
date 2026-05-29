@@ -76,6 +76,10 @@ export interface WidgetData {
   showStreak?: boolean;            // 連続記録を表示するか
   showDiaryStatus?: boolean;       // 日記記入状態を表示するか
   showDateHeader?: boolean;        // 日付ヘッダーを表示するか
+
+  // ウィジェット側で「今日」「途切れ判定」を再計算するための入力（0:00 跨ぎ自動更新用）
+  recentDiaryDates?: string[];     // 直近30日の日記日付配列 (YYYY-MM-DD、降順)
+  dayStartHour?: number;           // 1日の開始時刻 (0-12)
 }
 
 /**

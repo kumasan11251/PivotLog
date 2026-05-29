@@ -29,6 +29,8 @@ import { AIReflectionProvider } from './src/contexts/AIReflectionContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { OfflineBanner } from './src/components/common/OfflineBanner';
 import { getEffectiveToday } from './src/utils/dateUtils';
+import { useWidgetAppStateSync } from './src/hooks/useWidgetSync';
+import { syncWidgetData } from './src/utils/widgetStorage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
 import type { RootStackParamList } from './src/types/navigation';
@@ -75,6 +77,45 @@ function MainNavigator() {
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
+
+  // ウィジェット同期: 初期化・移行完了 + 設定完了後にだけ走らせる
+  const widgetSyncReady = !isLoading && !isMigrating && isSetupComplete;
+  const didInitialWidgetSyncRef = useRef(false);
+  useWidgetAppStateSync(widgetSyncReady);
+
+  useEffect(() => {
+    if (!widgetSyncReady || didInitialWidgetSyncRef.current) return;
+    let cancelled = false;
+    const retryDelays = [0, 1000, 3000];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const run = (index: number) => {
+      const timer = setTimeout(async () => {
+        if (cancelled || didInitialWidgetSyncRef.current) return;
+        try {
+          const success = await syncWidgetData();
+          if (success) {
+            didInitialWidgetSyncRef.current = true;
+          } else if (index + 1 < retryDelays.length) {
+            run(index + 1);
+          }
+        } catch (error) {
+          console.error('[MainNavigator] cold start widget sync failed:', error);
+          if (index + 1 < retryDelays.length) {
+            run(index + 1);
+          }
+        }
+      }, retryDelays[index]);
+      timers.push(timer);
+    };
+
+    run(0);
+
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
+  }, [widgetSyncReady]);
 
   useEffect(() => {
     const initializeApp = async () => {

@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import type { InitialSetupScreenNavigationProp } from '../types/navigation';
 import { saveUserSettings } from '../utils/storage';
+import { syncWidgetData } from '../utils/widgetStorage';
 import { colors, fonts, spacing, textBase } from '../theme';
 import LifespanSlider from '../components/common/LifespanSlider';
 import {
@@ -305,6 +306,14 @@ const InitialSetupScreen: React.FC = () => {
         birthday: birthdayString,
         targetLifespan: adjustedLifespan,
       });
+
+      // 初回設定直後の widget data 初期書き込み（App.tsx の cold start 同期だけでは
+      // MainNavigator の isSetupComplete 更新タイミングに乗らないため、ここでも同期する）
+      try {
+        await syncWidgetData();
+      } catch (widgetSyncError) {
+        console.error('[InitialSetupScreen] widget sync failed:', widgetSyncError);
+      }
 
       // 少し待ってから遷移（アニメーション完了を待つ）
       setTimeout(() => {

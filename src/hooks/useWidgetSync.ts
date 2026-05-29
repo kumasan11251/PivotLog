@@ -104,6 +104,39 @@ export const useWidgetSync = (options: UseWidgetSyncOptions = {}): {
 };
 
 /**
+ * AppState 専用の widget 同期 hook。
+ * `useWidgetSync` は内部で `useFocusEffect` を無条件に呼ぶため、
+ * NavigationContainer 配下でない場所からは呼べない。
+ * Navigation context 外（MainNavigator 直下など）で AppState の active 復帰だけを拾うために使う。
+ *
+ * @param enabled 認証・初期化・移行完了前は false にして同期を抑止する
+ */
+export const useWidgetAppStateSync = (enabled: boolean = true): void => {
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        syncWidgetData().catch((error) => {
+          console.error('[useWidgetAppStateSync] Sync failed:', error);
+        });
+      }
+      appStateRef.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, [enabled]);
+};
+
+/**
  * 設定変更時にウィジェットを同期するフック
  * saveUserSettings などの後に呼び出す
  */

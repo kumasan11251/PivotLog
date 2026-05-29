@@ -45,6 +45,10 @@ class WidgetBridgeModule(reactContext: ReactApplicationContext) : ReactContextBa
                 }
             }
 
+            // dayStartHour 変更などで次回表示更新境界が変わる可能性があるため、
+            // SharedPreferences 書き込み後に alarm を再登録する。ウィジェット未設置時は内部で no-op。
+            PivotLogWidgetProvider.scheduleNextDisplayUpdateAlarm(context)
+
             promise.resolve(true)
         } catch (e: Exception) {
             Log.e(TAG, "Error updating widget: ${e.message}", e)

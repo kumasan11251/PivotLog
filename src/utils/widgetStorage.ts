@@ -9,6 +9,7 @@ import { Platform, NativeModules, Appearance } from 'react-native';
 import type { WidgetData, WidgetSettings, CountdownMode } from '../types/widget';
 import { DEFAULT_WIDGET_SETTINGS } from '../types/widget';
 import { loadUserSettings, loadThemeSettings, loadDiaryEntries, getDiaryByDate } from './storage';
+import type { DiaryEntry } from './storage';
 import { calculateLifeProgress, calculateCurrentAge, calculateTimeLeft } from './timeCalculations';
 import { getCurrentUser } from '../services/firebase/auth';
 import {
@@ -17,7 +18,7 @@ import {
 } from '../services/firebase/firestore';
 import { getTodayPerspectiveMessage, formatPerspectiveMessage } from './perspectiveHelpers';
 import { calculateStreakFromEntries, getStreakEmoji } from './streakCalculator';
-import { getEffectiveToday } from './dateUtils';
+import { getEffectiveToday, formatDateToString } from './dateUtils';
 import { WEEKDAYS, DAILY_MESSAGES } from '../constants/home';
 
 // @bacons/apple-targets モジュールを動的にインポート
@@ -222,20 +223,41 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
     let streakDays = 0;
     let totalDays = 0;
     let effectiveTodayDate = '';
+    let allDiaries: DiaryEntry[] = [];
+    let diaryListLoaded = false;
+    const dayStartHourValue = userSettings.dayStartHour ?? 0;
     try {
-      const dayStartHour = userSettings.dayStartHour ?? 0;
-      const todayString = getEffectiveToday(dayStartHour);
+      const todayString = getEffectiveToday(dayStartHourValue);
       effectiveTodayDate = todayString;
       const todayEntry = await getDiaryByDate(todayString);
       hasTodayEntry = todayEntry !== null;
 
-      const allDiaries = await loadDiaryEntries();
-      const streakResult = calculateStreakFromEntries(allDiaries, dayStartHour);
+      allDiaries = await loadDiaryEntries();
+      diaryListLoaded = true;
+      const streakResult = calculateStreakFromEntries(allDiaries, dayStartHourValue);
       streakDays = streakResult.streakDays;
       totalDays = streakResult.totalDays;
     } catch (diaryError) {
       console.error('[widgetStorage] 日記データ取得エラー:', diaryError);
     }
+
+    // widget 側の 0:00 跨ぎ自動更新用: 直近30日の日記日付配列
+    // 日記取得に成功した場合のみ recentDiaryDates を出力。失敗時は undefined のままにして
+    // native 側の既存 hasTodayEntry / streakDays fallback を使わせる。
+    const todayStrForRecent = effectiveTodayDate || getEffectiveToday(dayStartHourValue);
+    const recentDiaryDates = diaryListLoaded
+      ? (() => {
+          const [ty, tm, td] = todayStrForRecent.split('-').map(Number);
+          const threshold = new Date(ty, tm - 1, td);
+          threshold.setDate(threshold.getDate() - 29);
+          const thresholdStr = formatDateToString(threshold);
+          return Array.from(new Set(allDiaries.map((d) => d.date)))
+            .filter((date) => date >= thresholdStr && date <= todayStrForRecent)
+            .sort()
+            .reverse()
+            .slice(0, 30);
+        })()
+      : undefined;
 
     // 視点メッセージ（ストリーク・日記記入状態を渡してフィルタリング）
     const birthdayMonth = userSettings.birthday
@@ -302,6 +324,10 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
       showStreak: widgetSettings.showStreak,
       showDiaryStatus: widgetSettings.showDiaryStatus,
       showDateHeader: widgetSettings.showDateHeader,
+
+      // 0:00 跨ぎ自動更新用: widget 側で再計算するための入力
+      recentDiaryDates,
+      dayStartHour: dayStartHourValue,
     };
   } catch (error) {
     console.error('ウィジェットデータの生成に失敗:', error);

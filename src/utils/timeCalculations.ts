@@ -34,13 +34,15 @@ export const parseBirthday = (birthday: string): Date => {
 };
 
 /**
- * 目標日までの残り時間を計算する
+ * 目標日までの残り時間を referenceDate ベースで計算する純粋関数。
+ * native (Swift/Kotlin) 移植時の仕様固定用。`calculateTimeLeft` はこの薄い wrapper。
  */
-export const calculateTimeLeft = (
+export const calculateTimeLeftAt = (
   birthday: string,
-  targetLifespan: number
+  targetLifespan: number,
+  referenceDate: Date
 ): TimeLeft => {
-  const now = new Date();
+  const now = referenceDate;
   const targetDate = calculateTargetDate(birthday, targetLifespan);
 
   const diffMs = targetDate.getTime() - now.getTime();
@@ -108,22 +110,38 @@ export const calculateTimeLeft = (
 };
 
 /**
- * 人生の進捗率を計算する（0-100）
+ * 目標日までの残り時間を計算する（現在時刻基準）
  */
-export const calculateLifeProgress = (
+export const calculateTimeLeft = (
   birthday: string,
   targetLifespan: number
+): TimeLeft => calculateTimeLeftAt(birthday, targetLifespan, new Date());
+
+/**
+ * referenceDate ベースの人生進捗率（0-100）。native 移植用の純粋関数。
+ */
+export const calculateLifeProgressAt = (
+  birthday: string,
+  targetLifespan: number,
+  referenceDate: Date
 ): number => {
-  const now = new Date();
   const birthdayDate = parseBirthday(birthday);
   const targetDate = calculateTargetDate(birthday, targetLifespan);
 
   const totalLifeMs = targetDate.getTime() - birthdayDate.getTime();
-  const livedMs = now.getTime() - birthdayDate.getTime();
+  const livedMs = referenceDate.getTime() - birthdayDate.getTime();
   const progress = (livedMs / totalLifeMs) * 100;
 
   return Math.min(Math.max(progress, 0), 100);
 };
+
+/**
+ * 人生の進捗率を計算する（0-100、現在時刻基準）
+ */
+export const calculateLifeProgress = (
+  birthday: string,
+  targetLifespan: number
+): number => calculateLifeProgressAt(birthday, targetLifespan, new Date());
 
 /**
  * 現在の年齢を計算する（小数点以下含む）
