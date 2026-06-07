@@ -20,23 +20,12 @@ import type { MonthlyInsightData, StorylineMood } from '../../types/monthlyInsig
 const COLORS = {
   // 基本
   improvement: '#10B981',
-  improvementBg: '#10B98115',
   challenge: '#6366F1',
-  challengeBg: '#6366F115',
   highlight: '#F59E0B',
-  // 背景
-  summaryBgLight: '#FDF8F3',
-  summaryBgDark: '#2A2520',
-  letterBgLight: '#F0F7FF',
-  letterBgDark: '#1A2530',
-  transformationBgLight: '#F8F8F8',
-  transformationBgDark: '#2A2A2A',
   // ストーリーライン
   storylineConnector: '#D1D5DB',
   // 手紙セクション
   letterAccent: '#6366F1',
-  letterBorder: '#D6DEFF',
-  letterBorderDark: '#2A3A5A',
   letterRuleLight: '#E8E8F0',
   letterRuleDark: '#2A3550',
 } as const;
@@ -87,11 +76,8 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
     onRegenerate?.();
   };
 
-  const summaryBgColor = isDark ? COLORS.summaryBgDark : COLORS.summaryBgLight;
-  const letterBgColor = isDark ? COLORS.letterBgDark : COLORS.letterBgLight;
-  const letterBorderColor = isDark ? COLORS.letterBorderDark : COLORS.letterBorder;
   const letterRuleColor = isDark ? COLORS.letterRuleDark : COLORS.letterRuleLight;
-  const transformationBgColor = isDark ? COLORS.transformationBgDark : COLORS.transformationBgLight;
+  const quoteContainerStyle = isDark ? styles.quoteContainerDark : styles.quoteContainerLight;
 
   // 新構造かどうかを判定（lifeContextSummaryがあれば新構造）
   const isNewStructure = !!insight.lifeContextSummary;
@@ -218,16 +204,18 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
       </View>
 
       {/* セクション1: 人生の中のこの月 */}
-      <View style={[styles.lifeContextContainer, { backgroundColor: summaryBgColor }]}>
-        <View style={styles.lifeContextHeader}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <Ionicons name="hourglass-outline" size={18} color={themeColors.primary} />
-          <Text style={[styles.lifeContextLabel, { color: themeColors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
             人生の中のこの月
           </Text>
         </View>
-        <Text style={[styles.summaryText, { color: themeColors.text.primary }]}>
-          {summaryText}
-        </Text>
+        <View style={[styles.lifeContextContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+          <Text style={[styles.summaryText, { color: themeColors.text.primary }]}>
+            {summaryText}
+          </Text>
+        </View>
       </View>
 
       {/* セクション2: 月のストーリーライン（新構造のみ・3時期） */}
@@ -282,7 +270,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           </View>
 
           {/* 主要な価値観（パーセンテージ・プログレスバー廃止） */}
-          <View style={[styles.primaryValueContainer, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB' }]}>
+          <View style={[styles.primaryValueContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
             <View style={styles.primaryValueHeader}>
               <View style={styles.primaryValueRank}>
                 <Text style={[styles.rankNumber, { color: themeColors.primary }]}>1</Text>
@@ -291,15 +279,17 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
                 {insight.valueDiscovery.primaryValue.name}
               </Text>
             </View>
-            <Text style={[styles.primaryValueInsight, { color: themeColors.text.secondary }]}>
+            <Text style={[styles.primaryValueInsight, { color: themeColors.text.primary }]}>
               {insight.valueDiscovery.primaryValue.insight}
             </Text>
             {insight.valueDiscovery.primaryValue.evidence.length > 0 && (
               <View style={styles.evidenceContainer}>
                 {insight.valueDiscovery.primaryValue.evidence.slice(0, 2).map((ev, idx) => (
-                  <Text key={idx} style={[styles.evidenceText, { color: themeColors.text.secondary }]}>
-                    「{ev}」
-                  </Text>
+                  <View key={idx} style={[styles.quoteContainer, quoteContainerStyle]}>
+                    <Text style={[styles.evidenceText, { color: themeColors.text.primary }]}>
+                      「{ev}」
+                    </Text>
+                  </View>
                 ))}
               </View>
             )}
@@ -309,7 +299,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           {insight.valueDiscovery.secondaryValues.length > 0 && (
             <View style={styles.secondaryValuesContainer}>
               {insight.valueDiscovery.secondaryValues.map((value, idx) => (
-                <View key={idx} style={[styles.secondaryValueItem, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB' }]}>
+                <View key={idx} style={[styles.secondaryValueItem, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
                   <View style={styles.secondaryValueHeader}>
                     <View style={styles.secondaryValueRank}>
                       <Text style={[styles.smallRankNumber, { color: themeColors.text.secondary }]}>{idx + 2}</Text>
@@ -318,7 +308,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
                       {value.name}
                     </Text>
                   </View>
-                  <Text style={[styles.secondaryValueEvidence, { color: themeColors.text.secondary }]}>
+                  <Text style={[styles.secondaryValueEvidence, { color: themeColors.text.primary }]}>
                     {value.briefEvidence}
                   </Text>
                 </View>
@@ -328,7 +318,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
 
           {/* 隠れた発見 */}
           {insight.valueDiscovery.hiddenInsight && (
-            <View style={[styles.hiddenInsightContainer, { backgroundColor: isDark ? '#2D2D3A' : '#FEF3C7' }]}>
+            <View style={[styles.hiddenInsightContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
               <Ionicons name="bulb" size={16} color="#F59E0B" />
               <Text style={[styles.hiddenInsightText, { color: themeColors.text.primary }]}>
                 {insight.valueDiscovery.hiddenInsight}
@@ -348,7 +338,11 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
             </Text>
           </View>
           {insight.highlights.map((highlight, index) => (
-            <MonthlyHighlightCard key={index} highlight={highlight} />
+            <MonthlyHighlightCard
+              key={index}
+              highlight={highlight}
+              isLast={index === insight.highlights.length - 1}
+            />
           ))}
         </View>
       )}
@@ -362,11 +356,10 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
               未来の自分への手紙
             </Text>
           </View>
-          <View style={[styles.letterContainer, { backgroundColor: letterBgColor, borderColor: letterBorderColor }]}>
+          <View style={[styles.letterContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
             {/* ヘッダー装飾 */}
             <View style={styles.letterHeader}>
-              <Ionicons name="mail-open-outline" size={16} color={COLORS.letterAccent} />
-              <Text style={[styles.letterHeaderText, { color: COLORS.letterAccent }]}>
+              <Text style={[styles.letterHeaderText, { color: themeColors.text.primary }]}>
                 {formatLetterHeader()}
               </Text>
             </View>
@@ -390,13 +383,13 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
         </View>
 
         {/* 成長した点 */}
-        <View style={styles.improvementBox}>
-          <Text style={styles.improvementLabel}>
+        <View style={[styles.improvementBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+          <Text style={[styles.improvementLabel, { color: themeColors.text.primary }]}>
             成長した点
           </Text>
           {insight.growth.improvements.map((item, index) => (
             <View key={index} style={styles.growthItem}>
-              <Ionicons name="checkmark-circle" size={16} color={COLORS.improvement} />
+              <Ionicons name="checkmark-circle" size={16} color={COLORS.improvement} style={styles.growthIcon} />
               <Text style={[styles.growthText, { color: themeColors.text.primary }]}>
                 {item}
               </Text>
@@ -405,13 +398,13 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
         </View>
 
         {/* 次の月の課題 */}
-        <View style={styles.challengeBox}>
-          <Text style={styles.challengeLabel}>
+        <View style={[styles.challengeBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+          <Text style={[styles.challengeLabel, { color: themeColors.text.primary }]}>
             次の月の課題
           </Text>
           {insight.growth.challenges.map((item, index) => (
             <View key={index} style={styles.growthItem}>
-              <Ionicons name="flag" size={16} color={COLORS.challenge} />
+              <Ionicons name="flag" size={16} color={COLORS.challenge} style={styles.growthIcon} />
               <Text style={[styles.growthText, { color: themeColors.text.primary }]}>
                 {item}
               </Text>
@@ -421,7 +414,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
 
         {/* 変化 */}
         {insight.growth.transformation && (
-          <View style={[styles.transformationBox, { backgroundColor: transformationBgColor }]}>
+          <View style={[styles.transformationBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
             <Text style={[styles.transformationLabel, { color: themeColors.text.secondary }]}>
               月初→月末の変化
             </Text>
@@ -433,16 +426,18 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
       </View>
 
       {/* セクション7: 問いかけ */}
-      <View style={[styles.questionContainer, { backgroundColor: `${themeColors.primary}15`, borderColor: themeColors.primary }]}>
-        <View style={styles.questionHeader}>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <Ionicons name="chatbubble-ellipses" size={18} color={themeColors.primary} />
-          <Text style={[styles.questionLabel, { color: themeColors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
             次の月への問いかけ
           </Text>
         </View>
-        <Text style={[styles.questionText, { color: themeColors.text.primary }]}>
-          {insight.question}
-        </Text>
+        <View style={[styles.questionContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+          <Text style={[styles.questionText, { color: themeColors.text.primary }]}>
+            {insight.question}
+          </Text>
+        </View>
       </View>
 
       {/* 再生成確認モーダル */}
@@ -473,7 +468,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
                 onPress={handleConfirmRegenerate}
                 style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: themeColors.primary }]}
               >
-                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                <Text style={[styles.modalButtonText, { color: themeColors.text.inverse }]}>
                   再生成する
                 </Text>
               </TouchableOpacity>
@@ -529,7 +524,7 @@ const StorylinePhaseItem: React.FC<StorylinePhaseItemProps> = ({
       </View>
 
       {/* 右側: コンテンツ */}
-      <View style={[styles.storylineContent, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB' }]}>
+      <View style={[styles.storylineContent, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
         <View style={styles.storylineContentHeader}>
           <Text style={[styles.storylinePeriod, { color: themeColors.text.secondary }]}>
             {phase.period || sublabel}
@@ -542,9 +537,11 @@ const StorylinePhaseItem: React.FC<StorylinePhaseItemProps> = ({
           {phase.summary}
         </Text>
         {phase.keyQuote && (
-          <Text style={[styles.storylineQuote, { color: themeColors.text.secondary }]}>
-            「{phase.keyQuote}」
-          </Text>
+          <View style={[styles.quoteContainer, isDark ? styles.quoteContainerDark : styles.quoteContainerLight]}>
+            <Text style={[styles.storylineQuote, { color: themeColors.text.primary }]}>
+              「{phase.keyQuote}」
+            </Text>
+          </View>
         )}
       </View>
     </View>
@@ -556,13 +553,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   iconContainer: {
     width: 48,
@@ -582,8 +579,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   dateRange: {
-    fontSize: 13,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
+    lineHeight: fonts.lineHeight.insightSub,
   },
   entryCountBadge: {
     paddingHorizontal: spacing.sm,
@@ -599,30 +597,19 @@ const styles = StyleSheet.create({
 
   // セクション1: 人生の中のこの月
   lifeContextContainer: {
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: 12,
-    marginBottom: spacing.lg,
-  },
-  lifeContextHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  lifeContextLabel: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    marginLeft: spacing.xs,
+    borderWidth: 1,
   },
   summaryText: {
-    fontSize: 15,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 24,
+    lineHeight: fonts.lineHeight.insightBody,
   },
 
   // 共通セクション
   section: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl + spacing.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -631,9 +618,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    marginLeft: spacing.xs,
+    fontFamily: fonts.family.bold,
+    fontWeight: '600',
+    marginLeft: spacing.sm,
   },
 
   // セクション2: ストーリーライン
@@ -670,8 +657,9 @@ const styles = StyleSheet.create({
   },
   storylineContent: {
     flex: 1,
-    padding: spacing.sm,
-    borderRadius: 8,
+    padding: spacing.lg,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   storylineContentHeader: {
     flexDirection: 'row',
@@ -680,8 +668,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   storylinePeriod: {
-    fontSize: 12,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
+    lineHeight: fonts.lineHeight.insightSub,
   },
   moodBadge: {
     width: 22,
@@ -691,21 +680,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   storylineSummary: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 20,
+    lineHeight: fonts.lineHeight.insightBody,
   },
   storylineQuote: {
-    fontSize: 12,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
     fontStyle: 'italic',
-    marginTop: 4,
+    lineHeight: fonts.lineHeight.insightBody,
   },
 
   // セクション3: 価値観の発見
   primaryValueContainer: {
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: 12,
+    borderWidth: 1,
     marginBottom: spacing.sm,
   },
   primaryValueHeader: {
@@ -715,7 +705,7 @@ const styles = StyleSheet.create({
   },
   primaryValueName: {
     fontSize: 16,
-    fontFamily: fonts.family.regular,
+    fontFamily: fonts.family.bold,
     fontWeight: '600',
   },
   primaryValueRank: {
@@ -733,83 +723,89 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   primaryValueInsight: {
-    fontSize: 13,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 20,
+    lineHeight: fonts.lineHeight.insightBody,
     marginBottom: spacing.xs,
   },
   evidenceContainer: {
     marginTop: spacing.xs,
   },
   evidenceText: {
-    fontSize: 12,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
     fontStyle: 'italic',
-    marginBottom: 2,
+    lineHeight: fonts.lineHeight.insightBody,
+  },
+  quoteContainer: {
+    padding: spacing.sm,
+    borderRadius: 8,
+    marginTop: spacing.xs,
+  },
+  quoteContainerLight: {
+    backgroundColor: '#F8F8F8',
+  },
+  quoteContainerDark: {
+    backgroundColor: '#2A2A2A',
   },
   secondaryValuesContainer: {
     gap: spacing.xs,
   },
   secondaryValueItem: {
-    padding: spacing.sm,
-    borderRadius: 8,
+    padding: spacing.lg,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   secondaryValueHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   secondaryValueRank: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#A8B5A020',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#8B9D8320',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.xs,
   },
   smallRankNumber: {
-    fontSize: 12,
-    fontFamily: fonts.family.regular,
-    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: fonts.family.bold,
+    fontWeight: '700',
   },
   secondaryValueName: {
-    fontSize: 14,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
+    fontSize: 16,
+    fontFamily: fonts.family.bold,
+    fontWeight: '600',
   },
   secondaryValueEvidence: {
-    fontSize: 12,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    marginLeft: 28, // rank width + margin
+    lineHeight: fonts.lineHeight.insightBody,
   },
   hiddenInsightContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     padding: spacing.sm,
     borderRadius: 8,
+    borderWidth: 1,
     gap: spacing.xs,
     marginTop: spacing.sm,
   },
   hiddenInsightText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 20,
+    lineHeight: fonts.lineHeight.insightBody,
   },
 
   // セクション5: 未来の自分への手紙（便箋風）
   letterContainer: {
-    padding: spacing.md,
-    borderRadius: 16,
+    padding: spacing.lg,
+    borderRadius: 12,
     borderWidth: 1,
-    // iOS shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    // Android shadow
-    elevation: 3,
   },
   letterHeader: {
     flexDirection: 'row',
@@ -820,10 +816,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#D6DEFF',
   },
   letterHeaderText: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
+    fontSize: fonts.size.insightSub,
+    fontFamily: fonts.family.bold,
     fontWeight: '500',
-    marginLeft: spacing.xs,
   },
   letterBody: {
     marginBottom: spacing.sm,
@@ -832,98 +827,86 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   letterBodyText: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 26,
+    lineHeight: fonts.lineHeight.insightBody,
     letterSpacing: 0.3,
   },
   letterSender: {
-    fontSize: 13,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
+    lineHeight: fonts.lineHeight.insightSub,
     textAlign: 'right',
     marginTop: spacing.xs,
   },
   // セクション6: 成長と課題
   improvementBox: {
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: spacing.sm,
-    backgroundColor: '#10B98115',
-    borderColor: '#10B981',
+    marginBottom: spacing.md,
   },
   challengeBox: {
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: spacing.sm,
-    backgroundColor: '#6366F115',
-    borderColor: '#6366F1',
+    marginBottom: spacing.md,
   },
   improvementLabel: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
+    fontSize: fonts.size.insightSub,
+    fontFamily: fonts.family.bold,
     fontWeight: '500',
     marginBottom: spacing.sm,
-    color: '#10B981',
   },
   challengeLabel: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
+    fontSize: fonts.size.insightSub,
+    fontFamily: fonts.family.bold,
     fontWeight: '500',
     marginBottom: spacing.sm,
-    color: '#6366F1',
   },
   growthItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 6,
   },
+  growthIcon: {
+    marginTop: 5,
+  },
   growthText: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
     marginLeft: spacing.xs,
     flex: 1,
-    lineHeight: 20,
+    lineHeight: fonts.lineHeight.insightBody,
   },
   transformationBox: {
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: 12,
+    borderWidth: 1,
     marginTop: spacing.xs,
   },
   transformationLabel: {
-    fontSize: 12,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
+    lineHeight: fonts.lineHeight.insightSub,
     marginBottom: spacing.xs,
   },
   transformationText: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 20,
+    lineHeight: fonts.lineHeight.insightBody,
   },
 
   // セクション7: 問いかけ
   questionContainer: {
-    padding: spacing.md,
+    padding: spacing.lg,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: spacing.md,
-  },
-  questionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  questionLabel: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    marginLeft: spacing.xs,
   },
   questionText: {
-    fontSize: 15,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 22,
+    lineHeight: fonts.lineHeight.insightBody,
   },
 
   // 再生成ボタン

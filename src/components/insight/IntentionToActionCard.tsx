@@ -9,12 +9,6 @@ import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { IntentionToAction } from '../../types/weeklyInsight';
 
-// 背景色
-const SECTION_BG = {
-  light: '#F0F7F4',
-  dark: '#1A2520',
-} as const;
-
 interface IntentionToActionCardProps {
   intentionToAction: IntentionToAction;
 }
@@ -32,7 +26,6 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
 }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
-  const bgColor = isDark ? SECTION_BG.dark : SECTION_BG.light;
 
   // 達成がない場合は表示しない
   if (intentionToAction.achieved.length === 0) {
@@ -40,15 +33,7 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      {/* ヘッダー */}
-      <View style={styles.header}>
-        <Ionicons name="leaf" size={20} color={themeColors.primary} />
-        <Text style={[styles.title, { color: themeColors.text.primary }]}>
-          想いを行動に変えた瞬間
-        </Text>
-      </View>
-
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
       {/* 達成リスト */}
       <View style={styles.achievedList}>
         {intentionToAction.achieved.map((item, index) => (
@@ -73,7 +58,7 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
               <Text style={[styles.dateLabel, { color: themeColors.text.secondary }]}>
                 {formatDate(item.achievedDate)}
               </Text>
-              <Text style={[styles.achievementText, { color: themeColors.primary }]}>
+              <Text style={[styles.achievementText, { color: themeColors.text.primary }]}>
                 「{item.achievement.slice(0, 40)}{item.achievement.length > 40 ? '...' : ''}」
               </Text>
             </View>
@@ -109,18 +94,7 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
     padding: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: {
-    fontSize: 16,
-    fontFamily: fonts.family.regular,
-    fontWeight: '600',
-    marginLeft: spacing.sm,
+    borderWidth: 1,
   },
   achievedList: {
     marginBottom: spacing.sm,
@@ -133,19 +107,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   dateLabel: {
-    fontSize: 13,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
-    width: 40,
+    lineHeight: fonts.lineHeight.insightSub,
+    width: 44,
     marginRight: spacing.xs,
   },
   intentionText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 20,
+    fontStyle: 'italic',
+    lineHeight: fonts.lineHeight.insightBody,
   },
   arrowContainer: {
-    paddingLeft: 40 + spacing.xs,
+    paddingLeft: 44 + spacing.xs,
     paddingVertical: spacing.xs,
   },
   achievementRow: {
@@ -154,15 +130,15 @@ const styles = StyleSheet.create({
   },
   achievementText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontWeight: '500',
-    lineHeight: 20,
+    fontStyle: 'italic',
+    lineHeight: fonts.lineHeight.insightBody,
   },
   separator: {
     height: 1,
     marginVertical: spacing.md,
-    marginLeft: 40 + spacing.xs,
+    marginLeft: 44 + spacing.xs,
   },
   analysisContainer: {
     borderTopWidth: 1,
@@ -170,14 +146,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   analysisText: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 22,
+    lineHeight: fonts.lineHeight.insightBody,
   },
   celebrationText: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 22,
+    lineHeight: fonts.lineHeight.insightBody,
     marginTop: spacing.sm,
   },
 });

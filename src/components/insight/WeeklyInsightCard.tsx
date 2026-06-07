@@ -131,7 +131,7 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({
                 onPress={handleConfirmRegenerate}
                 style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: themeColors.primary }]}
               >
-                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                <Text style={[styles.modalButtonText, { color: themeColors.text.inverse }]}>
                   再生成する
                 </Text>
               </TouchableOpacity>
@@ -161,7 +161,7 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({
       <View style={[styles.questionContainer, { backgroundColor: `${themeColors.primary}15`, borderColor: themeColors.primary }]}>
         <View style={styles.questionHeader}>
           <Ionicons name="chatbubble-ellipses" size={18} color={themeColors.primary} />
-          <Text style={[styles.questionLabel, { color: themeColors.primary }]}>
+          <Text style={[styles.questionLabel, { color: themeColors.text.primary }]}>
             来週への問いかけ
           </Text>
         </View>
@@ -205,8 +205,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   dateRange: {
-    fontSize: 13,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
+    lineHeight: fonts.lineHeight.insightSub,
   },
   entryCountBadge: {
     paddingHorizontal: spacing.sm,
@@ -225,16 +226,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   summaryText: {
-    fontSize: 15,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 24,
+    lineHeight: fonts.lineHeight.insightBody,
   },
   patternsSection: {
     marginBottom: spacing.xl,
   },
   sectionTitle: {
     fontSize: 16,
-    fontFamily: fonts.family.regular,
+    fontFamily: fonts.family.bold,
     fontWeight: '500',
     marginBottom: spacing.md,
   },
@@ -250,15 +251,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   questionLabel: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
+    fontSize: fonts.size.insightSub,
+    fontFamily: fonts.family.bold,
     fontWeight: '500',
     marginLeft: spacing.xs,
   },
   questionText: {
-    fontSize: 15,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 22,
+    lineHeight: fonts.lineHeight.insightBody,
   },
   regenerateButton: {
     padding: spacing.xs,

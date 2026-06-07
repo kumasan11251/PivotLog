@@ -9,13 +9,6 @@ import { fonts, spacing, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { WeeklyActionSuggestion } from '../../types/weeklyInsight';
 
-// 背景色
-const SECTION_BG = {
-  light: '#FEF3F2',
-  dark: '#251A1A',
-} as const;
-
-
 interface ActionSuggestionCardProps {
   actionSuggestion: WeeklyActionSuggestion;
 }
@@ -25,29 +18,27 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
 }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
-  const bgColor = isDark ? SECTION_BG.dark : SECTION_BG.light;
 
   const { mainSuggestion, keepDoing } = actionSuggestion;
+  const actionColor = isDark ? '#60A5FA' : '#3B82F6';
+  const keepDoingColor = isDark ? '#34D399' : '#10B981';
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      {/* ヘッダー */}
-      <View style={styles.header}>
-        <Ionicons name="rocket" size={20} color={themeColors.primary} />
-        <Text style={[styles.title, { color: themeColors.text.primary }]}>
-          来週へ
-        </Text>
-      </View>
-
+    <View style={[styles.container, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
       {/* メインアクション */}
-      <View style={styles.mainActionContainer}>
-        <Text style={[styles.actionText, { color: themeColors.text.primary }]}>
-          {mainSuggestion.action}
-        </Text>
+      <View>
+        <View style={styles.header}>
+          <View style={[styles.iconContainer, { backgroundColor: `${actionColor}15` }]}>
+            <Ionicons name="navigate" size={18} color={actionColor} />
+          </View>
+          <Text style={[styles.title, { color: themeColors.text.primary }]}>
+            {mainSuggestion.action}
+          </Text>
+        </View>
 
         {/* 理由 */}
         {mainSuggestion.reason && (
-          <Text style={[styles.reasonText, { color: themeColors.text.secondary }]}>
+          <Text style={[styles.reasonText, { color: themeColors.text.primary }]}>
             {mainSuggestion.reason}
           </Text>
         )}
@@ -56,9 +47,14 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
       {/* 継続したいこと */}
       {keepDoing && (
         <View style={[styles.keepDoingContainer, { borderTopColor: themeColors.border }]}>
-          <Text style={[styles.keepDoingLabel, { color: themeColors.text.secondary }]}>
-            続けたいこと:
-          </Text>
+          <View style={styles.header}>
+            <View style={[styles.iconContainer, { backgroundColor: `${keepDoingColor}15` }]}>
+              <Ionicons name="checkmark-circle" size={18} color={keepDoingColor} />
+            </View>
+            <Text style={[styles.title, { color: themeColors.text.primary }]}>
+              続けたいこと
+            </Text>
+          </View>
           <Text style={[styles.keepDoingText, { color: themeColors.text.primary }]}>
             {keepDoing}
           </Text>
@@ -72,47 +68,40 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 12,
     padding: spacing.lg,
-    marginBottom: spacing.xl,
+    borderWidth: 1,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
   },
   title: {
-    fontSize: 16,
-    fontFamily: fonts.family.regular,
-    fontWeight: '600',
-    marginLeft: spacing.sm,
-  },
-  mainActionContainer: {
-    marginBottom: spacing.sm,
-  },
-  actionText: {
-    fontSize: 15,
-    fontFamily: fonts.family.regular,
-    lineHeight: 24,
-    marginBottom: spacing.xs,
+    flex: 1,
+    fontSize: fonts.size.insightBody,
+    fontFamily: fonts.family.bold,
+    fontWeight: '500',
   },
   reasonText: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 22,
-    marginBottom: spacing.sm,
+    lineHeight: fonts.lineHeight.insightBody,
   },
   keepDoingContainer: {
     borderTopWidth: 1,
     paddingTop: spacing.md,
-    marginTop: spacing.sm,
-  },
-  keepDoingLabel: {
-    fontSize: 13,
-    fontFamily: fonts.family.regular,
-    marginBottom: spacing.xs,
+    marginTop: spacing.md,
   },
   keepDoingText: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 22,
+    lineHeight: fonts.lineHeight.insightBody,
   },
 });

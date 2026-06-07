@@ -25,6 +25,8 @@ interface WeeklyInsightCardV2Props {
   isPremium?: boolean;
 }
 
+type SectionIconName = React.ComponentProps<typeof Ionicons>['name'];
+
 /**
  * 日付範囲を読みやすい形式に変換
  */
@@ -63,6 +65,15 @@ export const WeeklyInsightCardV2: React.FC<WeeklyInsightCardV2Props> = ({
     setShowConfirmModal(false);
     onRegenerate?.();
   };
+
+  const renderSectionHeader = (icon: SectionIconName, title: string) => (
+    <View style={styles.sectionHeader}>
+      <Ionicons name={icon} size={18} color={themeColors.primary} />
+      <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
+        {title}
+      </Text>
+    </View>
+  );
 
   return (
     <ScrollView
@@ -130,7 +141,7 @@ export const WeeklyInsightCardV2: React.FC<WeeklyInsightCardV2Props> = ({
                 onPress={handleConfirmRegenerate}
                 style={[styles.modalButton, styles.modalButtonConfirm, { backgroundColor: themeColors.primary }]}
               >
-                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                <Text style={[styles.modalButtonText, { color: themeColors.text.inverse }]}>
                   再生成する
                 </Text>
               </TouchableOpacity>
@@ -141,24 +152,29 @@ export const WeeklyInsightCardV2: React.FC<WeeklyInsightCardV2Props> = ({
 
       {/* セクション1: 想いを行動に変えた瞬間（達成がある場合のみ） */}
       {hasAchievements && (
-        <IntentionToActionCard intentionToAction={insight.intentionToAction} />
+        <View style={styles.section}>
+          {renderSectionHeader('leaf', '想いを行動に変えた瞬間')}
+          <IntentionToActionCard intentionToAction={insight.intentionToAction} />
+        </View>
       )}
 
       {/* セクション2: 発見されたパターン */}
-      <View style={styles.patternsSection}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="bulb" size={18} color={themeColors.primary} />
-          <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>
-            見つかったパターン
-          </Text>
-        </View>
+      <View style={styles.section}>
+        {renderSectionHeader('bulb', '見つかったパターン')}
         {insight.patterns.map((pattern, index) => (
-          <InsightPatternCard key={index} pattern={pattern} />
+          <InsightPatternCard
+            key={index}
+            pattern={pattern}
+            isLast={index === insight.patterns.length - 1}
+          />
         ))}
       </View>
 
       {/* セクション3: 来週へのアクション */}
-      <ActionSuggestionCard actionSuggestion={insight.actionSuggestion} />
+      <View style={styles.section}>
+        {renderSectionHeader('rocket', '来週へ')}
+        <ActionSuggestionCard actionSuggestion={insight.actionSuggestion} />
+      </View>
 
     </ScrollView>
   );
@@ -195,8 +211,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   dateRange: {
-    fontSize: 13,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
+    lineHeight: fonts.lineHeight.insightSub,
   },
   entryCountBadge: {
     paddingHorizontal: spacing.sm,
@@ -209,8 +226,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     fontWeight: '500',
   },
-  patternsSection: {
-    marginBottom: spacing.xl,
+  section: {
+    marginBottom: spacing.xl + spacing.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -219,7 +236,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontFamily: fonts.family.regular,
+    fontFamily: fonts.family.bold,
     fontWeight: '600',
     marginLeft: spacing.sm,
   },

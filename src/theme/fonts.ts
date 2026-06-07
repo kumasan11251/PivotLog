@@ -40,12 +40,20 @@ export const fonts = {
 
     // 入力フィールド
     input: 18,
+
+    // インサイト本文（読ませる文章の統一スケール）
+    insightBody: 16, // 説明・分析・引用など読ませる本文
+    insightSub: 14, // 理由・日付・メタラベルなど補足
   },
 
   // 行の高さ
   lineHeight: {
     countdownLarge: 44, // フォントサイズ38より大きく
     countdownSmall: 32, // フォントサイズ26より大きく
+
+    // インサイト本文（読ませる文章の統一スケール）
+    insightBody: 26, // 本文の行間（日本語可読性重視）
+    insightSub: 20, // 補足の行間
   },
 
   // フォントウェイト

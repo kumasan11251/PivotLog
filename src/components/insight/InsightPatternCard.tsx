@@ -11,6 +11,7 @@ import type { InsightPattern, InsightPatternType, InsightPatternV2 } from '../..
 
 interface InsightPatternCardProps {
   pattern: InsightPattern | InsightPatternV2;
+  isLast?: boolean;
 }
 
 /**
@@ -41,13 +42,20 @@ const getPatternStyle = (type: InsightPatternType, isDark: boolean): {
   };
 };
 
-export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern }) => {
+export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern, isLast = false }) => {
   const { isDark } = useTheme();
   const themeColors = getColors(isDark);
   const { icon, color, bgColor } = getPatternStyle(pattern.type, isDark);
+  const exampleItemStyle = isDark ? styles.exampleItemDark : styles.exampleItemLight;
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+    <View
+      style={[
+        styles.container,
+        isLast && styles.lastContainer,
+        { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+      ]}
+    >
       {/* アイコンとタイトル */}
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
@@ -66,7 +74,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern 
       </View>
 
       {/* 説明 */}
-      <Text style={[styles.description, { color: themeColors.text.secondary }]}>
+      <Text style={[styles.description, { color: themeColors.text.primary }]}>
         {pattern.description}
       </Text>
 
@@ -76,7 +84,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern 
           {pattern.examples.slice(0, 2).map((example, index) => (
             <View
               key={index}
-              style={[styles.exampleItem, { backgroundColor: isDark ? '#2A2A2A' : '#F8F8F8' }]}
+              style={[styles.exampleItem, exampleItemStyle]}
             >
               <Text style={[styles.exampleDate, { color: themeColors.text.secondary }]}>
                 {formatDateShort(example.date)}
@@ -91,7 +99,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern 
 
       {/* 深掘り（V2のみ） */}
       {'insight' in pattern && pattern.insight && (
-        <Text style={[styles.insightText, { color: themeColors.text.secondary }]}>
+        <Text style={[styles.insightText, { color: themeColors.text.primary }]}>
           {pattern.insight}
         </Text>
       )}
@@ -114,6 +122,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1,
   },
+  lastContainer: {
+    marginBottom: 0,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -129,8 +140,8 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 15,
-    fontFamily: fonts.family.regular,
+    fontSize: fonts.size.insightBody,
+    fontFamily: fonts.family.bold,
     fontWeight: '500',
   },
   frequencyBadge: {
@@ -145,9 +156,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   description: {
-    fontSize: 14,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    lineHeight: 20,
+    lineHeight: fonts.lineHeight.insightBody,
     marginBottom: spacing.sm,
   },
   examplesContainer: {
@@ -158,21 +169,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: spacing.xs,
   },
+  exampleItemLight: {
+    backgroundColor: '#F8F8F8',
+  },
+  exampleItemDark: {
+    backgroundColor: '#2A2A2A',
+  },
   exampleDate: {
-    fontSize: 12,
+    fontSize: fonts.size.insightSub,
     fontFamily: fonts.family.regular,
+    lineHeight: fonts.lineHeight.insightSub,
     marginBottom: 2,
   },
   exampleQuote: {
-    fontSize: 13,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
     fontStyle: 'italic',
+    lineHeight: fonts.lineHeight.insightBody,
   },
   insightText: {
-    fontSize: 13,
+    fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
     fontStyle: 'italic',
-    lineHeight: 20,
+    lineHeight: fonts.lineHeight.insightBody,
     marginTop: spacing.sm,
   },
 });
