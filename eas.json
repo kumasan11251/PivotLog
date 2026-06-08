@@ -36,6 +36,14 @@
         "releaseStatus": "draft",
         "changesNotSentForReview": true
       }
+    },
+    "googleplay-production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "production",
+        "releaseStatus": "completed",
+        "changesNotSentForReview": false
+      }
     }
   }
 }

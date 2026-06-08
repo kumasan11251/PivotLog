@@ -12,6 +12,7 @@ module.exports = [
       '.expo-shared/**',
       'dist/**',
       'build/**',
+      'functions/lib/**',
       '*.config.js',
       'babel.config.js',
       'metro.config.js',
@@ -46,6 +47,7 @@ module.exports = [
     rules: {
       // TypeScript推奨ルール
       ...typescriptPlugin.configs.recommended.rules,
+      '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_',
@@ -59,6 +61,7 @@ module.exports = [
 
       // React Hooks推奨ルール
       ...reactHooksPlugin.configs.recommended.rules,
+      'react-hooks/set-state-in-effect': 'warn',
 
       // React Native設定
       'react-native/no-unused-styles': 'warn',

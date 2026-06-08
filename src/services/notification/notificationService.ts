@@ -16,6 +16,45 @@ const DAILY_REMINDER_IDENTIFIER = 'daily-reminder';
 const DAILY_REMINDER_BACKUP_PREFIX = 'pivot_log_reminder_backup_';
 const BACKUP_DAYS = 7;
 
+type DailyReminderTrigger = {
+  type: Notifications.SchedulableTriggerInputTypes.DAILY;
+  hour: number;
+  minute: number;
+};
+
+type DateReminderTrigger = {
+  type: Notifications.SchedulableTriggerInputTypes.DATE;
+  date: Date | number;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isDailyReminderTrigger = (
+  trigger: Notifications.NotificationTrigger | null
+): trigger is DailyReminderTrigger => {
+  if (!isRecord(trigger)) return false;
+  const candidate = trigger as Record<string, unknown>;
+
+  return (
+    candidate.type === Notifications.SchedulableTriggerInputTypes.DAILY &&
+    typeof candidate.hour === 'number' &&
+    typeof candidate.minute === 'number'
+  );
+};
+
+const isDateReminderTrigger = (
+  trigger: Notifications.NotificationTrigger | null
+): trigger is DateReminderTrigger => {
+  if (!isRecord(trigger)) return false;
+  const candidate = trigger as Record<string, unknown>;
+
+  return (
+    candidate.type === Notifications.SchedulableTriggerInputTypes.DATE &&
+    (candidate.date instanceof Date || typeof candidate.date === 'number')
+  );
+};
+
 // 通知のデフォルト設定
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -244,10 +283,10 @@ export const initializeReminder = async (): Promise<void> => {
     // 既にスケジュール済み — ただし設定時刻が変更されていないか確認する
     const trigger = existingReminder.trigger;
     const isTimeChanged = (() => {
-      if (trigger.type === Notifications.SchedulableTriggerInputTypes.DAILY) {
+      if (isDailyReminderTrigger(trigger)) {
         return trigger.hour !== settings.hour || trigger.minute !== settings.minute;
       }
-      if (trigger.type === Notifications.SchedulableTriggerInputTypes.DATE) {
+      if (isDateReminderTrigger(trigger)) {
         const scheduledDate = new Date(trigger.date);
         return scheduledDate.getHours() !== settings.hour || scheduledDate.getMinutes() !== settings.minute;
       }
@@ -259,7 +298,7 @@ export const initializeReminder = async (): Promise<void> => {
       // 時刻が不一致のバックアップのみキャンセル
       for (const backup of existingBackups) {
         const backupTrigger = backup.trigger;
-        if (backupTrigger.type === Notifications.SchedulableTriggerInputTypes.DATE) {
+        if (isDateReminderTrigger(backupTrigger)) {
           const backupDate = new Date(backupTrigger.date);
           if (backupDate.getHours() !== settings.hour || backupDate.getMinutes() !== settings.minute) {
             await Notifications.cancelScheduledNotificationAsync(backup.identifier);
