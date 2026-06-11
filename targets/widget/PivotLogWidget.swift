@@ -15,6 +15,20 @@ extension View {
     }
 }
 
+// ホーム画面ウィジェット用: contentMarginsDisabled() で消えたシステム既定の余白を、
+// iOS 17+ の widgetContentMargins（「本来適用されるはずだった余白」）から読み戻し、
+// ホーム画面ファミリーにだけ再適用する。ロック画面(accessoryRectangular)は
+// 余白なしのままにしたいので、ここを通さない。
+@available(iOS 17.0, *)
+private struct HomeWidgetContentMargins<Content: View>: View {
+    @Environment(\.widgetContentMargins) private var margins
+    let content: Content
+
+    var body: some View {
+        content.padding(margins)
+    }
+}
+
 // グラデーション背景ビュー
 struct WidgetGradientBackground: View {
     var isDarkMode: Bool
@@ -45,6 +59,11 @@ struct WidgetGradientBackground: View {
 }
 
 // ウィジェットデータの構造
+struct WidgetDiaryTomorrow: Codable {
+    var date: String
+    var text: String
+}
+
 struct PivotLogWidgetData: Codable {
     var birthday: String
     var targetLifespan: Int
@@ -66,6 +85,7 @@ struct PivotLogWidgetData: Codable {
     var perspectiveSubtext: String?
     var dailyMessage: String?
     var messageSource: String?
+    var recentDiaryTomorrows: [WidgetDiaryTomorrow]?
 
     var hasTodayEntry: Bool?
     var streakDays: Int?
@@ -90,52 +110,6 @@ struct PivotLogWidgetData: Codable {
         return colorScheme == "dark"
     }
 
-    // メッセージ表示テキストを取得
-    var displayMessageText: String? {
-        let source = messageSource ?? "custom"
-        switch source {
-        case "perspective":
-            return perspectiveMainText
-        case "daily":
-            return dailyMessage
-        default:
-            // "custom" - カスタムテキストが空なら視点メッセージにフォールバック
-            if customText.isEmpty {
-                return perspectiveMainText
-            }
-            return customText
-        }
-    }
-
-    var displayMessageEmoji: String? {
-        let source = messageSource ?? "custom"
-        switch source {
-        case "perspective":
-            return perspectiveEmoji
-        case "daily":
-            return nil
-        default:
-            if customText.isEmpty {
-                return perspectiveEmoji
-            }
-            return nil
-        }
-    }
-
-    var displayMessageSubtext: String? {
-        let source = messageSource ?? "custom"
-        switch source {
-        case "perspective":
-            return perspectiveSubtext
-        case "daily":
-            return nil
-        default:
-            if customText.isEmpty {
-                return perspectiveSubtext
-            }
-            return nil
-        }
-    }
 }
 
 // UserDefaultsからデータを取得
@@ -159,6 +133,12 @@ func getWidgetData() -> PivotLogWidgetData? {
 struct PivotLogEntry: TimelineEntry {
     let date: Date
     let widgetData: PivotLogWidgetData?
+}
+
+struct ResolvedWidgetMessage {
+    let text: String
+    let emoji: String?
+    let subtext: String?
 }
 
 // MARK: - 日付・残時間ヘルパー (0:00跨ぎ自動更新用)
@@ -272,6 +252,27 @@ enum WidgetDateHelpers {
         let yc = calendar.dateComponents([.year, .month, .day], from: yesterday)
         let yStr = String(format: "%04d-%02d-%02d", yc.year ?? 0, yc.month ?? 0, yc.day ?? 0)
         return set.contains(yStr)
+    }
+
+    static func previousDateString(from dateString: String) -> String? {
+        let parts = dateString.split(separator: "-").map { Int($0) ?? 0 }
+        guard parts.count == 3 else { return nil }
+        var comps = DateComponents()
+        comps.year = parts[0]
+        comps.month = parts[1]
+        comps.day = parts[2]
+        let calendar = jaCalendar
+        guard let date = calendar.date(from: comps),
+              let previousDate = calendar.date(byAdding: .day, value: -1, to: date) else {
+            return nil
+        }
+        let previousComponents = calendar.dateComponents([.year, .month, .day], from: previousDate)
+        return String(
+            format: "%04d-%02d-%02d",
+            previousComponents.year ?? 0,
+            previousComponents.month ?? 0,
+            previousComponents.day ?? 0
+        )
     }
 
     /// JS の `new Date(year + targetLifespan, month - 1, day)` 互換の target date 生成。
@@ -426,13 +427,14 @@ struct PivotLogProvider: TimelineProvider {
 struct WidgetProgressBar: View {
     var progress: Double
     var primaryColor: Color
+    var trackColor: Color = Color.gray.opacity(0.2)
     var height: CGFloat = 6
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: height / 2)
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(trackColor)
                     .frame(height: height)
                 RoundedRectangle(cornerRadius: height / 2)
                     .fill(primaryColor)
@@ -510,11 +512,11 @@ struct PivotLogWidgetEntryView: View {
             : Color(red: 119 / 255, green: 119 / 255, blue: 119 / 255)  // #777777（lightColors.text.secondary、WCAG AAA準拠）
     }
 
-    // メッセージカード背景色
-    var cardBackgroundColor: Color {
+    // 日付・連続記録・メッセージ用の強調テキスト色（視認性改善）
+    var textEmphasisColor: Color {
         isDarkMode
-            ? Color.white.opacity(0.06)
-            : Color.black.opacity(0.03)
+            ? Color.white                                            // #FFFFFF
+            : Color(red: 51 / 255, green: 51 / 255, blue: 51 / 255)  // #333333
     }
 
     // MARK: - 0:00 跨ぎ自動更新用の computed values
@@ -614,26 +616,60 @@ struct PivotLogWidgetEntryView: View {
     var body: some View {
         Group {
             if let data = entry.widgetData {
-                Group {
-                    switch widgetFamily {
-                    case .systemSmall:
-                        smallWidgetView(data: data)
-                    case .systemMedium:
-                        mediumWidgetView(data: data)
-                    case .systemLarge:
-                        largeWidgetView(data: data)
-                    default:
-                        smallWidgetView(data: data)
+                if widgetFamily == .accessoryRectangular {
+                    lockScreenRectangularWidgetView(data: data)
+                        .widgetURL(widgetDeepLink(data: data))
+                } else {
+                    homeWidgetWithDefaultMargins {
+                        homeWidgetContent(data: data)
                     }
+                    .widgetURL(widgetDeepLink(data: data))
+                    // ウィジェット内のシステムカラー（Color.primary 等）が端末colorSchemeに追従するのを抑止し、
+                    // アプリ内テーマ設定に強制同期する
+                    .environment(\.colorScheme, isDarkMode ? .dark : .light)
                 }
-                .widgetURL(widgetDeepLink(data: data))
             } else {
-                placeholderView()
+                if widgetFamily == .accessoryRectangular {
+                    lockScreenPlaceholderView()
+                        .widgetURL(URL(string: "pivotlog://home")!)
+                } else {
+                    homeWidgetWithDefaultMargins {
+                        placeholderView()
+                    }
+                    .widgetURL(URL(string: "pivotlog://home")!)
+                    // ウィジェット内のシステムカラー（Color.primary 等）が端末colorSchemeに追従するのを抑止し、
+                    // アプリ内テーマ設定に強制同期する
+                    .environment(\.colorScheme, isDarkMode ? .dark : .light)
+                }
             }
         }
-        // ウィジェット内のシステムカラー（Color.primary 等）が端末colorSchemeに追従するのを抑止し、
-        // アプリ内テーマ設定に強制同期する
-        .environment(\.colorScheme, isDarkMode ? .dark : .light)
+    }
+
+    // ホーム画面ファミリーにだけ、システム既定の余白を再適用するためのラッパー。
+    // iOS 16 では contentMarginsDisabled() が実質 no-op で既定余白が残るため、
+    // iOS 17+ のときだけ widgetContentMargins を読み戻して padding を補う。
+    @ViewBuilder
+    func homeWidgetWithDefaultMargins<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        if #available(iOS 17.0, *) {
+            HomeWidgetContentMargins(content: content())
+        } else {
+            content()
+        }
+    }
+
+    @ViewBuilder
+    func homeWidgetContent(data: PivotLogWidgetData) -> some View {
+        switch widgetFamily {
+        case .systemSmall:
+            smallWidgetView(data: data)
+        case .systemMedium:
+            mediumWidgetView(data: data)
+        case .systemLarge:
+            // 大ウィジェットは中ウィジェットと同じデザイン（メッセージエリアが縦に広がる）
+            mediumWidgetView(data: data)
+        default:
+            smallWidgetView(data: data)
+        }
     }
 
     // MARK: - カウントダウン表示
@@ -707,28 +743,111 @@ struct PivotLogWidgetEntryView: View {
         return formatter.string(from: NSNumber(value: num)) ?? "\(num)"
     }
 
+    // 数字(15pt)と単位「年・週・日」(12pt)でサイズを分けたカウントダウン表示
+    func lockScreenCountdownSegment(number: String, unit: String) -> Text {
+        Text(number)
+            .font(.system(size: 15, weight: .semibold, design: .rounded).monospacedDigit())
+        + Text(unit)
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+    }
+
+    func lockScreenCountdownText(data: PivotLogWidgetData) -> Text {
+        let mode = data.countdownMode ?? "detailed"
+        switch mode {
+        case "daysOnly":
+            return lockScreenCountdownSegment(number: formatNumber(computedRemainingDays), unit: "日")
+        case "weeksOnly":
+            return lockScreenCountdownSegment(number: formatNumber(computedTotalWeeks), unit: "週")
+        case "yearsOnly":
+            return lockScreenCountdownSegment(number: "\(Int(computedRemainingYears))", unit: "年")
+        default:
+            return lockScreenCountdownSegment(number: "\(Int(computedRemainingYears))", unit: "年")
+                + lockScreenCountdownSegment(number: "\(computedRemainingDays % 365)", unit: "日")
+        }
+    }
+
+    func normalizedMessageSource(_ source: String?) -> String {
+        switch source {
+        case "daily":
+            return "perspective"
+        case "custom", "perspective", "todayFocus":
+            return source ?? "custom"
+        default:
+            return "custom"
+        }
+    }
+
+    func perspectiveDisplayMessage(data: PivotLogWidgetData) -> ResolvedWidgetMessage? {
+        guard let text = data.perspectiveMainText, !text.isEmpty else {
+            return nil
+        }
+        return ResolvedWidgetMessage(
+            text: text,
+            emoji: data.perspectiveEmoji?.isEmpty == false ? data.perspectiveEmoji : nil,
+            subtext: data.perspectiveSubtext?.isEmpty == false ? data.perspectiveSubtext : nil
+        )
+    }
+
+    func todayFocusMessageText(data: PivotLogWidgetData) -> String? {
+        guard let sourceDate = WidgetDateHelpers.previousDateString(from: effectiveTodayDate) else {
+            return nil
+        }
+        return data.recentDiaryTomorrows?
+            .first(where: { $0.date == sourceDate })?
+            .text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func resolvedDisplayMessage(data: PivotLogWidgetData) -> ResolvedWidgetMessage? {
+        switch normalizedMessageSource(data.messageSource) {
+        case "perspective":
+            return perspectiveDisplayMessage(data: data)
+        case "todayFocus":
+            if let text = todayFocusMessageText(data: data), !text.isEmpty {
+                return ResolvedWidgetMessage(text: text, emoji: nil, subtext: nil)
+            }
+            return perspectiveDisplayMessage(data: data)
+        default:
+            let customText = data.customText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if customText.isEmpty {
+                return perspectiveDisplayMessage(data: data)
+            }
+            return ResolvedWidgetMessage(text: customText, emoji: nil, subtext: nil)
+        }
+    }
+
+    func lockScreenMessageText(data: PivotLogWidgetData) -> String {
+        guard let message = resolvedDisplayMessage(data: data), !message.text.isEmpty else {
+            return ""
+        }
+        if let emoji = message.emoji, !emoji.isEmpty {
+            return "\(emoji) \(message.text)"
+        }
+        return message.text
+    }
+
     // MARK: - メッセージ表示
 
     @ViewBuilder
     func messageView(data: PivotLogWidgetData, fontSize: CGFloat = 12) -> some View {
-        if let messageText = data.displayMessageText, !messageText.isEmpty {
+        if let message = resolvedDisplayMessage(data: data), !message.text.isEmpty {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .top, spacing: 4) {
-                    if let emoji = data.displayMessageEmoji {
+                    if let emoji = message.emoji {
                         Text(emoji)
                             .font(.system(size: fontSize))
                     }
-                    Text(messageText)
+                    Text(message.text)
                         .font(.system(size: fontSize, weight: .regular))
-                        .foregroundColor(textSecondaryColor)
+                        .foregroundColor(textEmphasisColor)
                         .multilineTextAlignment(.leading)
                 }
-                if let subtext = data.displayMessageSubtext, !subtext.isEmpty {
+                if let subtext = message.subtext, !subtext.isEmpty {
                     Text(subtext)
                         .font(.system(size: fontSize - 1, weight: .light))
-                        .foregroundColor(textSecondaryColor.opacity(0.8))
+                        .foregroundColor(textEmphasisColor.opacity(0.8))
                         .lineLimit(1)
-                        .padding(.leading, data.displayMessageEmoji != nil ? 20 : 0)
+                        .padding(.leading, message.emoji != nil ? 20 : 0)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -744,8 +863,8 @@ struct PivotLogWidgetEntryView: View {
             if data.showDateHeader != false {
                 HStack {
                     Text(computedTodayDateLabel)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(textSecondaryColor)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(textEmphasisColor)
                     Spacer()
                     if data.showDiaryStatus != false {
                         DiaryStatusIndicator(
@@ -775,19 +894,19 @@ struct PivotLogWidgetEntryView: View {
             if data.showStreak != false, computedStreakDays > 0 {
                 HStack(spacing: 3) {
                     Text(computedStreakEmoji)
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                     Text("\(computedStreakDays)日連続")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(textSecondaryColor)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(textEmphasisColor)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             // 残りのスペースをすべてメッセージに使用（上下中央・左揃え）
-            messageView(data: data, fontSize: 11)
+            messageView(data: data, fontSize: 13)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
-        .padding(10)
+        .padding(4)
         .widgetBackground(WidgetGradientBackground(isDarkMode: isDarkMode))
     }
 
@@ -801,8 +920,8 @@ struct PivotLogWidgetEntryView: View {
                 HStack {
                     if data.showDateHeader != false {
                         Text(computedTodayDateLabel)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(textSecondaryColor)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(textEmphasisColor)
                     }
                     Spacer()
                     if data.showDiaryStatus != false {
@@ -815,10 +934,10 @@ struct PivotLogWidgetEntryView: View {
                     if data.showStreak != false, computedStreakDays > 0 {
                         HStack(spacing: 3) {
                             Text(computedStreakEmoji)
-                                .font(.system(size: 11))
+                                .font(.system(size: 13))
                             Text("\(computedStreakDays)日連続")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(textSecondaryColor)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(textEmphasisColor)
                         }
                     }
                 }
@@ -840,121 +959,54 @@ struct PivotLogWidgetEntryView: View {
             WidgetProgressBar(progress: computedLifeProgress, primaryColor: primaryColor)
 
             // 残りのスペースをすべてメッセージに使用（上下中央・左揃え）
-            messageView(data: data, fontSize: 12)
+            messageView(data: data, fontSize: 14)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
-        .padding(10)
+        .padding(4)
         .widgetBackground(WidgetGradientBackground(isDarkMode: isDarkMode))
     }
 
-    // MARK: - Large ウィジェット
+    // MARK: - Lock Screen ウィジェット
 
     @ViewBuilder
-    func largeWidgetView(data: PivotLogWidgetData) -> some View {
-        VStack(spacing: 8) {
-            // ヘッダー
-            HStack {
-                Text("PivotLog")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(primaryColor)
-                Spacer()
-                if data.showDateHeader != false {
-                    Text(computedTodayDateLabel)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(textSecondaryColor)
-                }
-                Text("目標: \(data.targetLifespan)歳")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundColor(textSecondaryColor)
+    func lockScreenRectangularWidgetView(data: PivotLogWidgetData) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                lockScreenCountdownText(data: data)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .foregroundColor(.primary)
+
+                Spacer(minLength: 4)
+
+                Text("\(String(format: "%.1f", computedLifeProgress))%")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .foregroundColor(.primary)
             }
 
-            // メイン表示: カウントダウン
-            countdownDisplay(data: data, primarySize: 40, secondarySize: 28)
+            WidgetProgressBar(
+                progress: computedLifeProgress,
+                primaryColor: Color.primary,
+                trackColor: Color.primary.opacity(0.25),
+                height: 4
+            )
 
-            // プログレスバー + %
-            VStack(spacing: 4) {
-                HStack {
-                    Spacer()
-                    Text("\(String(format: "%.1f", computedLifeProgress))%")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundColor(primaryColor)
-                }
-
-                WidgetProgressBar(progress: computedLifeProgress, primaryColor: primaryColor, height: 8)
-            }
-
-            // ストリーク + 総記録（表示時のみスペースを取る）
-            if data.showStreak != false {
-                HStack(spacing: 12) {
-                    if computedStreakDays > 0 {
-                        HStack(spacing: 3) {
-                            Text(computedStreakEmoji)
-                                .font(.system(size: 12))
-                            Text("\(computedStreakDays)日連続記録中")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(textSecondaryColor)
-                        }
-                    }
-                    if let total = data.totalDays, total > 0 {
-                        HStack(spacing: 3) {
-                            Text("📝")
-                                .font(.system(size: 12))
-                            Text("累計\(total)日")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(textSecondaryColor)
-                        }
-                    }
-                    Spacer()
-                }
-            }
-
-            // メッセージカード（残りのスペースをすべて使用・上下中央・左揃え）
-            if let messageText = data.displayMessageText, !messageText.isEmpty {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .top, spacing: 4) {
-                        if let emoji = data.displayMessageEmoji {
-                            Text(emoji)
-                                .font(.system(size: 13))
-                        }
-                        Text(messageText)
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(textPrimaryColor)
-                            .multilineTextAlignment(.leading)
-                    }
-                    if let subtext = data.displayMessageSubtext, !subtext.isEmpty {
-                        Text(subtext)
-                            .font(.system(size: 11, weight: .light))
-                            .foregroundColor(textSecondaryColor)
-                            .lineLimit(1)
-                            .padding(.leading, data.displayMessageEmoji != nil ? 21 : 0)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                .padding(10)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(cardBackgroundColor)
-                )
-            }
-
-            // 日記状態（表示時のみ最下部に固定）
-            if data.showDiaryStatus != false {
-                HStack(spacing: 4) {
-                    DiaryStatusIndicator(
-                        hasTodayEntry: computedHasTodayEntry,
-                        primaryColor: primaryColor,
-                        textSecondaryColor: textSecondaryColor
-                    )
-                    Text("今日の日記：\(computedHasTodayEntry ? "記入済み" : "未記入")")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(textSecondaryColor)
-                    Spacer()
-                }
+            let message = lockScreenMessageText(data: data)
+            if !message.isEmpty {
+                Text(message)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(.primary)
+                    .lineLimit(2, reservesSpace: true)
+                    .minimumScaleFactor(0.85)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
             }
         }
-        .padding(10)
-        .widgetBackground(WidgetGradientBackground(isDarkMode: isDarkMode))
+        .widgetBackground(Color.clear)
     }
 
     // MARK: - プレースホルダー
@@ -978,6 +1030,22 @@ struct PivotLogWidgetEntryView: View {
         .padding()
         .widgetBackground(WidgetGradientBackground(isDarkMode: isDarkMode))
     }
+
+    @ViewBuilder
+    func lockScreenPlaceholderView() -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text("PivotLog")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.primary)
+                .lineLimit(1)
+            Text("アプリで設定してください")
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(.primary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .widgetBackground(Color.clear)
+    }
 }
 
 // ウィジェット定義
@@ -990,13 +1058,21 @@ struct PivotLogWidget: Widget {
         }
         .configurationDisplayName("PivotLog")
         .description("残りの人生時間を表示します")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
+        .contentMarginsDisabled()
     }
 }
 
 // プレビュー
 struct PivotLogWidget_Previews: PreviewProvider {
     static var previews: some View {
+        let todayFocusPreviewDate: Date = {
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.locale = Locale(identifier: "ja_JP")
+            calendar.timeZone = TimeZone.current
+            return calendar.date(from: DateComponents(year: 2026, month: 6, day: 10, hour: 9)) ?? Date()
+        }()
+
         let sampleDataLight = PivotLogWidgetData(
             birthday: "1990-01-01",
             targetLifespan: 80,
@@ -1057,6 +1133,41 @@ struct PivotLogWidget_Previews: PreviewProvider {
             showDateHeader: true
         )
 
+        let sampleDataTodayFocus = PivotLogWidgetData(
+            birthday: "1990-01-01",
+            targetLifespan: 80,
+            lifeProgress: 42.5,
+            remainingYears: 46.0,
+            remainingDays: 16800,
+            currentAge: 34.0,
+            customText: "",
+            showProgress: true,
+            showRemainingTime: true,
+            showCustomText: true,
+            colorScheme: "light",
+            lastUpdated: "2026-06-10T00:00:00Z",
+            perspectiveEmoji: "🌸",
+            perspectiveMainText: "あと46回の桜を見届けられる",
+            perspectiveSubtext: "今年の桜は、今年だけのもの",
+            dailyMessage: "今日もあなたらしく",
+            messageSource: "todayFocus",
+            recentDiaryTomorrows: [
+                WidgetDiaryTomorrow(date: "2026-06-09", text: "朝に散歩して、最初の一歩を軽くする")
+            ],
+            hasTodayEntry: false,
+            streakDays: 15,
+            totalDays: 42,
+            streakEmoji: "🔥",
+            todayDateLabel: "6月10日(水)",
+            countdownMode: "detailed",
+            totalWeeks: 2400,
+            showStreak: true,
+            showDiaryStatus: true,
+            showDateHeader: true,
+            recentDiaryDates: ["2026-06-09"],
+            dayStartHour: 5
+        )
+
         Group {
             // ライトモード
             PivotLogWidgetEntryView(entry: PivotLogEntry(date: Date(), widgetData: sampleDataLight))
@@ -1083,6 +1194,46 @@ struct PivotLogWidget_Previews: PreviewProvider {
             PivotLogWidgetEntryView(entry: PivotLogEntry(date: Date(), widgetData: sampleDataDark))
                 .previewContext(WidgetPreviewContext(family: .systemLarge))
                 .previewDisplayName("Large - Dark")
+
+            PivotLogWidgetEntryView(entry: PivotLogEntry(date: todayFocusPreviewDate, widgetData: sampleDataTodayFocus))
+                .previewContext(WidgetPreviewContext(family: .systemMedium))
+                .previewDisplayName("Medium - Today Focus")
+
+            PivotLogWidgetEntryView(entry: PivotLogEntry(date: todayFocusPreviewDate, widgetData: sampleDataTodayFocus))
+                .previewContext(WidgetPreviewContext(family: .accessoryRectangular))
+                .previewDisplayName("Lock Screen - Today Focus")
+
+            PivotLogWidgetEntryView(entry: PivotLogEntry(date: Date(), widgetData: PivotLogWidgetData(
+                birthday: "1990-01-01",
+                targetLifespan: 80,
+                lifeProgress: 42.5,
+                remainingYears: 46.0,
+                remainingDays: 16800,
+                currentAge: 34.0,
+                customText: "長いメッセージが入っても二行で読みやすく収まるか確認するためのテキスト",
+                showProgress: true,
+                showRemainingTime: true,
+                showCustomText: true,
+                colorScheme: "light",
+                lastUpdated: "2024-01-01T00:00:00Z",
+                perspectiveEmoji: "🌸",
+                perspectiveMainText: "あと46回の桜を見届けられる",
+                perspectiveSubtext: "今年の桜は、今年だけのもの",
+                dailyMessage: "今日もあなたらしく",
+                messageSource: "custom",
+                hasTodayEntry: false,
+                streakDays: 15,
+                totalDays: 42,
+                streakEmoji: "🔥",
+                todayDateLabel: "2月4日(火)",
+                countdownMode: "daysOnly",
+                totalWeeks: 2400,
+                showStreak: true,
+                showDiaryStatus: true,
+                showDateHeader: true
+            )))
+                .previewContext(WidgetPreviewContext(family: .accessoryRectangular))
+                .previewDisplayName("Lock Screen - Days")
         }
     }
 }

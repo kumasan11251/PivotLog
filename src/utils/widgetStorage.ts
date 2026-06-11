@@ -6,7 +6,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, NativeModules, Appearance } from 'react-native';
-import type { WidgetData, WidgetSettings, CountdownMode } from '../types/widget';
+import type { WidgetData, WidgetSettings, CountdownMode, MessageSource, WidgetCountdownMode } from '../types/widget';
 import { DEFAULT_WIDGET_SETTINGS } from '../types/widget';
 import { loadUserSettings, loadThemeSettings, loadDiaryEntries, getDiaryByDate } from './storage';
 import type { DiaryEntry } from './storage';
@@ -58,25 +58,49 @@ const ANDROID_PACKAGE_NAME = 'com.kumasan11251.pivotlog';
 
 const WIDGET_SETTINGS_KEY = '@pivot_log_widget_settings';
 
+type StoredWidgetSettings = Partial<Omit<WidgetSettings, 'messageSource' | 'countdownMode'>> & {
+  messageSource?: string;
+  countdownMode?: string;
+};
+
+const resolveMessageSource = (source: string | undefined): MessageSource => {
+  if (source === 'daily') {
+    return 'perspective';
+  }
+  if (source === 'todayFocus' || source === 'perspective' || source === 'custom') {
+    return source;
+  }
+  return DEFAULT_WIDGET_SETTINGS.messageSource;
+};
+
+const normalizeWidgetSettings = (settings: StoredWidgetSettings): WidgetSettings => ({
+  ...DEFAULT_WIDGET_SETTINGS,
+  ...settings,
+  messageSource: resolveMessageSource(settings.messageSource),
+  countdownMode: resolveCountdownMode(settings.countdownMode) as WidgetCountdownMode,
+});
+
 /**
  * ウィジェット設定を保存（ローカル + クラウド同期）
  */
 export const saveWidgetSettings = async (settings: WidgetSettings): Promise<void> => {
   try {
+    const normalizedSettings = normalizeWidgetSettings(settings);
+
     // ローカルストレージに保存
-    await AsyncStorage.setItem(WIDGET_SETTINGS_KEY, JSON.stringify(settings));
+    await AsyncStorage.setItem(WIDGET_SETTINGS_KEY, JSON.stringify(normalizedSettings));
 
     // ログインしている場合はFirestoreにも同期
     const user = getCurrentUser();
     if (user) {
       try {
         await saveWidgetSettingsToFirestore({
-          customText: settings.customText,
-          messageSource: settings.messageSource,
-          showStreak: settings.showStreak,
-          showDiaryStatus: settings.showDiaryStatus,
-          showDateHeader: settings.showDateHeader,
-          countdownMode: settings.countdownMode,
+          customText: normalizedSettings.customText,
+          messageSource: normalizedSettings.messageSource,
+          showStreak: normalizedSettings.showStreak,
+          showDiaryStatus: normalizedSettings.showDiaryStatus,
+          showDateHeader: normalizedSettings.showDateHeader,
+          countdownMode: normalizedSettings.countdownMode,
         });
         console.log('[widgetStorage] ウィジェット設定をFirestoreに同期しました');
       } catch (firestoreError) {
@@ -100,12 +124,8 @@ export const loadWidgetSettings = async (): Promise<WidgetSettings> => {
   try {
     const data = await AsyncStorage.getItem(WIDGET_SETTINGS_KEY);
     if (data) {
-      const parsed = { ...DEFAULT_WIDGET_SETTINGS, ...JSON.parse(data) };
-      // 既存ユーザーが'seasons'を設定していた場合のフォールバック
-      if (parsed.countdownMode === 'seasons') {
-        parsed.countdownMode = 'detailed';
-      }
-      return parsed;
+      const parsed = JSON.parse(data) as StoredWidgetSettings;
+      return normalizeWidgetSettings(parsed);
     }
     return DEFAULT_WIDGET_SETTINGS;
   } catch (error) {
@@ -127,17 +147,14 @@ export const syncWidgetSettingsFromCloud = async (): Promise<void> => {
 
     const cloudSettings = await loadWidgetSettingsFromFirestore();
     if (cloudSettings && cloudSettings.customText !== undefined) {
-      // クラウドの設定をローカルに保存（新フィールドも含む）
-      // Firestoreの型は汎用的なstring型なので、WidgetSettingsに適合するようにキャスト
-      const settings: WidgetSettings = {
-        ...DEFAULT_WIDGET_SETTINGS,
+      const settings = normalizeWidgetSettings({
         customText: cloudSettings.customText,
-        messageSource: (cloudSettings.messageSource as WidgetSettings['messageSource']) ?? DEFAULT_WIDGET_SETTINGS.messageSource,
+        messageSource: cloudSettings.messageSource,
         showStreak: cloudSettings.showStreak ?? DEFAULT_WIDGET_SETTINGS.showStreak,
         showDiaryStatus: cloudSettings.showDiaryStatus ?? DEFAULT_WIDGET_SETTINGS.showDiaryStatus,
         showDateHeader: cloudSettings.showDateHeader ?? DEFAULT_WIDGET_SETTINGS.showDateHeader,
-        countdownMode: (cloudSettings.countdownMode as WidgetSettings['countdownMode']) ?? DEFAULT_WIDGET_SETTINGS.countdownMode,
-      };
+        countdownMode: cloudSettings.countdownMode,
+      });
       await AsyncStorage.setItem(WIDGET_SETTINGS_KEY, JSON.stringify(settings));
       console.log('[widgetStorage] クラウドからウィジェット設定を同期しました');
 
@@ -177,12 +194,20 @@ const getTodayDailyMessage = (): string => {
  * カウントダウンモードを解決
  * 既存ユーザーが 'syncWithHome' や 'seasons' を設定していた場合は 'detailed' にフォールバック
  */
-const resolveCountdownMode = (widgetMode: string): CountdownMode => {
+const resolveCountdownMode = (widgetMode: string | undefined): CountdownMode => {
   // 既存ユーザーのフォールバック
   if (widgetMode === 'syncWithHome' || widgetMode === 'seasons') {
     return 'detailed';
   }
-  return (widgetMode as CountdownMode) || 'detailed';
+  if (
+    widgetMode === 'detailed' ||
+    widgetMode === 'daysOnly' ||
+    widgetMode === 'weeksOnly' ||
+    widgetMode === 'yearsOnly'
+  ) {
+    return widgetMode;
+  }
+  return DEFAULT_WIDGET_SETTINGS.countdownMode;
 };
 
 /**
@@ -259,6 +284,29 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
         })()
       : undefined;
 
+    const recentDiaryTomorrows = diaryListLoaded
+      ? (() => {
+          const [ty, tm, td] = todayStrForRecent.split('-').map(Number);
+          const threshold = new Date(ty, tm - 1, td);
+          threshold.setDate(threshold.getDate() - 29);
+          const thresholdStr = formatDateToString(threshold);
+          const seenDates = new Set<string>();
+
+          return allDiaries
+            .filter((diary) => diary.date >= thresholdStr && diary.date <= todayStrForRecent)
+            .sort((a, b) => b.date.localeCompare(a.date))
+            .reduce<Array<{ date: string; text: string }>>((items, diary) => {
+              const text = diary.tomorrow.trim();
+              if (seenDates.has(diary.date) || text.length === 0 || items.length >= 30) {
+                return items;
+              }
+              seenDates.add(diary.date);
+              items.push({ date: diary.date, text });
+              return items;
+            }, []);
+        })()
+      : undefined;
+
     // 視点メッセージ（ストリーク・日記記入状態を渡してフィルタリング）
     const birthdayMonth = userSettings.birthday
       ? parseInt(userSettings.birthday.split('-')[1], 10)
@@ -287,6 +335,7 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
 
     // カウントダウンモード解決
     const countdownMode = resolveCountdownMode(widgetSettings.countdownMode);
+    const messageSource = resolveMessageSource(widgetSettings.messageSource);
 
     return {
       birthday: userSettings.birthday,
@@ -308,7 +357,8 @@ export const generateWidgetData = async (): Promise<WidgetData | null> => {
       perspectiveMainText: formattedPerspective.mainText,
       perspectiveSubtext: formattedPerspective.subtext ?? '',
       dailyMessage,
-      messageSource: widgetSettings.messageSource,
+      messageSource,
+      recentDiaryTomorrows,
 
       hasTodayEntry,
       streakDays,

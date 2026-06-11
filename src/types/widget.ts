@@ -5,7 +5,7 @@
 /**
  * メッセージ表示ソースの種類
  */
-export type MessageSource = 'custom' | 'perspective' | 'daily';
+export type MessageSource = 'custom' | 'perspective' | 'todayFocus';
 
 /**
  * カウントダウン表示モード
@@ -57,6 +57,7 @@ export interface WidgetData {
   perspectiveSubtext?: string;     // サブテキスト
   dailyMessage?: string;           // DAILY_MESSAGESからの温かいメッセージ
   messageSource?: MessageSource;   // メッセージ表示ソース設定
+  recentDiaryTomorrows?: WidgetDiaryTomorrow[]; // 直近の日記に保存された tomorrow
 
   // 日記・記録
   hasTodayEntry?: boolean;         // 今日の日記記入済みか
@@ -80,6 +81,11 @@ export interface WidgetData {
   // ウィジェット側で「今日」「途切れ判定」を再計算するための入力（0:00 跨ぎ自動更新用）
   recentDiaryDates?: string[];     // 直近30日の日記日付配列 (YYYY-MM-DD、降順)
   dayStartHour?: number;           // 1日の開始時刻 (0-12)
+}
+
+export interface WidgetDiaryTomorrow {
+  date: string;                     // 日記の日付 (YYYY-MM-DD)
+  text: string;                     // 明日、大切にしたいこと
 }
 
 /**

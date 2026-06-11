@@ -41,7 +41,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const MESSAGE_SOURCE_OPTIONS: { value: MessageSource; label: string; description: string }[] = [
   { value: 'custom', label: 'カスタム', description: '自分で入力したメッセージ' },
   { value: 'perspective', label: '視点', description: '日替わりの視点メッセージ' },
-  { value: 'daily', label: 'ひとこと', description: '温かい日替わりメッセージ' },
+  { value: 'todayFocus', label: '今日大切に', description: '昨日の日記に書いた「明日、大切にしたいこと」が表示されます' },
 ];
 
 // カウントダウンモードの選択肢

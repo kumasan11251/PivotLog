@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import android.widget.RemoteViews
 import org.json.JSONArray
@@ -39,12 +40,14 @@ class PivotLogWidgetProvider : AppWidgetProvider() {
         // ライトモードの色
         const val LIGHT_PRIMARY = "#8B9D83"
         const val LIGHT_TEXT_PRIMARY = "#1C1C1E"
-        const val LIGHT_TEXT_SECONDARY = "#8A8A8E"
+        // 日付・連続記録・メッセージに使用。視認性確保のため濃いめ
+        const val LIGHT_TEXT_SECONDARY = "#333333"
 
         // ダークモードの色
         const val DARK_PRIMARY = "#A3B899"
         const val DARK_TEXT_PRIMARY = "#F5F5F5"
-        const val DARK_TEXT_SECONDARY = "#A0A0A0"
+        // 日付・連続記録・メッセージに使用。視認性確保のため明るめ
+        const val DARK_TEXT_SECONDARY = "#FFFFFF"
 
         // 独自 alarm action。exported=false の receiver で受ける
         const val ACTION_DISPLAY_UPDATE_ALARM =
@@ -169,6 +172,16 @@ class PivotLogWidgetProvider : AppWidgetProvider() {
         scheduleNextDisplayUpdateAlarm(context)
     }
 
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        updateAppWidget(context, appWidgetManager, appWidgetId)
+    }
+
     override fun onEnabled(context: Context) {
         Log.d(TAG, "Widget enabled")
         scheduleNextDisplayUpdateAlarm(context)
@@ -177,6 +190,52 @@ class PivotLogWidgetProvider : AppWidgetProvider() {
     override fun onDisabled(context: Context) {
         Log.d(TAG, "Widget disabled")
         cancelDisplayUpdateAlarm(context)
+    }
+}
+
+private fun normalizeMessageSource(source: String): String {
+    return when (source) {
+        "daily" -> "perspective"
+        "custom", "perspective", "todayFocus" -> source
+        else -> "custom"
+    }
+}
+
+private fun perspectiveDisplayText(data: JSONObject): String {
+    val perspectiveMainText = data.optString("perspectiveMainText", "").trim()
+    if (perspectiveMainText.isEmpty()) return ""
+    val perspectiveEmoji = data.optString("perspectiveEmoji", "").trim()
+    return if (perspectiveEmoji.isNotEmpty()) "$perspectiveEmoji $perspectiveMainText"
+    else perspectiveMainText
+}
+
+private fun findDiaryTomorrowText(data: JSONObject, sourceDate: String): String {
+    val tomorrows = data.optJSONArray("recentDiaryTomorrows") ?: return ""
+    for (i in 0 until tomorrows.length()) {
+        val item = tomorrows.optJSONObject(i) ?: continue
+        if (item.optString("date", "") == sourceDate) {
+            return item.optString("text", "").trim()
+        }
+    }
+    return ""
+}
+
+private fun resolveWidgetMessageText(data: JSONObject, effectiveTodayDate: String): String {
+    return when (normalizeMessageSource(data.optString("messageSource", "custom"))) {
+        "perspective" -> perspectiveDisplayText(data)
+        "todayFocus" -> {
+            val sourceDate = WidgetDateHelpers.previousDate(effectiveTodayDate)
+            val todayFocusText = if (sourceDate.isNotEmpty()) {
+                findDiaryTomorrowText(data, sourceDate)
+            } else {
+                ""
+            }
+            if (todayFocusText.isNotEmpty()) todayFocusText else perspectiveDisplayText(data)
+        }
+        else -> {
+            val customTextValue = data.optString("customText", "").trim()
+            if (customTextValue.isEmpty()) perspectiveDisplayText(data) else customTextValue
+        }
     }
 }
 
@@ -196,9 +255,7 @@ internal fun updateAppWidget(
             .getSharedPreferences(prefsName, Context.MODE_PRIVATE)
             .getString("widgetdata", "{}")
 
-        Log.d(TAG, "JSON data: $jsonData")
-
-        val data = JSONObject(jsonData)
+        val data = JSONObject(jsonData ?: "{}")
 
         // RemoteViewsを構築
         val views = RemoteViews(context.packageName, R.layout.pivot_log_widget)
@@ -314,7 +371,10 @@ internal fun updateAppWidget(
             }
 
             // 進捗率を設定
-            views.setTextViewText(R.id.life_progress, String.format("%.1f%%", computedLifeProgress))
+            views.setTextViewText(
+                R.id.life_progress,
+                String.format(Locale.US, "%.1f%%", computedLifeProgress)
+            )
             views.setTextColor(R.id.life_progress, primaryColor)
 
             // プログレスバーを設定（max=1000で0.1%単位の精度）
@@ -387,25 +447,7 @@ internal fun updateAppWidget(
             }
 
             // メッセージソースに応じて表示テキストを決定
-            val messageSource = data.optString("messageSource", "custom")
-            val perspectiveMainText = data.optString("perspectiveMainText", "")
-            val perspectiveEmoji = data.optString("perspectiveEmoji", "")
-            val dailyMessage = data.optString("dailyMessage", "")
-            val customTextValue = data.optString("customText", "")
-
-            val displayText = when (messageSource) {
-                "perspective" -> {
-                    if (perspectiveEmoji.isNotEmpty()) "$perspectiveEmoji $perspectiveMainText"
-                    else perspectiveMainText
-                }
-                "daily" -> dailyMessage
-                else -> { // "custom"
-                    if (customTextValue.isEmpty()) {
-                        if (perspectiveEmoji.isNotEmpty()) "$perspectiveEmoji $perspectiveMainText"
-                        else perspectiveMainText
-                    } else customTextValue
-                }
-            }
+            val displayText = resolveWidgetMessageText(data, effectiveTodayDate)
 
             if (displayText.isNotEmpty()) {
                 views.setTextViewText(R.id.custom_text, displayText)
@@ -574,6 +616,22 @@ object WidgetDateHelpers {
             cal.get(Calendar.DAY_OF_MONTH)
         )
         return recentDates.contains(yStr)
+    }
+
+    fun previousDate(date: String): String {
+        val parts = date.split("-").mapNotNull { it.toIntOrNull() }
+        if (parts.size != 3) return ""
+        val cal = jaCalendar()
+        cal.clear()
+        cal.set(parts[0], parts[1] - 1, parts[2], 0, 0, 0)
+        cal.add(Calendar.DAY_OF_MONTH, -1)
+        return String.format(
+            Locale.JAPAN,
+            "%04d-%02d-%02d",
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH) + 1,
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
     }
 
     /**

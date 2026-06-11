@@ -6,7 +6,7 @@ const path = require('path');
 // version を上げるときはこの定数だけを更新すれば OK（runtimeVersion も自動追随）。
 // ※ version と runtimeVersion を意図的に分けたいケース（OTA で旧 native に新 JS を配信したい等）
 // が出てきた場合は、このポリシーを見直すこと。
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 
 // .envファイルを読み込む
 const envPath = path.resolve(__dirname, '.env');
@@ -43,6 +43,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.kumasan11251.pivotlog',
+      buildNumber: '2',
       googleServicesFile: './GoogleService-Info.plist',
       usesAppleSignIn: true,
       appleTeamId: '4823HQK9AB',
