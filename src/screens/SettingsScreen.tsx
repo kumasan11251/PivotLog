@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -537,7 +538,9 @@ const SettingsScreen: React.FC = () => {
                 </View>
                 <View style={styles.settingContent}>
                   <Text style={[styles.settingLabel, dynamicStyles.settingLabel]}>バージョン</Text>
-                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>1.0.0</Text>
+                  <Text style={[styles.settingValue, dynamicStyles.settingValue]}>
+                    {Constants.nativeApplicationVersion ?? Constants.expoConfig?.version ?? '-'}
+                  </Text>
                 </View>
                 <Ionicons
                   name={showDebugSection ? 'chevron-up' : 'chevron-down'}

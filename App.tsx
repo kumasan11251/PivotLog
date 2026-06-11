@@ -28,6 +28,8 @@ import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
 import { AIReflectionProvider } from './src/contexts/AIReflectionContext';
 import { loadUserSettings, migrateDataToFirestore, hasLocalData, isMigrationComplete, isOnboardingComplete } from './src/utils/storage';
 import { OfflineBanner } from './src/components/common/OfflineBanner';
+import UpdateModal from './src/components/common/UpdateModal';
+import { useUpdateCheck } from './src/hooks/useUpdateCheck';
 import { getEffectiveToday } from './src/utils/dateUtils';
 import { useWidgetAppStateSync } from './src/hooks/useWidgetSync';
 import { syncWidgetData } from './src/utils/widgetStorage';
@@ -282,6 +284,28 @@ function ThemedStatusBar() {
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
 }
 
+// アップデート促進モーダルのホスト
+// ナビゲーションツリー外（NavigationContainer の兄弟）に置くことで、
+// 認証前の AuthScreen 含む全画面に被せる。ThemeContext のみに依存する
+function UpdateModalHost() {
+  const { result, dismissOptional } = useUpdateCheck();
+
+  if (!result) {
+    return null;
+  }
+
+  return (
+    <UpdateModal
+      visible
+      mode={result.status}
+      latestVersion={result.latestVersion}
+      storeUrl={result.storeUrl}
+      message={result.message}
+      onLater={dismissOptional}
+    />
+  );
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     NotoSansJP_400Regular,
@@ -353,6 +377,7 @@ export default function App() {
           </AIReflectionProvider>
         </SubscriptionProvider>
         </AuthProvider>
+        <UpdateModalHost />
         <ThemedStatusBar />
       </ThemeProvider>
     </SafeAreaProvider>

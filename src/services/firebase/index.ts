@@ -45,6 +45,9 @@ export {
 } from './firestore';
 export type { UserSettings, DiaryEntry, HomeDisplaySettings, WidgetSettingsFirestore } from './firestore';
 
+// アプリ設定サービス
+export { fetchAppVersionConfig } from './appConfig';
+
 // Cloud Functionsサービス
 export {
   generateReflectionViaCloudFunctions,

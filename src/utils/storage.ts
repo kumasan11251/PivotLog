@@ -56,6 +56,7 @@ const ONBOARDING_KEY = '@pivot_log_onboarding_complete';
 const THEME_KEY = '@pivot_log_theme';
 const AI_CONSENT_KEY = '@pivot_log_ai_consent';
 const DIARY_VIEW_MODE_KEY = '@pivot_log_diary_view_mode';
+const SKIPPED_UPDATE_VERSION_KEY = '@pivot_log_skipped_update_version';
 
 /**
  * Firebaseにログイン中かどうかを確認
@@ -692,5 +693,33 @@ export const hasValidAIConsent = async (): Promise<boolean> => {
     return true;
   } catch {
     return false;
+  }
+};
+
+// =============== アップデート告知のスキップ記録 ===============
+// 端末単位の設定（アカウント無関係）のため UID付きキャッシュキー・Firestore同期は使わない
+
+/**
+ * 「あとで」でスキップしたアップデートバージョンを読み込む
+ */
+export const loadSkippedUpdateVersion = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(SKIPPED_UPDATE_VERSION_KEY);
+  } catch (error) {
+    console.error('スキップ済みバージョンの読み込みに失敗しました:', error);
+    return null;
+  }
+};
+
+/**
+ * 「あとで」でスキップしたアップデートバージョンを保存する
+ * 1バージョンだけ覚えれば足りる（次バージョンが出れば不一致になり再表示される）
+ */
+export const saveSkippedUpdateVersion = async (version: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(SKIPPED_UPDATE_VERSION_KEY, version);
+  } catch (error) {
+    console.error('スキップ済みバージョンの保存に失敗しました:', error);
+    throw error;
   }
 };

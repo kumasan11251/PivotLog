@@ -26,6 +26,7 @@ export const COLLECTIONS = {
   MONTHLY_INSIGHTS: 'monthlyInsights',
   USAGE: 'usage',
   SUBSCRIPTION: 'subscription',
+  APP_CONFIG: 'appConfig',
 } as const;
 
 export default firebase;
