@@ -37,7 +37,7 @@ export interface PerspectiveMessage {
 }
 
 /**
- * 視点メッセージの定義（120個・7カテゴリ）
+ * 視点メッセージの定義（134個・7カテゴリ）
  *
  * プレースホルダー:
  * - {remainingYears}: 残り年数
@@ -70,11 +70,11 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     emoji: '☀️',
   },
   {
-    id: 'mornings',
+    id: 'countdown-meetings',
     category: 'countdown',
-    template: 'あと{remainingDays}回の朝を迎えられる',
-    subtext: '今朝の光の色を、覚えていますか',
-    emoji: '🌤️',
+    template: '大切な人と年に2回会うなら、会えるのはあと{remainingTravels}回',
+    subtext: '本当は、もっと少ないかもしれない',
+    emoji: '💞',
   },
   {
     id: 'countdown-tea',
@@ -200,11 +200,11 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   },
 
   // ============================================================
-  // reframe: 視点の転換。時間を別の単位で捉え直す（16個）
+  // reframe: 視点の転換。時間を別の単位で捉え直す（17個）
   // 発見と好奇心のトーン
   // ============================================================
 
-  // --- 通年 (12) ---
+  // --- 通年 (13) ---
   {
     id: 'sunsets',
     category: 'reframe',
@@ -227,13 +227,6 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     emoji: '🌕',
   },
   {
-    id: 'meals',
-    category: 'reframe',
-    template: 'あと約{remainingDays}日、食事をできる',
-    subtext: '一口ごとに、今日を味わっている',
-    emoji: '🍽️',
-  },
-  {
     id: 'heartbeats',
     category: 'reframe',
     template: '心臓は1日約10万回鼓動する。今日もまた',
@@ -250,8 +243,8 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'laughs',
     category: 'reframe',
-    template: '人は1日平均15回笑うという。今日はもう何回笑えた？',
-    subtext: '数えなくていい。ただ、笑えた自分に気づくだけで',
+    template: '笑いの多くは、誰かと一緒にいるときに生まれるという',
+    subtext: '今日、誰かと笑える瞬間がありますように',
     emoji: '😊',
   },
   {
@@ -288,6 +281,20 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingSeasons}回の季節の移ろい',
     subtext: '風の匂いが変わる瞬間を、見逃さないで',
     emoji: '🍃',
+  },
+  {
+    id: 'reframe-time-scarcity',
+    category: 'reframe',
+    template: '「終わりが近い」と意識した人ほど、日々を深く味わえたという研究がある',
+    subtext: '残り時間を知ることは、いまを濃くすること',
+    emoji: '🎓',
+  },
+  {
+    id: 'reframe-cells',
+    category: 'reframe',
+    template: '数日で生まれ変わる細胞もあれば、一生付き合う細胞もある',
+    subtext: '変わっていく自分も、変わらない自分も、どちらも本物',
+    emoji: '🔬',
   },
 
   // --- 季節限定 (4) ---
@@ -373,11 +380,11 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     emoji: '🧭',
   },
   {
-    id: 'reflection-forgive',
+    id: 'reflection-regret-research',
     category: 'reflection',
-    template: '許したい人、許されたい人はいますか',
-    subtext: 'その重さを降ろせる日は、自分で選べる',
-    emoji: '🤝',
+    template: '人は「やった後悔」より「やらなかった後悔」を長く覚えているという',
+    subtext: 'やってみた失敗は、時間が癒してくれる',
+    emoji: '🚪',
   },
   {
     id: 'reflection-child',
@@ -454,11 +461,11 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   },
 
   // ============================================================
-  // wisdom: 叡智と洞察（18個）
-  // 和歌・東洋思想・既視感の少ない引用
+  // wisdom: 叡智と洞察（28個）
+  // 和歌・東洋思想・既視感の少ない引用（出典はすべてファクトチェック済み）
   // ============================================================
 
-  // --- 通年 (16) ---
+  // --- 通年 (26) ---
   {
     id: 'wisdom-seneca',
     category: 'wisdom',
@@ -469,29 +476,29 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'wisdom-aurelius',
     category: 'wisdom',
-    template: '「あなたがすることを思って悩むな。今やっていることを思え」',
-    subtext: 'マルクス・アウレリウス『自省録』',
+    template: '「人が失いうるのは、いま生きている現在だけである」',
+    subtext: 'マルクス・アウレリウス『自省録』（大意）',
     emoji: '🏛️',
   },
   {
     id: 'wisdom-buddha',
     category: 'wisdom',
     template: '「過去を追うな。未来を願うな。今、この瞬間を生きよ」',
-    subtext: '仏教の教え',
+    subtext: '『一夜賢者経』（原始仏典）より',
     emoji: '🪷',
   },
   {
     id: 'wisdom-ichigo',
     category: 'wisdom',
     template: '「一期一会」— この出会いは、一生に一度きり',
-    subtext: '千利休の茶道の心得',
+    subtext: '利休の教えに由来する、茶の湯の心得',
     emoji: '🍵',
   },
   {
     id: 'wisdom-dogen',
     category: 'wisdom',
-    template: '「今日なすべきことを明日に延ばすな」',
-    subtext: '道元禅師',
+    template: '「虚しく光陰を度ること莫れ」— 時を、むなしく過ごすことなかれ',
+    subtext: '道元『普勧坐禅儀』',
     emoji: '⛩️',
   },
   {
@@ -512,22 +519,15 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     id: 'wisdom-basho',
     category: 'wisdom',
     template: '「旅に病んで夢は枯野をかけめぐる」',
-    subtext: '松尾芭蕉。最期の句にも、まだ旅への憧れがある',
+    subtext: '松尾芭蕉、最期の句。病の床でも、心はまだ旅をしていた',
     emoji: '🎋',
   },
   {
     id: 'wisdom-ryokan',
     category: 'wisdom',
     template: '「うらを見せおもてを見せて散るもみぢ」',
-    subtext: '良寛。ありのままに生きることの、清々しさ',
+    subtext: '良寛が最期に愛誦したと伝わる句。ありのままに生きることの、清々しさ',
     emoji: '🧘',
-  },
-  {
-    id: 'wisdom-oliver',
-    category: 'wisdom',
-    template: '「あなたのたった一度きりの、荒々しくも貴い命で、何をするつもり？」',
-    subtext: 'Mary Oliver "The Summer Day"',
-    emoji: '🦢',
   },
   {
     id: 'wisdom-thich',
@@ -539,16 +539,9 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'wisdom-okakura',
     category: 'wisdom',
-    template: '「茶の湯は日常の中に美を見出す術である」',
-    subtext: '岡倉天心『茶の本』。平凡な日常にこそ、美は宿る',
+    template: '茶道が教えるのは、ありふれた日常の中に美を見出すこと',
+    subtext: '岡倉天心『茶の本』より。平凡な日常にこそ、美は宿る',
     emoji: '🫖',
-  },
-  {
-    id: 'wisdom-miyazawa',
-    category: 'wisdom',
-    template: '「世界がぜんたい幸福にならないうちは個人の幸福はあり得ない」',
-    subtext: '宮沢賢治『農民芸術概論綱要』',
-    emoji: '📖',
   },
   {
     id: 'wisdom-thoreau',
@@ -561,22 +554,99 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     id: 'wisdom-proust',
     category: 'wisdom',
     template: '「真の発見の旅とは、新しい景色を探すことではなく、新しい目を持つことだ」',
-    subtext: 'プルースト『失われた時を求めて』',
+    subtext: 'プルースト『失われた時を求めて』（大意）',
     emoji: '🔭',
   },
   {
     id: 'wisdom-manyoshu',
     category: 'wisdom',
-    template: '「世の中を何にたとへん朝びらき漕ぎ行く船の跡なきがごとし」',
+    template: '「世の中を何にたとへむ朝びらき漕ぎ去にし船の跡なきがごと」',
     subtext: '沙弥満誓（万葉集）。人生は波間に消える航跡のよう',
     emoji: '⛵',
   },
   {
-    id: 'wisdom-rikyu',
+    id: 'wisdom-juko',
     category: 'wisdom',
     template: '「月も雲間のなきは嫌にて候」',
-    subtext: '千利休。完全ではないからこそ、美しい',
+    subtext: '村田珠光（わび茶の祖）。完全ではないからこそ、美しい',
     emoji: '🌒',
+  },
+  {
+    id: 'wisdom-unmon',
+    category: 'wisdom',
+    template: '「日日是好日」— どんな日も、好い日にできる',
+    subtext: '禅語（『碧巌録』）。良い日かどうかは、あとから自分が決められる',
+    emoji: '⛅',
+  },
+  {
+    id: 'wisdom-nikon',
+    category: 'wisdom',
+    template: '「而今」— 過去でも未来でもなく、いまこの一瞬',
+    subtext: '道元『正法眼蔵』。あるのは、いつだって今だけ',
+    emoji: '🎐',
+  },
+  {
+    id: 'wisdom-kankyakka',
+    category: 'wisdom',
+    template: '「看脚下」— 遠くを探す前に、まず足元を',
+    subtext: '禅語。答えは案外、いま立っている場所にある',
+    emoji: '👣',
+  },
+  {
+    id: 'wisdom-issa',
+    category: 'wisdom',
+    template: '「露の世は露の世ながらさりながら」',
+    subtext: '小林一茶『おらが春』。割り切れない気持ちのまま、生きていい',
+    emoji: '🌫️',
+  },
+  {
+    id: 'wisdom-santoka',
+    category: 'wisdom',
+    template: '「分け入つても分け入つても青い山」',
+    subtext: '種田山頭火『草木塔』。迷いの中でも、歩みは続いている',
+    emoji: '⛰️',
+  },
+  {
+    id: 'wisdom-chomei',
+    category: 'wisdom',
+    template: '「ゆく河の流れは絶えずして、しかももとの水にあらず」',
+    subtext: '鴨長明『方丈記』。同じ毎日に見えて、すべてが新しい',
+    emoji: '🏞️',
+  },
+  {
+    id: 'wisdom-kenko-flowers',
+    category: 'wisdom',
+    template: '「花は盛りに、月は隈なきをのみ、見るものかは」',
+    subtext: '兼好法師『徒然草』。満開でない日々にも、見どころはある',
+    emoji: '🌗',
+  },
+  {
+    id: 'wisdom-heraclitus',
+    category: 'wisdom',
+    template: '「同じ川に入る者に、いつも新しい水が流れ寄せる」',
+    subtext: 'ヘラクレイトス（古代ギリシャの哲学者）。あなたは今日も、新しい',
+    emoji: '🌊',
+  },
+  {
+    id: 'wisdom-jobs',
+    category: 'wisdom',
+    template: '「いつか死ぬと覚えておくことは、人生の大きな選択を助けてくれる最良の道具だった」',
+    subtext: 'スティーブ・ジョブズ（2005年スタンフォード大学卒業式）',
+    emoji: '🍎',
+  },
+  {
+    id: 'wisdom-epictetus',
+    category: 'wisdom',
+    template: '「人を悩ませるのは出来事ではなく、出来事についての考えである」',
+    subtext: 'エピクテトス『提要』。見方が変われば、今日も変わる',
+    emoji: '⚖️',
+  },
+  {
+    id: 'wisdom-montaigne',
+    category: 'wisdom',
+    template: '「我々の偉大で輝かしい傑作とは、適切に生きることである」',
+    subtext: 'モンテーニュ『エセー』。何かを成すことより、生きることそのもの',
+    emoji: '🖋️',
   },
 
   // --- 季節限定 (2) ---
@@ -591,7 +661,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'wisdom-tanizaki',
     category: 'wisdom',
-    template: '「我々東洋人は何でもない所に陰翳を生ぜしめて、美を創造する」',
+    template: '「われわれ東洋人は何でもない所に陰翳を生ぜしめて、美を創造する」',
     subtext: '谷崎潤一郎『陰翳礼讃』。光と影があるからこそ',
     emoji: '🕯️',
     displayCondition: { displayMonths: [11, 12, 1, 2] },
@@ -627,7 +697,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'awareness-breath',
     category: 'awareness',
-    template: '今、息をしている。それだけで、今日はもう始まっている',
+    template: '今、息をしている。それだけで十分、生きている',
     subtext: '吸って、吐いて。その繰り返しが、一日を紡ぐ',
     emoji: '🫧',
   },
@@ -709,11 +779,11 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   },
 
   // ============================================================
-  // gratitude: 今あるものへの感謝（16個）
+  // gratitude: 今あるものへの感謝（17個）
   // ポジティブ心理学に基づく温かいトーン
   // ============================================================
 
-  // --- 通年 (12) ---
+  // --- 通年 (13) ---
   {
     id: 'gratitude-morning',
     category: 'gratitude',
@@ -725,7 +795,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     id: 'gratitude-people',
     category: 'gratitude',
     template: '今日、顔を思い浮かべられる人が何人いますか',
-    subtext: 'その人数だけ、あなたの人生は豊かです',
+    subtext: 'ひとりでも浮かんだなら、それはもう豊かさ',
     emoji: '👥',
   },
   {
@@ -798,6 +868,13 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     subtext: '騒がしい日々の中の、小さな贅沢',
     emoji: '🤫',
   },
+  {
+    id: 'gratitude-aging',
+    category: 'gratitude',
+    template: '人は歳を重ねるほど、小さなことに満ち足りるようになっていくという',
+    subtext: '老いていくことは、豊かになっていくことでもある',
+    emoji: '🌻',
+  },
 
   // --- 季節限定 (4) ---
   {
@@ -834,11 +911,11 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   },
 
   // ============================================================
-  // action: 具体的な行動への橋渡し（22個）
+  // action: 具体的な行動への橋渡し（24個）
   // 日記記録や小さなアクションへの柔らかな提案
   // ============================================================
 
-  // --- 通年 (10) ---
+  // --- 通年 (12) ---
   {
     id: 'action-diary-invite',
     category: 'action',
@@ -912,6 +989,22 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     subtext: '何年後かに見返したとき、今日を思い出せるように',
     emoji: '📸',
   },
+  {
+    id: 'action-peak-end',
+    category: 'action',
+    template: '一日の記憶は、終わり方で決まるという',
+    subtext: '眠る前の数分の振り返りが、今日という日の印象を変える',
+    emoji: '🌜',
+    displayCondition: { hasTodayEntry: false },
+  },
+  {
+    id: 'action-gratitude-research',
+    category: 'action',
+    template: '「良かったこと」を書き出すと、心が少し上向くという研究がある',
+    subtext: '3つの問いには、ちゃんと理由がある',
+    emoji: '🧪',
+    displayCondition: { hasTodayEntry: false },
+  },
 
   // --- 曜日連動 (4) ---
   {
@@ -976,7 +1069,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     id: 'action-streak-3',
     category: 'action',
     template: '{streakDays}日連続。習慣の種が芽を出し始めている',
-    subtext: 'ここを越えれば、書かないと気持ち悪くなる',
+    subtext: 'ここを越えると、書くことが自然になっていく',
     emoji: '🌿',
     displayCondition: { streakRange: { min: 3, max: 6 } },
   },

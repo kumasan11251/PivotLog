@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 日記未記入アイコン: 破線の丸（SF Symbol circle.dashed 相当） -->
+<!-- 8つのアークセグメント（各35°）を10°間隔で配置してダッシュパターンを表現 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 中心(12,12) 半径9 の円を8分割（各35°のアーク、10°のギャップ） -->
+    <!-- セグメント1: 5° - 40° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M20.97,12.78 A9,9 0 0,1 18.89,17.79" />
+    <!-- セグメント2: 50° - 85° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M17.79,18.89 A9,9 0 0,1 12.78,20.97" />
+    <!-- セグメント3: 95° - 130° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M11.22,20.97 A9,9 0 0,1 6.21,18.89" />
+    <!-- セグメント4: 140° - 175° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M5.11,17.79 A9,9 0 0,1 3.03,12.78" />
+    <!-- セグメント5: 185° - 220° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M3.03,11.22 A9,9 0 0,1 5.11,6.21" />
+    <!-- セグメント6: 230° - 265° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M6.21,5.11 A9,9 0 0,1 11.22,3.03" />
+    <!-- セグメント7: 275° - 310° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M12.78,3.03 A9,9 0 0,1 17.79,5.11" />
+    <!-- セグメント8: 320° - 355° -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M18.89,6.21 A9,9 0 0,1 20.97,11.22" />
+</vector>

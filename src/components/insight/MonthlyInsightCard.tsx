@@ -687,7 +687,6 @@ const styles = StyleSheet.create({
   storylineQuote: {
     fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
     lineHeight: fonts.lineHeight.insightBody,
   },
 
@@ -734,7 +733,6 @@ const styles = StyleSheet.create({
   evidenceText: {
     fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
     lineHeight: fonts.lineHeight.insightBody,
   },
   quoteContainer: {

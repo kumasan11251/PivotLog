@@ -35,11 +35,6 @@ module.exports = {
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
     newArchEnabled: false,
-    splash: {
-      image: './assets/splash-icon.png',
-      resizeMode: 'contain',
-      backgroundColor: '#ffffff',
-    },
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.kumasan11251.pivotlog',
@@ -61,6 +56,7 @@ module.exports = {
       },
     },
     android: {
+      versionCode: 48,
       adaptiveIcon: {
         foregroundImage: './assets/adaptive-icon.png',
         backgroundColor: '#8B9D83',
@@ -96,6 +92,18 @@ module.exports = {
         'expo-notifications',
         {
           sounds: [],
+        },
+      ],
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/splash-icon.png',
+          imageWidth: 200,
+          resizeMode: 'contain',
+          backgroundColor: '#F5F5F5',
+          dark: {
+            backgroundColor: '#121212',
+          },
         },
       ],
     ],

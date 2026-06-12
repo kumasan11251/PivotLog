@@ -420,11 +420,11 @@ internal fun updateAppWidget(
                 // 日記記入状態アイコン（日付ヘッダー表示時のみ）
                 if (showDateHeader && computedTodayDateLabel.isNotEmpty() && showDiaryStatus) {
                     if (computedHasTodayEntry) {
-                        views.setTextViewText(R.id.diary_status_icon, "✔")
-                        views.setTextColor(R.id.diary_status_icon, primaryColor)
+                        views.setImageViewResource(R.id.diary_status_icon, R.drawable.ic_diary_status_completed)
+                        views.setInt(R.id.diary_status_icon, "setColorFilter", primaryColor)
                     } else {
-                        views.setTextViewText(R.id.diary_status_icon, "○")
-                        views.setTextColor(R.id.diary_status_icon, textSecondaryColor)
+                        views.setImageViewResource(R.id.diary_status_icon, R.drawable.ic_diary_status_pending)
+                        views.setInt(R.id.diary_status_icon, "setColorFilter", textSecondaryColor)
                     }
                     views.setViewVisibility(R.id.diary_status_icon, android.view.View.VISIBLE)
                 } else {

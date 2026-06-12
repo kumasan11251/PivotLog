@@ -117,7 +117,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
     lineHeight: fonts.lineHeight.insightBody,
   },
   arrowContainer: {
@@ -132,7 +131,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
     lineHeight: fonts.lineHeight.insightBody,
   },
   separator: {

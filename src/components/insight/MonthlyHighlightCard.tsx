@@ -170,7 +170,6 @@ const styles = StyleSheet.create({
   quoteText: {
     fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
     lineHeight: fonts.lineHeight.insightBody,
   },
 });

@@ -3,4 +3,5 @@
   <color name="widget_text_primary">#F5F5F5</color>
   <color name="widget_text_secondary">#FFFFFF</color>
   <color name="widget_progress_background">#4A4A4A</color>
+  <color name="splashscreen_background">#121212</color>
 </resources>

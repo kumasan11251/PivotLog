@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, getStateFromPath as defaultGetStateFromPath, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
 import InitialSetupScreen from './src/screens/InitialSetupScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import MainTabScreen from './src/screens/MainTabScreen';
@@ -36,6 +37,9 @@ import { syncWidgetData } from './src/utils/widgetStorage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
 import { colors, fonts, getColors } from './src/theme';
 import type { RootStackParamList } from './src/types/navigation';
+
+// フォント読み込み完了までネイティブスプラッシュを表示し続ける
+SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -351,14 +355,16 @@ export default function App() {
     };
   }, []);
 
+  // フォント読み込み完了でスプラッシュを閉じる
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
   if (!fontsLoaded) {
-    return (
-      <SafeAreaProvider>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaProvider>
-    );
+    // スプラッシュ表示中のため何も描画しない
+    return null;
   }
 
   return (

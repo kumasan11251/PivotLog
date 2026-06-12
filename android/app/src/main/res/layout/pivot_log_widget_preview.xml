@@ -15,7 +15,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="2dp"
         android:visibility="visible">
 
         <TextView
@@ -24,25 +24,26 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="2月4日(火)"
-            android:textSize="13sp"
+            android:textSize="10sp"
             android:textColor="@color/widget_text_secondary"
             android:includeFontPadding="false" />
 
-        <TextView
+        <ImageView
             android:id="@+id/diary_status_icon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="✔"
-            android:textSize="13sp"
-            android:textColor="@color/widget_text_secondary"
-            android:includeFontPadding="false" />
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_diary_status_completed"
+            android:tint="@color/widget_primary"
+            android:contentDescription="日記記入済み"
+            android:visibility="visible" />
 
         <TextView
             android:id="@+id/streak_emoji"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="🔥"
-            android:textSize="13sp"
+            android:textSize="11sp"
             android:layout_marginStart="6dp"
             android:includeFontPadding="false"
             android:visibility="visible" />
@@ -52,7 +53,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="15日連続"
-            android:textSize="13sp"
+            android:textSize="11sp"
             android:textColor="@color/widget_text_secondary"
             android:layout_marginStart="2dp"
             android:includeFontPadding="false"

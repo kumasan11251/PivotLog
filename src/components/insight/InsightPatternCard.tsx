@@ -184,13 +184,11 @@ const styles = StyleSheet.create({
   exampleQuote: {
     fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
     lineHeight: fonts.lineHeight.insightBody,
   },
   insightText: {
     fontSize: fonts.size.insightBody,
     fontFamily: fonts.family.regular,
-    fontStyle: 'italic',
     lineHeight: fonts.lineHeight.insightBody,
     marginTop: spacing.sm,
   },
