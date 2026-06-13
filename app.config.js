@@ -38,7 +38,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.kumasan11251.pivotlog',
-      buildNumber: '3',
+      buildNumber: '4',
       googleServicesFile: './GoogleService-Info.plist',
       usesAppleSignIn: true,
       appleTeamId: '4823HQK9AB',
