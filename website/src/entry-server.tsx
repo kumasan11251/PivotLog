@@ -1,10 +1,12 @@
 import { renderToString } from 'react-dom/server';
 import App from './App';
-import { renderStructuredData } from './lib/structured-data';
+import { renderStructuredData, renderLegalStructuredData } from './lib/structured-data';
+import { ROUTES, canonicalFor } from './lib/routes';
 
-export function render() {
-  return renderToString(<App />);
+export function render(path: string) {
+  return renderToString(<App path={path} />);
 }
 
-// prerender.mjs から SSRバンドル経由で利用し、JSON-LD を head へ注入する。
-export { renderStructuredData };
+// prerender.mjs は SSRバンドル経由でしか TS を import できないため、
+// ルート定義・正規URL・構造化データ生成をここから再エクスポートする。
+export { ROUTES, canonicalFor, renderStructuredData, renderLegalStructuredData };

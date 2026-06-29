@@ -1,0 +1,14 @@
+{
+  // pivotlog.app の配信を担うアセット専用 Worker（スクリプト不要）。
+  // GitHub 連携なしの手動アップロード運用（npm run deploy）。
+  "name": "pivotlog-web",
+  "compatibility_date": "2026-06-29",
+  "assets": {
+    "directory": "./dist",
+    // `/privacy`（末尾スラッシュなし、SITE_PATHS / canonical と整合）を
+    // dist/privacy/index.html に解決し、`/privacy/` はスラッシュなしへリダイレクト。
+    "html_handling": "drop-trailing-slash",
+    // 未知パスは dist/404.html を 404 で返す。
+    "not_found_handling": "404-page"
+  }
+}

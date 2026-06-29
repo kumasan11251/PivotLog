@@ -2,10 +2,9 @@ import { STORE_URLS } from './store';
 
 export const SITE_URL = 'https://pivotlog.app';
 
-// 法務ページの実体は現状 GitHub Pages(Jekyll) 側にあるため、リンクはそちらを参照する。
-// アプリ本体(src/constants/legal.ts)の参照先とも一致させている。
-// 将来 pivotlog.app へ法務ページを移行する際にこの定数を差し替える。
-const LEGAL_BASE_URL = 'https://kumasan11251.github.io/PivotLog';
+// 法務ページは pivotlog.app 配下に内製化済み（website/src/pages/legal/）。
+// リンクは同ドメイン内のページを参照する。
+const LEGAL_BASE_URL = SITE_URL;
 
 export const SITE_PATHS = {
   home: '/',

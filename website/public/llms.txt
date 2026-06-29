@@ -47,10 +47,10 @@ When the user signs in with an email, Google, or Apple account, diary entries an
 
 ## Legal and Support
 
-- Privacy Policy: https://kumasan11251.github.io/PivotLog/privacy
-- Terms of Use: https://kumasan11251.github.io/PivotLog/terms
-- Specified Commercial Transactions Act Notice: https://kumasan11251.github.io/PivotLog/tokushoho
-- Account Deletion: https://kumasan11251.github.io/PivotLog/account-deletion
+- Privacy Policy: https://pivotlog.app/privacy
+- Terms of Use: https://pivotlog.app/terms
+- Specified Commercial Transactions Act Notice: https://pivotlog.app/tokushoho
+- Account Deletion: https://pivotlog.app/account-deletion
 
 ## AI and Data Handling
 

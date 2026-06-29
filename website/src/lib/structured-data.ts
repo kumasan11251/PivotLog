@@ -92,3 +92,35 @@ export function getStructuredData(options: StructuredDataOptions = {}) {
 export function renderStructuredData(options: StructuredDataOptions = {}): string {
   return JSON.stringify(getStructuredData(options));
 }
+
+export type LegalStructuredDataOptions = {
+  title: string;
+  url: string;
+  dateModified?: string;
+};
+
+// 法務ページ用の最小 WebPage 構造化データ。
+// FAQPage / SoftwareApplication は出さず、WebSite に属する1ページとして表現する。
+export function getLegalStructuredData(options: LegalStructuredDataOptions) {
+  const { title, url, dateModified } = options;
+
+  const webPage: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    url,
+    inLanguage: SITE_METADATA.inLanguage,
+    isPartOf: { '@id': WEBSITE_ID },
+    publisher: { '@id': PERSON_ID },
+  };
+
+  if (dateModified) {
+    webPage.dateModified = dateModified;
+  }
+
+  return webPage;
+}
+
+export function renderLegalStructuredData(options: LegalStructuredDataOptions): string {
+  return JSON.stringify(getLegalStructuredData(options));
+}

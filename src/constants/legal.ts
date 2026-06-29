@@ -1,5 +1,5 @@
 export const LEGAL_URLS = {
-  PRIVACY: 'https://kumasan11251.github.io/PivotLog/privacy',
-  TERMS: 'https://kumasan11251.github.io/PivotLog/terms',
-  TOKUSHOHO: 'https://kumasan11251.github.io/PivotLog/tokushoho',
+  PRIVACY: 'https://pivotlog.app/privacy',
+  TERMS: 'https://pivotlog.app/terms',
+  TOKUSHOHO: 'https://pivotlog.app/tokushoho',
 } as const;

@@ -1,11 +1,18 @@
-# PivotLog
-
-残りの人生時間を可視化し、毎日の振り返りを通じて意識的な生き方を支援するアプリです。
-
-ユーザーが設定した目標寿命までのカウントダウン表示と、3つの問い（よかったこと・ちょっとした後悔・明日やりたいこと）による日記機能で、毎日の振り返りをサポートします。
-
-## リンク
-
-- [プライバシーポリシー](privacy)
-- [利用規約](terms)
-- [特定商取引法に基づく表記](tokushoho)
+---
+layout: null
+permalink: /
+---
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <link rel="canonical" href="https://pivotlog.app/">
+    <meta http-equiv="refresh" content="0; url=https://pivotlog.app/">
+    <meta name="robots" content="noindex,follow">
+    <title>PivotLog</title>
+  </head>
+  <body>
+    <p><a href="https://pivotlog.app/">PivotLog 公式サイトへ移動します。</a></p>
+    <script>location.replace('https://pivotlog.app/');</script>
+  </body>
+</html>
