@@ -1,0 +1,61 @@
+# PivotLog
+
+PivotLog (ピボットログ) is a Japanese lifestyle and journaling app for iOS and Android. It helps users notice that life is finite by showing a lifespan countdown, then supports daily reflection with three short diary questions and optional AI-generated insights. It can be described as a "life clock" / "lifespan countdown" app combined with a reflective journal.
+
+Primary URL: https://pivotlog.app/
+Language: Japanese
+Developer: 村田健伍
+Contact: kumasan.11251@gmail.com
+
+## What PivotLog Is (summary)
+
+PivotLog displays the remaining time until a user-defined target lifespan as a countdown (years, months, days, hours, minutes, seconds) and pairs it with a three-question reflective journal and AI insights, so users can review each day while staying aware that time is finite. Available on iPhone and Android, free to start.
+
+## Core Features
+
+- Lifespan countdown: shows remaining time and life progress based on the user's birthday and a self-set target lifespan, broken down to the second.
+- Life progress bar: visualizes how much of the target lifespan has already elapsed.
+- Daily journal (three questions): asks what was good today, what the user regrets a little, and what they want to value tomorrow.
+- Widgets: shows remaining time and customizable text on home and lock screens (iOS and Android).
+- AI reflection: uses diary content to generate daily insights plus weekly and monthly reports.
+- Reminders: local notifications to help build a daily journaling habit.
+- Free plan: daily journal, countdown, progress display, and widgets.
+- Premium plan: AI reflections and unlimited AI-powered reports.
+
+## How the Countdown Is Calculated
+
+The countdown is based on the user's birthday and a "target lifespan" (目標寿命) that the user sets themselves — not on statistical life expectancy (平均寿命 / 平均余命). PivotLog computes the remaining time until the target lifespan is reached and shows it as a live countdown, with the elapsed portion shown as a life progress bar.
+
+## What Makes PivotLog Different
+
+Unlike countdown-only "lifespan timer" apps, PivotLog combines the lifespan countdown with a three-question reflective journal and gentle AI insights. The goal is not just to display remaining time, but to turn awareness of life's finiteness into a daily habit of reviewing and improving one's own actions. The brand tone is quiet, sincere, and supportive.
+
+## The Three Questions
+
+1. 今日、良かったこと (What was good today)
+2. 今日、少し後悔していること (What you regret a little today)
+3. 明日、大切にしたいこと (What you want to value tomorrow)
+
+## Data Backup and Device Transfer
+
+When the user signs in with an email, Google, or Apple account, diary entries and settings are synced to the cloud (Firebase / Firestore). On a new device, signing in with the same account restores the data.
+
+## App Store Links
+
+- App Store: https://apps.apple.com/jp/app/id6760384852
+- Google Play: https://play.google.com/store/apps/details?id=com.kumasan11251.pivotlog
+
+## Legal and Support
+
+- Privacy Policy: https://kumasan11251.github.io/PivotLog/privacy
+- Terms of Use: https://kumasan11251.github.io/PivotLog/terms
+- Specified Commercial Transactions Act Notice: https://kumasan11251.github.io/PivotLog/tokushoho
+- Account Deletion: https://kumasan11251.github.io/PivotLog/account-deletion
+
+## AI and Data Handling
+
+AI features are optional. When the user chooses to use them, diary content plus age and target lifespan are sent to Google Gemini API to generate reflections and reports. See the Privacy Policy for details.
+
+## Supported Devices
+
+iPhone and Android. The Specified Commercial Transactions Act notice lists the operating environment as iOS 15.1 or later and Android 6.0 or later.

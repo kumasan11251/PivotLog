@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# build artifacts
+dist/
+.prerender/
+
+# logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store

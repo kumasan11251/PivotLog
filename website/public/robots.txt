@@ -1,0 +1,44 @@
+# PivotLog robots.txt
+# 方針: 検索エンジン・AI検索・AI学習のいずれも全面開放（引用優先）。
+# 専用グループを持つボットは User-agent: * を完全に無視するため、主要ボットは明示列挙する。
+
+User-agent: *
+Allow: /
+
+# --- OpenAI ---
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+# --- Google（学習・生成AI利用の制御トークン。Allow = 学習利用も許可） ---
+User-agent: Google-Extended
+Allow: /
+
+# --- Anthropic (Claude) ---
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+# --- Perplexity ---
+User-agent: PerplexityBot
+Allow: /
+
+# --- Apple（学習・生成AI利用の制御トークン。Allow = 学習利用も許可） ---
+User-agent: Applebot-Extended
+Allow: /
+
+# --- Microsoft / Bing（通常検索クローラー兼AI検索の発見性確保） ---
+User-agent: Bingbot
+Allow: /
+
+Sitemap: https://pivotlog.app/sitemap.xml
