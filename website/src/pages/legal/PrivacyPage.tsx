@@ -35,14 +35,11 @@ export function PrivacyPage() {
           </li>
         </LegalList>
 
-        <LegalSubheading>1.2 自動的に収集される情報</LegalSubheading>
+        <LegalSubheading>1.2 通知機能に関する情報</LegalSubheading>
+        <LegalParagraph>
+          本アプリは、利用状況の分析やデバイス情報の収集を行う分析・解析ツール（Firebase Analytics、Crashlytics等）を一切組み込んでいません。自動的に取得・送信される情報は、以下の通知トークンのみです。
+        </LegalParagraph>
         <LegalList>
-          <li>
-            <b>利用状況</b>: アプリの使用頻度、機能の利用状況
-          </li>
-          <li>
-            <b>デバイス情報</b>: OSバージョン、デバイスの種類（匿名化された形式）
-          </li>
           <li>
             <b>プッシュ通知トークン</b>:
             リマインダー通知機能を有効にした場合、expo-notificationsを通じてプッシュ通知トークンが生成されます。このトークンはExpoのプッシュ通知サーバーを経由して通知の配信に使用され、デバイスのローカルストレージに保存されます。Firestoreへの保存は行いません
@@ -55,8 +52,8 @@ export function PrivacyPage() {
         <LegalList>
           <li>アプリの基本機能の提供（日記の保存、カウントダウン表示など）</li>
           <li>AI機能の提供</li>
-          <li>アプリの改善およびバグ修正</li>
-          <li>ユーザーサポートの提供</li>
+          <li>機能提供に必要な保守</li>
+          <li>ユーザーからのお問い合わせへの対応・ユーザーサポートの提供</li>
         </LegalList>
       </LegalSection>
 
@@ -74,7 +71,12 @@ export function PrivacyPage() {
         <LegalList>
           <li>日記の内容を分析し、今日の気づきや週間・月間ふりかえりを生成するためにのみ使用されます</li>
           <li>
-            Google Cloudの現行の利用規約（Cloud Data Processing Addendum）に基づき、送信されたデータはGoogleのAI学習には使用されません
+            本アプリは有料（Paid Services）として Gemini API を利用しており、
+            <LegalLink href="https://ai.google.dev/gemini-api/terms">Gemini API 追加利用規約</LegalLink>
+            の Paid Services 条項に基づき、送信されたプロンプトおよびその応答が Google の製品改善（AIモデルの学習等）に使用されることはありません
+          </li>
+          <li>
+            ただし、安全性の確保・不正利用の防止等の目的で、Googleの規約に基づき限定的な期間ログが保持される場合があります
           </li>
         </LegalList>
 
@@ -87,11 +89,11 @@ export function PrivacyPage() {
         <LegalSubheading>3.4 第三者への提供</LegalSubheading>
         <LegalList>
           <li>日記の内容はGoogle Gemini APIに送信されます</li>
-          <li>Googleのデータ処理規約（Data Processing Addendum）に基づいて処理されます</li>
+          <li>Gemini API 追加利用規約（Paid Services条項を含む）に基づいて処理されます</li>
           <li>
             詳細:{' '}
-            <LegalLink href="https://cloud.google.com/terms/data-processing-addendum">
-              https://cloud.google.com/terms/data-processing-addendum
+            <LegalLink href="https://ai.google.dev/gemini-api/terms">
+              https://ai.google.dev/gemini-api/terms
             </LegalLink>
           </li>
         </LegalList>
@@ -133,7 +135,7 @@ export function PrivacyPage() {
           </li>
           <li>自動バックアップに含まれるデータについても、バックアップの保持期間（最大180日）の経過後に消去されます</li>
           <li>
-            Cloud Functions経由でGoogle Gemini APIに送信された日記データは、Googleの有料API利用規約に基づき、API処理完了後にGoogleによって保持されることはありません
+            Cloud Functions経由でGoogle Gemini APIに送信された日記データは、Gemini API 追加利用規約の Paid Services 条項に基づき、Google の製品改善（AIモデルの学習等）には使用されません。ただし、安全性の確保・不正利用の防止等の目的で、Googleの規約に基づき限定的な期間ログが保持される場合があります
           </li>
         </LegalList>
       </LegalSection>
@@ -173,7 +175,10 @@ export function PrivacyPage() {
               <LegalTd>米国</LegalTd>
               <LegalTd>同上</LegalTd>
               <LegalTd>
-                Cloud Data Processing Addendumに基づく契約上の保護措置。API経由で送信されたデータはモデルの学習に使用されない
+                <LegalLink href="https://ai.google.dev/gemini-api/terms">
+                  Gemini API 追加利用規約
+                </LegalLink>
+                （Paid Services条項）に基づく保護措置。送信されたプロンプトおよび応答はGoogleの製品改善（モデルの学習等）に使用されない
               </LegalTd>
             </tr>
             <tr>

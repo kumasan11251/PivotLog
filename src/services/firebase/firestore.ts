@@ -3,7 +3,7 @@
  * データベース操作関連の機能を提供
  */
 import firestore from '@react-native-firebase/firestore';
-import { COLLECTIONS } from './config';
+import { COLLECTIONS, USER_SUBCOLLECTIONS } from './config';
 import { getCurrentUser } from './auth';
 import { withRetry } from '../../utils/retry';
 import type { AIReflectionData } from '../../types/aiReflection';
@@ -347,32 +347,47 @@ export const getDiariesByMonthFromFirestore = async (
 
 /**
  * ユーザーのすべてのデータを削除（アカウント削除時に使用）
+ *
+ * USER_SUBCOLLECTIONS に列挙したすべてのサブコレクション
+ * （settings / diaries / weeklyInsights / monthlyInsights / usage / subscription）を
+ * 全削除する。Firestoreはサブコレクションを連鎖削除しないため、ここで明示的に消す必要がある。
+ * Firestoreのバッチは1コミット500件が上限のため、MAX_BATCH_WRITESごとに分割コミットする。
+ *
+ * 注意: subscription サブコレクションは Firestore 上のミラー情報のみを削除する。
+ *       Apple / Google / RevenueCat 側に残る購入履歴・サブスクリプション状態はアプリ側で削除できない。
  */
 export const deleteAllUserDataFromFirestore = async (): Promise<void> => {
   try {
     const userDoc = getUserDocRef();
-    const batch = firestore().batch();
 
-    // 設定を削除
-    const settingsSnapshot = await userDoc.collection(COLLECTIONS.SETTINGS).get();
-    settingsSnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
+    // Firestoreバッチの500件上限を超えないよう、余裕を持って分割する
+    const MAX_BATCH_WRITES = 450;
+    let batch = firestore().batch();
+    let writeCount = 0;
 
-    // すべての日記を削除
-    const diariesSnapshot = await userDoc.collection(COLLECTIONS.DIARIES).get();
-    diariesSnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
+    // バッチが上限に達したらコミットして新しいバッチを開始する
+    const commitBatchIfNeeded = async () => {
+      if (writeCount >= MAX_BATCH_WRITES) {
+        await batch.commit();
+        batch = firestore().batch();
+        writeCount = 0;
+      }
+    };
 
-    // すべての週次インサイトを削除
-    const insightsSnapshot = await userDoc.collection(COLLECTIONS.WEEKLY_INSIGHTS).get();
-    insightsSnapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
+    // すべてのユーザーサブコレクションを横断して削除
+    for (const subcollection of USER_SUBCOLLECTIONS) {
+      const snapshot = await userDoc.collection(subcollection).get();
+      for (const doc of snapshot.docs) {
+        batch.delete(doc.ref);
+        writeCount += 1;
+        await commitBatchIfNeeded();
+      }
+    }
 
-    // バッチ処理を実行
-    await batch.commit();
+    // 最後に残ったバッチをコミット（空でもエラーにはならない）
+    if (writeCount > 0) {
+      await batch.commit();
+    }
 
     // ユーザードキュメント自体を削除（存在する場合）
     await userDoc.delete();

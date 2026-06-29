@@ -29,4 +29,16 @@ export const COLLECTIONS = {
   APP_CONFIG: 'appConfig',
 } as const;
 
+// ユーザーのサブコレクション（アカウント削除時に全削除する対象）
+// 注意: USERS / APP_CONFIG はユーザーのサブコレクションではないため含めない。
+//       新しいユーザーサブコレクションを追加したら、この配列にも1行足すこと。
+export const USER_SUBCOLLECTIONS = [
+  COLLECTIONS.SETTINGS,
+  COLLECTIONS.DIARIES,
+  COLLECTIONS.WEEKLY_INSIGHTS,
+  COLLECTIONS.MONTHLY_INSIGHTS,
+  COLLECTIONS.USAGE,
+  COLLECTIONS.SUBSCRIPTION,
+] as const;
+
 export default firebase;

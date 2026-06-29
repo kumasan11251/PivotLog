@@ -104,13 +104,16 @@ export function TermsPage() {
 
       <LegalSection title="7. 免責事項・損害賠償の制限">
         <LegalSubheading>7.1 免責事項</LegalSubheading>
-        <LegalParagraph>運営者は、以下の事項について一切の責任を負いません：</LegalParagraph>
+        <LegalParagraph>運営者は、以下の事項について責任を負いません：</LegalParagraph>
         <LegalList>
           <li>本アプリの利用に起因するいかなる損害</li>
           <li>本アプリの中断、停止、終了、利用不能、または変更</li>
           <li>ユーザーのデータの消失または破損</li>
           <li>AI機能が生成したコンテンツに基づく判断や行動による結果</li>
         </LegalList>
+        <LegalParagraph>
+          ただし、運営者の故意または重過失による場合、および消費者契約法その他の強行法規に反する場合は、この限りではありません。
+        </LegalParagraph>
 
         <LegalSubheading>7.2 損害賠償の制限</LegalSubheading>
         <LegalParagraph>

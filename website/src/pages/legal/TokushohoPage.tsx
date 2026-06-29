@@ -52,6 +52,12 @@ export function TokushohoPage() {
             <LegalTd>購入手続き完了後、即時ご利用いただけます</LegalTd>
           </tr>
           <tr>
+            <LegalTd>自動更新</LegalTd>
+            <LegalTd>
+              サブスクリプションは、現在の期間が終了する24時間前までに解約しない限り、同一期間・同一料金で自動的に更新されます。解約は各ストアの設定画面から行うことができます
+            </LegalTd>
+          </tr>
+          <tr>
             <LegalTd>返品・キャンセルについて</LegalTd>
             <LegalTd>
               各ストア（App Store / Google Play）のポリシーに準拠します。サブスクリプションの解約は各ストアの設定画面から行うことができます
