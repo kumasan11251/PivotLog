@@ -47,6 +47,9 @@ plans/
 # Internal docs (not for public)
 docs-internal/
 
+# Local working outputs (baseline scripts, generated images, etc.)
+tmp/
+
 # local env files
 .env
 .env*.local

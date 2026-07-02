@@ -8,7 +8,7 @@ export function Logo({ className = '', markClassName = '', showText = true }: Lo
   return (
     <a className={`inline-flex items-center gap-3 text-ink ${className}`} href="/" aria-label="PivotLog トップ">
       <img
-        alt=""
+        alt="PivotLogアプリアイコン"
         className={`h-10 w-10 rounded-[12px] shadow-soft ${markClassName}`}
         height="40"
         src="/images/app/icon.png"

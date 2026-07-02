@@ -1,0 +1,14 @@
+[mcp_servers.pivotlog-search-console]
+command = "node"
+args = ["scripts/search-console-mcp.mjs"]
+cwd = ".."
+env_vars = [
+  "GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_JSON",
+  "GOOGLE_SEARCH_CONSOLE_SERVICE_ACCOUNT_KEY",
+  "GOOGLE_APPLICATION_CREDENTIALS",
+]
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+
+[mcp_servers.pivotlog-search-console.env]
+SEARCH_CONSOLE_SITE_URL = "sc-domain:pivotlog.app"

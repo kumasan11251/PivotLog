@@ -13,6 +13,8 @@
     "dev:sim": "concurrently -n ios,android -c blue,green \"npm run ios\" \"npm run android\"",
     "sync:google-services": "cp google-services.json android/app/google-services.json && echo 'google-services.json synced to android/app/'",
     "prebuild": "npm run sync:google-services && expo prebuild",
+    "appstore:baseline": "node scripts/app-store-connect-baseline.mjs",
+    "googleplay:baseline": "node scripts/google-play-baseline.mjs",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix"
   },

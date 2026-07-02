@@ -142,7 +142,7 @@ export function LandingPage() {
               </span>
               <h3 className="font-display text-4xl font-semibold leading-[1.25] text-ink md:text-[2.7rem]">寿命カウントダウン</h3>
               <p className="mt-6 max-w-sm text-sm leading-7 text-ink">目標寿命から残り時間を計算し、人生の進み具合を穏やかに可視化。長い時間軸の中で、今の1日を大切にできます。</p>
-              <img alt="" className="float-still-life mt-8 w-[300px]" src="/images/generated/hero-still-life.png" />
+              <img alt="PivotLogの寿命カウントダウンを想起させる時計と植物の静物イメージ" className="float-still-life mt-8 w-[300px]" src="/images/generated/hero-still-life.png" />
             </Reveal>
             <Reveal className="grid grid-cols-2 items-start gap-3 sm:gap-5 md:justify-items-center" delayMs={100}>
               <AppScreenshotPhone
@@ -164,7 +164,7 @@ export function LandingPage() {
               </span>
               <h3 className="font-display text-4xl font-semibold leading-[1.25] text-ink md:text-[2.7rem]">日記</h3>
               <p className="mt-6 max-w-sm text-sm leading-7 text-ink">3つの問いに答えるだけで、その日の良かったこと、少し後悔したこと、明日大切にしたいことが残ります。日記の内容をもとにAIから優しい気づきを受け取れます。</p>
-              <img alt="" className="float-still-life mt-8 w-[300px]" src="/images/generated/questions-still-life.png" />
+              <img alt="PivotLogの日記習慣を想起させるノートと植物の静物イメージ" className="float-still-life mt-8 w-[300px]" src="/images/generated/questions-still-life.png" />
             </Reveal>
             <Reveal className="grid grid-cols-2 items-start gap-3 sm:gap-5 md:justify-items-center" delayMs={100}>
               <AppScreenshotPhone
