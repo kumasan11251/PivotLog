@@ -188,12 +188,18 @@ async function main() {
   }
 
   const downloadedRows = {};
+  const warnings = [];
   for (const selectedReport of selectedReports) {
     console.log(`Downloading ${selectedReport.attributes.name}...`);
-    downloadedRows[selectedReport.key] = await downloadReportRows(token, selectedReport, options);
+    try {
+      downloadedRows[selectedReport.key] = await downloadReportRows(token, selectedReport, options);
+    } catch (error) {
+      downloadedRows[selectedReport.key] = [];
+      warnings.push(`${selectedReport.attributes.name}: ${error.message.split('\n')[0]}`);
+    }
   }
 
-  const summary = buildSummary(downloadedRows, options.days);
+  const summary = buildSummary(downloadedRows, options.days, warnings);
   await writeJson(resolve(options.output, 'baseline-summary.json'), summary);
   await writeFile(resolve(options.output, 'baseline-summary.md'), renderMarkdown(summary), 'utf8');
 
@@ -440,13 +446,14 @@ async function downloadSegment(url) {
   return gunzipSync(body).toString('utf8');
 }
 
-function buildSummary(rowsByReport, days) {
+function buildSummary(rowsByReport, days, warnings = []) {
   const generatedAt = new Date();
   const windows = [28, days].filter((value, index, values) => values.indexOf(value) === index);
 
   return {
     generatedAt: generatedAt.toISOString(),
     note: 'Counts are derived from App Store Connect Analytics Reports. CVR fields are calculated locally.',
+    warnings,
     reportRowCounts: Object.fromEntries(Object.entries(rowsByReport).map(([key, rows]) => [key, rows.length])),
     windows: Object.fromEntries(
       windows.map((windowDays) => [String(windowDays), summarizeWindow(rowsByReport, generatedAt, windowDays)]),
@@ -563,6 +570,15 @@ function renderMarkdown(summary) {
   ];
 
   const totalRows = Object.values(summary.reportRowCounts ?? {}).reduce((sum, count) => sum + count, 0);
+  if (summary.warnings?.length > 0) {
+    lines.push('## 取得時の警告');
+    lines.push('');
+    for (const warning of summary.warnings) {
+      lines.push(`- ${warning}`);
+    }
+    lines.push('');
+  }
+
   if (totalRows === 0) {
     lines.push('注意: 取得できたレポート行がまだ0件です。Analytics Report Requestの作成直後は、Apple側の初回生成に1-2日かかることがあります。');
     lines.push('');
