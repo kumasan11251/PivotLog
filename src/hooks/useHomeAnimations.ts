@@ -41,6 +41,16 @@ interface UseHomeAnimationsParams {
   toggleCountdownMode: () => void;
   /** プログレスモード切替関数 */
   toggleProgressMode: () => void;
+  /**
+   * マイルストーン祝福演出の fade out が正常完了した時に呼ばれる任意コールバック。
+   * 演出開始時点の achievedMilestone / achievedTotalMilestone をスナップショットして渡す
+   * （完了後は clearJustCompleted で null になるため）。
+   * アニメーション中断（画面離脱・タブ切替・cleanup）時は呼ばれない。
+   */
+  onMilestoneCelebrationComplete?: (
+    achievedMilestone: number | null,
+    achievedTotalMilestone: number | null,
+  ) => void;
 }
 
 interface UseHomeAnimationsReturn {
@@ -81,6 +91,7 @@ export const useHomeAnimations = ({
   triggerProgressAnimation,
   toggleCountdownMode,
   toggleProgressMode,
+  onMilestoneCelebrationComplete,
 }: UseHomeAnimationsParams): UseHomeAnimationsReturn => {
   // アニメーション値（useMemoで安定した参照を維持）
   const celebrationAnim = useMemo(() => new Animated.Value(0), []);
@@ -157,19 +168,36 @@ export const useHomeAnimations = ({
         }),
       ]).start();
 
+      // 演出開始時点のトリガー種別をスナップショット（完了後は state が null になるため）
+      const snapshotStreakMilestone = achievedMilestone;
+      const snapshotTotalMilestone = achievedTotalMilestone;
+
       const timer = setTimeout(() => {
         Animated.timing(milestoneAnim, {
           toValue: 0,
           duration: 400,
           useNativeDriver: true,
-        }).start(() => {
+        }).start(({ finished }) => {
+          // fade out が正常完了した場合のみレビュー依頼コールバックを呼ぶ
+          if (finished) {
+            onMilestoneCelebrationComplete?.(snapshotStreakMilestone, snapshotTotalMilestone);
+          }
           clearJustCompleted();
         });
       }, 4000);
 
       return () => clearTimeout(timer);
     }
-  }, [activeMilestone, milestoneMessage, milestoneAnim, milestoneScaleAnim, clearJustCompleted]);
+  }, [
+    activeMilestone,
+    milestoneMessage,
+    milestoneAnim,
+    milestoneScaleAnim,
+    clearJustCompleted,
+    achievedMilestone,
+    achievedTotalMilestone,
+    onMilestoneCelebrationComplete,
+  ]);
 
   // 設定ロード完了時にフェードイン
   useEffect(() => {

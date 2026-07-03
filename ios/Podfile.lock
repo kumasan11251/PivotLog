@@ -1505,6 +1505,8 @@ PODS:
     - Yoga
   - ExpoSplashScreen (31.0.13):
     - ExpoModulesCore
+  - ExpoStoreReview (9.0.9):
+    - ExpoModulesCore
   - EXStructuredHeaders (5.0.0)
   - ExtensionStorage (1.0.0):
     - ExpoModulesCore
@@ -4140,6 +4142,7 @@ DEPENDENCIES:
   - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
+  - ExpoStoreReview (from `../node_modules/expo-store-review/ios`)
   - EXStructuredHeaders (from `../node_modules/expo-structured-headers/ios`)
   - "ExtensionStorage (from `../node_modules/@bacons/apple-targets/ios`)"
   - EXUpdates (from `../node_modules/expo-updates/ios`)
@@ -4312,6 +4315,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoSplashScreen:
     :path: "../node_modules/expo-splash-screen/ios"
+  ExpoStoreReview:
+    :path: "../node_modules/expo-store-review/ios"
   EXStructuredHeaders:
     :path: "../node_modules/expo-structured-headers/ios"
   ExtensionStorage:
@@ -4520,6 +4525,7 @@ SPEC CHECKSUMS:
   ExpoLinearGradient: a464898cb95153125e3b81894fd479bcb1c7dd27
   ExpoModulesCore: 4354077ec301f45d8dcb2d53bd1043f367ab8273
   ExpoSplashScreen: 6795dffbd8e931431c5abdf9d371ab150045c5cc
+  ExpoStoreReview: 32bb43b6fae9c8db3e33cad69996dff3785eef5f
   EXStructuredHeaders: c951e77f2d936f88637421e9588c976da5827368
   ExtensionStorage: 5796de20bf181317c376d693fedb64c6781a33ba
   EXUpdates: 48409d65825d8479e7d3ae7852949ebe97641491

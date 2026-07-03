@@ -19,6 +19,11 @@ import type { AIReflectionData } from '../types/aiReflection';
 import type { AIConsentStatus } from '../types/aiConsent';
 import { CURRENT_CONSENT_VERSION } from '../types/aiConsent';
 import { addToSyncQueue, clearSyncQueue } from './syncQueue';
+import {
+  normalizeReviewPromptHistory,
+  type ReviewPromptAttempt,
+  type ReviewPromptHistory,
+} from './reviewPrompt';
 
 export interface UserSettings {
   birthday: string; // ISO 8601 format (YYYY-MM-DD)
@@ -57,6 +62,7 @@ const THEME_KEY = '@pivot_log_theme';
 const AI_CONSENT_KEY = '@pivot_log_ai_consent';
 const DIARY_VIEW_MODE_KEY = '@pivot_log_diary_view_mode';
 const SKIPPED_UPDATE_VERSION_KEY = '@pivot_log_skipped_update_version';
+const REVIEW_PROMPT_HISTORY_KEY = '@pivot_log_review_prompt_history';
 
 /**
  * Firebaseにログイン中かどうかを確認
@@ -720,6 +726,44 @@ export const saveSkippedUpdateVersion = async (version: string): Promise<void> =
     await AsyncStorage.setItem(SKIPPED_UPDATE_VERSION_KEY, version);
   } catch (error) {
     console.error('スキップ済みバージョンの保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+// =============== アプリ内評価リクエストの試行履歴 ===============
+// 端末単位の記録（アカウント無関係）のため UID付きキャッシュキー・Firestore同期は使わない。
+// 表示保証のない「試行」の履歴であり、破損データを同期しない。
+
+/**
+ * レビュー依頼の試行履歴を読み込む。
+ * JSON parse 失敗・malformed データは空履歴または有効な attempt のみへ正規化する。
+ */
+export const loadReviewPromptHistory = async (): Promise<ReviewPromptHistory> => {
+  try {
+    const raw = await AsyncStorage.getItem(REVIEW_PROMPT_HISTORY_KEY);
+    if (!raw) return { attempts: [] };
+    return normalizeReviewPromptHistory(JSON.parse(raw));
+  } catch (error) {
+    console.error('レビュー依頼履歴の読み込みに失敗しました:', error);
+    return { attempts: [] };
+  }
+};
+
+/**
+ * レビュー依頼の試行を1件追記する。
+ * 既存履歴を読み込んで正規化した上で追記するため、破損データが混ざらない。
+ */
+export const saveReviewPromptAttempt = async (
+  attempt: ReviewPromptAttempt,
+): Promise<void> => {
+  try {
+    const history = await loadReviewPromptHistory();
+    const next: ReviewPromptHistory = {
+      attempts: [...history.attempts, attempt],
+    };
+    await AsyncStorage.setItem(REVIEW_PROMPT_HISTORY_KEY, JSON.stringify(next));
+  } catch (error) {
+    console.error('レビュー依頼履歴の保存に失敗しました:', error);
     throw error;
   }
 };

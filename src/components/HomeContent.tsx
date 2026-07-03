@@ -15,6 +15,9 @@ import { useProgressAnimation } from '../hooks/useProgressAnimation';
 import { useDisplaySettings } from '../hooks/useDisplaySettings';
 import { useTodayDiary } from '../hooks/useTodayDiary';
 import { useHomeAnimations } from '../hooks/useHomeAnimations';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { useReviewRequest } from '../hooks/useReviewRequest';
+import { deriveReviewPromptTrigger } from '../utils/reviewPrompt';
 import { loadUserSettings } from '../utils/storage';
 import { getTodayDateString, getStreakInfo } from '../utils/homeHelpers';
 import { getEffectiveToday } from '../utils/dateUtils';
@@ -67,6 +70,21 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
     refresh: refreshTodayDiary
   } = useTodayDiary({ dayStartHour });
 
+  // レビュー依頼（純正 StoreReview）— マイルストーン演出完了後に発火
+  const { isOffline } = useNetworkStatus();
+  const { requestReviewIfEligible } = useReviewRequest({ isActive, isOffline });
+
+  // マイルストーン演出完了時にレビュー依頼トリガーを導出して試行する
+  const handleMilestoneCelebrationComplete = useCallback(
+    (streakMilestone: number | null, totalMilestone: number | null) => {
+      const trigger = deriveReviewPromptTrigger(streakMilestone, totalMilestone);
+      if (trigger) {
+        requestReviewIfEligible(trigger);
+      }
+    },
+    [requestReviewIfEligible]
+  );
+
   // アニメーション管理をカスタムフックに委譲
   const {
     celebrationAnim,
@@ -92,6 +110,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
     triggerProgressAnimation: triggerAnimation,
     toggleCountdownMode,
     toggleProgressMode,
+    onMilestoneCelebrationComplete: handleMilestoneCelebrationComplete,
   });
 
   // 設定読み込み（dayStartHour）
