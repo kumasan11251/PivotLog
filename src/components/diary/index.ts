@@ -10,6 +10,7 @@ export { default as ProgressIndicator } from './ProgressIndicator';
 export { default as DateNavigator } from './DateNavigator';
 export { default as DiaryInputField } from './DiaryInputField';
 export type { DiaryInputFieldRef } from './DiaryInputField';
+export { default as PreviousDayFocusHint } from './PreviousDayFocusHint';
 export { default as DatePickerModal } from './DatePickerModal';
 export { default as YearMonthPickerModal } from './YearMonthPickerModal';
 

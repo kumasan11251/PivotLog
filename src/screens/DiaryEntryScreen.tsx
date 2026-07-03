@@ -22,12 +22,14 @@ import {
   DiaryInputField,
   DatePickerModal,
   DiaryInputFieldRef,
+  PreviousDayFocusHint,
   AIReflectionCard,
   AIReflectionButton,
   AIReflectionLoading,
 } from '../components/diary';
 import AIConsentModal from '../components/common/AIConsentModal';
 import { useDiaryEntry, DiaryFieldKey } from '../hooks/useDiaryEntry';
+import { usePreviousDayFocus } from '../hooks/usePreviousDayFocus';
 import { useAIReflection, showLimitAlert } from '../hooks/useAIReflection';
 import { useAIReflectionLimit } from '../hooks/useAIReflectionLimit';
 import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
@@ -61,6 +63,9 @@ const DiaryEntryScreen: React.FC = () => {
     handleBack,
     handleDateChange,
   } = useDiaryEntry();
+
+  // 前日の「明日、大切にしたいこと」（今日の振り返りの入り口としてそっと表示）
+  const previousFocus = usePreviousDayFocus(dateString);
 
   // AI同意モーダル
   const [showConsentModal, setShowConsentModal] = useState(false);
@@ -286,6 +291,8 @@ const DiaryEntryScreen: React.FC = () => {
                 onNext={() => changeDate(1)}
                 onOpenPicker={() => setShowDatePicker(true)}
               />
+
+              <PreviousDayFocusHint text={previousFocus} />
 
               {fieldConfigs.map((config) => (
                 <View key={config.key} ref={config.containerRef}>
