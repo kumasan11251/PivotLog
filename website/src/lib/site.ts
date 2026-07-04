@@ -12,7 +12,13 @@ export const SITE_PATHS = {
   terms: '/terms',
   tokushoho: '/tokushoho',
   accountDeletion: '/account-deletion',
+  lifeCountdownTool: '/tools/life-countdown',
+  articles: '/articles',
 } as const;
+
+// 記事詳細パスのヘルパー。SITE_PATHS には文字列パスだけを入れ、
+// 動的パス生成はこの export を使う。
+export const articlePath = (slug: string) => `${SITE_PATHS.articles}/${slug}`;
 
 export const LEGAL_URLS = {
   privacy: `${LEGAL_BASE_URL}${SITE_PATHS.privacy}`,

@@ -1,4 +1,5 @@
 import { SITE_METADATA, SITE_URL, faqItems } from './site';
+import type { Article } from '../data/articles';
 
 // JSON-LD(@graph) の単一生成ロジック。
 // SSRバンドルに含め、scripts/prerender.mjs から呼び出して dist/index.html の
@@ -23,9 +24,34 @@ export type StructuredDataOptions = {
   dateModified?: string;
 };
 
-export function getStructuredData(options: StructuredDataOptions = {}) {
-  const { dateModified } = options;
+// --- 再利用ノード（外部 export しない） ---
+// home / tool / article の各 @graph はこれらを合成して作る。
+// これらの出力を変えると全ページの JSON-LD に波及するため、
+// home の出力が現状と等価であることをビルド後の dist/index.html で確認する。
 
+function websiteNode() {
+  return {
+    '@type': 'WebSite',
+    '@id': WEBSITE_ID,
+    name: SITE_METADATA.name,
+    url: SITE_METADATA.url,
+    inLanguage: SITE_METADATA.inLanguage,
+    description: SITE_METADATA.description,
+    publisher: { '@id': PERSON_ID },
+  };
+}
+
+function personNode() {
+  return {
+    '@type': 'Person',
+    '@id': PERSON_ID,
+    name: SITE_METADATA.authorName,
+    email: `mailto:${SITE_METADATA.contactEmail}`,
+    url: SITE_METADATA.url,
+  };
+}
+
+function appNode(dateModified?: string) {
   const softwareApplication: Record<string, unknown> = {
     '@type': 'SoftwareApplication',
     '@id': APP_ID,
@@ -52,45 +78,120 @@ export function getStructuredData(options: StructuredDataOptions = {}) {
     softwareApplication.dateModified = dateModified;
   }
 
+  return softwareApplication;
+}
+
+function faqNode() {
+  return {
+    '@type': 'FAQPage',
+    '@id': FAQ_ID,
+    mainEntity: faqItems.map(({ question, answer }) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: answer,
+      },
+    })),
+  };
+}
+
+export function getStructuredData(options: StructuredDataOptions = {}) {
+  const { dateModified } = options;
+
   return {
     '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebSite',
-        '@id': WEBSITE_ID,
-        name: SITE_METADATA.name,
-        url: SITE_METADATA.url,
-        inLanguage: SITE_METADATA.inLanguage,
-        description: SITE_METADATA.description,
-        publisher: { '@id': PERSON_ID },
-      },
-      {
-        '@type': 'Person',
-        '@id': PERSON_ID,
-        name: SITE_METADATA.authorName,
-        email: `mailto:${SITE_METADATA.contactEmail}`,
-        url: SITE_METADATA.url,
-      },
-      softwareApplication,
-      {
-        '@type': 'FAQPage',
-        '@id': FAQ_ID,
-        mainEntity: faqItems.map(({ question, answer }) => ({
-          '@type': 'Question',
-          name: question,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: answer,
-          },
-        })),
-      },
-    ],
+    '@graph': [websiteNode(), personNode(), appNode(dateModified), faqNode()],
   };
 }
 
 // prerender.mjs が <script> 中身として埋め込むための JSON 文字列を返す。
 export function renderStructuredData(options: StructuredDataOptions = {}): string {
   return JSON.stringify(getStructuredData(options));
+}
+
+// --- ツールページ用（体験型ページ /tools/life-countdown 等） ---
+export type ToolStructuredDataOptions = {
+  title: string;
+  description: string;
+  url: string;
+  dateModified?: string;
+};
+
+// @graph: [WebSite, Person, WebPage, SoftwareApplication]。
+// WebPage はツールページ自身を表し、about で SoftwareApplication を参照する。
+export function getToolStructuredData(options: ToolStructuredDataOptions) {
+  const { title, description, url, dateModified } = options;
+
+  const webPage: Record<string, unknown> = {
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url,
+    inLanguage: SITE_METADATA.inLanguage,
+    isPartOf: { '@id': WEBSITE_ID },
+    about: { '@id': APP_ID },
+  };
+
+  if (dateModified) {
+    webPage.dateModified = dateModified;
+  }
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [websiteNode(), personNode(), webPage, appNode(dateModified)],
+  };
+}
+
+export function renderToolStructuredData(options: ToolStructuredDataOptions): string {
+  return JSON.stringify(getToolStructuredData(options));
+}
+
+// --- 記事ページ用（Week 4 で使用） ---
+export type ArticleStructuredDataOptions = {
+  url: string;
+  dateModified?: string;
+};
+
+// @graph: [WebSite, Person, BlogPosting, WebPage]。
+export function getArticleStructuredData(article: Article, options: ArticleStructuredDataOptions) {
+  const { url, dateModified } = options;
+  const effectiveModified = dateModified ?? article.dateModified ?? article.datePublished;
+
+  const blogPosting: Record<string, unknown> = {
+    '@type': 'BlogPosting',
+    headline: article.title,
+    description: article.description,
+    datePublished: article.datePublished,
+    dateModified: effectiveModified,
+    author: { '@id': PERSON_ID },
+    publisher: { '@id': PERSON_ID },
+    inLanguage: SITE_METADATA.inLanguage,
+    mainEntityOfPage: url,
+    url,
+  };
+
+  const webPage: Record<string, unknown> = {
+    '@type': 'WebPage',
+    name: article.title,
+    description: article.description,
+    url,
+    inLanguage: SITE_METADATA.inLanguage,
+    isPartOf: { '@id': WEBSITE_ID },
+    dateModified: effectiveModified,
+  };
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [websiteNode(), personNode(), blogPosting, webPage],
+  };
+}
+
+export function renderArticleStructuredData(
+  article: Article,
+  options: ArticleStructuredDataOptions,
+): string {
+  return JSON.stringify(getArticleStructuredData(article, options));
 }
 
 export type LegalStructuredDataOptions = {

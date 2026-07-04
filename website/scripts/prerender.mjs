@@ -13,6 +13,9 @@ const {
   render,
   renderStructuredData,
   renderLegalStructuredData,
+  renderToolStructuredData,
+  renderArticleStructuredData,
+  getArticleBySlug,
   ROUTES,
   canonicalFor,
 } = await import(pathToFileURL(entryPath).href);
@@ -49,22 +52,42 @@ function replaceOrThrow(html, regex, replacement, label) {
 }
 
 function buildStructuredData(route) {
+  const url = canonicalFor(route.path);
   switch (route.structuredData) {
     case 'home':
       return renderStructuredData({ dateModified });
     case 'legal':
       return renderLegalStructuredData({
         title: route.title,
-        url: canonicalFor(route.path),
+        url,
         dateModified,
       });
-    default:
+    case 'tool':
+      return renderToolStructuredData({
+        title: route.title,
+        description: route.description,
+        url,
+        dateModified,
+      });
+    case 'article': {
+      const article = getArticleBySlug(route.articleSlug);
+      if (!article) {
+        throw new Error(`No article found for slug "${route.articleSlug}" (${route.path}).`);
+      }
+      return renderArticleStructuredData(article, { url, dateModified });
+    }
+    case 'none':
       return JSON.stringify({ '@context': 'https://schema.org', '@graph': [] });
+    default:
+      // 未対応の structuredData 値は握りつぶさず例外に。ルート追加時の JSON-LD 漏れをビルドで検知。
+      throw new Error(
+        `Unknown structuredData kind "${route.structuredData}" for ${route.path}.`,
+      );
   }
 }
 
-// 法務ページの head メタを route 値で差し替える（home はテンプレの値を維持）。
-function applyLegalHead(html, route) {
+// home 以外の全ルートの head メタを route 値で差し替える（home はテンプレの値を維持）。
+function applyPageHead(html, route) {
   const title = escapeAttr(route.title);
   const description = escapeAttr(route.description);
   const canonical = escapeAttr(canonicalFor(route.path));
@@ -113,6 +136,27 @@ function applyLegalHead(html, route) {
     'twitter:description',
   );
 
+  // OGP 画像の差し替え（任意）。https の絶対URLだけを受け付け、未指定はテンプレの既定画像を維持。
+  // 将来相対パスを許可する場合は SITE_URL を使う変換を同時に追加する。
+  if (route.ogImage) {
+    if (!/^https:\/\//.test(route.ogImage)) {
+      throw new Error(`ogImage must be an absolute https URL for ${route.path}: ${route.ogImage}`);
+    }
+    const ogImage = escapeAttr(route.ogImage);
+    html = replaceOrThrow(
+      html,
+      /(<meta property="og:image" content=")[^"]*(")/,
+      `$1${ogImage}$2`,
+      'og:image',
+    );
+    html = replaceOrThrow(
+      html,
+      /(<meta name="twitter:image" content=")[^"]*(")/,
+      `$1${ogImage}$2`,
+      'twitter:image',
+    );
+  }
+
   if (!route.indexable) {
     html = replaceOrThrow(
       html,
@@ -136,14 +180,14 @@ function applyLegalHead(html, route) {
   return html;
 }
 
-// 法務ページは純静的化（hydration 不要）。Vite の module script と
+// staticPage ルートは純静的化（hydration 不要）。Vite の module script と
 // modulepreload を除去する。CSS の stylesheet link と JSON-LD は残す。
 function stripClientScripts(html, route) {
   html = html
     .replace(/<script\s+type="module"[^>]*><\/script>/g, '')
     .replace(/<link\s+rel="modulepreload"[^>]*\/?>/g, '');
   if (/<script\s+type="module"/.test(html)) {
-    throw new Error(`Module script still present on legal page ${route.path}.`);
+    throw new Error(`Module script still present on static page ${route.path}.`);
   }
   return html;
 }
@@ -165,9 +209,12 @@ for (const route of ROUTES) {
   // JSON-LD 差し替え。
   html = html.replace(STRUCTURED_DATA_REGEX, `$1${buildStructuredData(route)}$3`);
 
-  // 法務ページのみ head メタ差し替え＋純静的化。home はテンプレ維持＋hydration維持。
-  if (route.structuredData === 'legal') {
-    html = applyLegalHead(html, route);
+  // home 以外は head メタを route 値で差し替える（home はテンプレ維持＋hydration維持）。
+  if (route.path !== '/') {
+    html = applyPageHead(html, route);
+  }
+  // staticPage ルートのみ純静的化（tool は hydration 維持）。
+  if (route.staticPage === true) {
     html = stripClientScripts(html, route);
   }
 

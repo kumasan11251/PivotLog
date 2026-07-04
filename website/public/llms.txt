@@ -40,6 +40,10 @@ Unlike countdown-only "lifespan timer" apps, PivotLog combines the lifespan coun
 
 When the user signs in with an email, Google, or Apple account, diary entries and settings are synced to the cloud (Firebase / Firestore). On a new device, signing in with the same account restores the data.
 
+## Free Web Tool
+
+- Life countdown calculator: https://pivotlog.app/tools/life-countdown — enter a birthday and a self-set target lifespan to see the remaining time until that target age, broken down to the second, plus a life progress bar. Runs in the browser; the concept mirrors the app's target-lifespan (目標寿命) approach rather than statistical life expectancy.
+
 ## App Store Links
 
 - App Store: https://apps.apple.com/jp/app/id6760384852
