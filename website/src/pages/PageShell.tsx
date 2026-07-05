@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Logo } from '../components/common';
+import { Logo, SiteHeader } from '../components/common';
 import { LEGAL_URLS } from '../lib/site';
 
 type PageShellProps = {
@@ -11,9 +11,7 @@ type PageShellProps = {
 export function PageShell({ children }: PageShellProps) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas text-ink">
-      <header className="mx-auto flex max-w-container items-center justify-between px-gutter py-6">
-        <Logo />
-      </header>
+      <SiteHeader />
 
       {children}
 

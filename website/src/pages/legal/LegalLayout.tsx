@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Logo } from '../../components/common';
+import { Logo, SiteHeader } from '../../components/common';
 import { LEGAL_URLS } from '../../lib/site';
 
 type LegalLayoutProps = {
@@ -14,9 +14,7 @@ type LegalLayoutProps = {
 export function LegalLayout({ title, updated, children }: LegalLayoutProps) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas text-ink">
-      <header className="mx-auto flex max-w-container items-center justify-between px-gutter py-6">
-        <Logo />
-      </header>
+      <SiteHeader />
 
       <article className="mx-auto max-w-3xl px-gutter pb-16 pt-2">
         <h1 className="font-display text-3xl font-semibold leading-tight text-ink md:text-4xl">{title}</h1>

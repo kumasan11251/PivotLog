@@ -136,6 +136,16 @@ function applyPageHead(html, route) {
     'twitter:description',
   );
 
+  // og:type の差し替え（任意）。未指定はテンプレの 'website' を維持。
+  if (route.ogType) {
+    html = replaceOrThrow(
+      html,
+      /(<meta property="og:type" content=")[^"]*(")/,
+      `$1${escapeAttr(route.ogType)}$2`,
+      'og:type',
+    );
+  }
+
   // OGP 画像の差し替え（任意）。https の絶対URLだけを受け付け、未指定はテンプレの既定画像を維持。
   // 将来相対パスを許可する場合は SITE_URL を使う変換を同時に追加する。
   if (route.ogImage) {
@@ -155,6 +165,45 @@ function applyPageHead(html, route) {
       `$1${ogImage}$2`,
       'twitter:image',
     );
+    if (route.ogImageAlt) {
+      const ogImageAlt = escapeAttr(route.ogImageAlt);
+      html = replaceOrThrow(
+        html,
+        /(<meta property="og:image:alt" content=")[^"]*(")/,
+        `$1${ogImageAlt}$2`,
+        'og:image:alt',
+      );
+      html = replaceOrThrow(
+        html,
+        /(<meta name="twitter:image:alt" content=")[^"]*(")/,
+        `$1${ogImageAlt}$2`,
+        'twitter:image:alt',
+      );
+    }
+    if (route.ogImageType) {
+      html = replaceOrThrow(
+        html,
+        /(<meta property="og:image:type" content=")[^"]*(")/,
+        `$1${escapeAttr(route.ogImageType)}$2`,
+        'og:image:type',
+      );
+    }
+    if (route.ogImageWidth) {
+      html = replaceOrThrow(
+        html,
+        /(<meta property="og:image:width" content=")[^"]*(")/,
+        `$1${String(route.ogImageWidth)}$2`,
+        'og:image:width',
+      );
+    }
+    if (route.ogImageHeight) {
+      html = replaceOrThrow(
+        html,
+        /(<meta property="og:image:height" content=")[^"]*(")/,
+        `$1${String(route.ogImageHeight)}$2`,
+        'og:image:height',
+      );
+    }
   }
 
   if (!route.indexable) {

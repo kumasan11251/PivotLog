@@ -18,8 +18,14 @@ export type RouteMeta = {
   structuredData: StructuredDataKind;
   // true のとき prerender が JS を除去し純静的化する（hydration 不要のページ）。
   staticPage?: boolean;
+  // og:type を差し替える場合に指定（未指定はテンプレートの 'website' を維持）。記事ページは 'article'。
+  ogType?: string;
   // OGP 画像を差し替える場合の絶対URL（未指定はテンプレートの既定画像を維持）。
   ogImage?: string;
+  ogImageAlt?: string;
+  ogImageType?: string;
+  ogImageWidth?: number;
+  ogImageHeight?: number;
   // article ルートのみ。構造化データ生成で getArticleBySlug に渡す。
   articleSlug?: string;
 };
@@ -106,6 +112,12 @@ const articleToRoute = (article: Article): RouteMeta => ({
   indexable: true,
   structuredData: 'article',
   staticPage: true,
+  ogType: 'article',
+  ogImage: article.eyecatch ? `${SITE_URL}${article.eyecatch.src}` : undefined,
+  ogImageAlt: article.eyecatch?.alt,
+  ogImageType: article.eyecatch ? 'image/jpeg' : undefined,
+  ogImageWidth: article.eyecatch?.width,
+  ogImageHeight: article.eyecatch?.height,
   articleSlug: article.slug,
 });
 

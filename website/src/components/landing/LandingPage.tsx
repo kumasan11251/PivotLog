@@ -1,5 +1,5 @@
 import { Apple, CalendarDays, Clock3, Leaf, Play, Sparkles, Smartphone } from 'lucide-react';
-import { Logo, Reveal, StoreBadge } from '../common';
+import { Logo, Reveal, SiteHeader, StoreBadge } from '../common';
 import { AppScreenshotPhone, HeroPhoneScreenshot } from './PhoneMockups';
 import { howSteps, pricingCards } from '../../data/landing';
 import { STORE_LABELS, STORE_QR_IMAGES, STORE_URLS, type StorePlatform } from '../../lib/store';
@@ -94,9 +94,7 @@ function FeatureDeviceMock({ type }: { type: 'widget' | 'ai' }) {
 export function LandingPage() {
   return (
     <main className="overflow-x-hidden bg-canvas text-ink">
-      <header className="mx-auto flex max-w-container items-center justify-between px-gutter py-6">
-        <Logo />
-      </header>
+      <SiteHeader />
 
       <section className="mx-auto grid max-w-container gap-8 px-gutter pb-9 pt-5 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:pb-14">
         <Reveal className="mx-auto max-w-[600px] text-center lg:mx-0 lg:text-left">

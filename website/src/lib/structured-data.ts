@@ -170,6 +170,14 @@ export function getArticleStructuredData(article: Article, options: ArticleStruc
     mainEntityOfPage: url,
     url,
   };
+  if (article.eyecatch) {
+    blogPosting.image = {
+      '@type': 'ImageObject',
+      url: `${SITE_URL}${article.eyecatch.src}`,
+      width: article.eyecatch.width,
+      height: article.eyecatch.height,
+    };
+  }
 
   const webPage: Record<string, unknown> = {
     '@type': 'WebPage',

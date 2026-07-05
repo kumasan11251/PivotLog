@@ -44,6 +44,11 @@ When the user signs in with an email, Google, or Apple account, diary entries an
 
 - Life countdown calculator: https://pivotlog.app/tools/life-countdown — enter a birthday and a self-set target lifespan to see the remaining time until that target age, broken down to the second, plus a life progress bar. Runs in the browser; the concept mirrors the app's target-lifespan (目標寿命) approach rather than statistical life expectancy.
 
+## Articles
+
+- Article index: https://pivotlog.app/articles — Japanese-language articles about reflective journaling habits and how to think about the remaining time in life.
+- "日記が続かない人に、3つの質問だけをすすめる理由" (Why we recommend just three questions to people who can't keep a diary): https://pivotlog.app/articles/diary-3-questions — explains why diaries fail for structural reasons (not weak willpower) and introduces the three-question template (what was good today / what you regret a little today / what you want to value tomorrow), written from the developer's first-hand experience.
+
 ## App Store Links
 
 - App Store: https://apps.apple.com/jp/app/id6760384852
