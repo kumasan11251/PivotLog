@@ -3,6 +3,11 @@ import { articlePath } from '../../lib/site';
 import { PageShell } from '../PageShell';
 
 // 記事一覧。ARTICLES が空でも壊れない最小実装（Week 4 で記事投入時に有効化）。
+// datePublished は YYYY-MM-DD 形式なので、文字列比較で公開日の新しい順に並べる。
+const sortedArticles = [...ARTICLES].sort((a, b) =>
+  b.datePublished.localeCompare(a.datePublished),
+);
+
 export function ArticlesIndexPage() {
   return (
     <PageShell>
@@ -12,9 +17,9 @@ export function ArticlesIndexPage() {
           人生の残り時間の考え方や、日々の振り返りを続けるためのヒントを紹介します。
         </p>
 
-        {ARTICLES.length > 0 ? (
+        {sortedArticles.length > 0 ? (
           <ul className="mt-8 space-y-5">
-            {ARTICLES.map((article) => (
+            {sortedArticles.map((article) => (
               <li
                 key={article.slug}
                 className="rounded-card border border-line bg-surface p-6 shadow-soft"
