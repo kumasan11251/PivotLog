@@ -19,12 +19,27 @@ export function ArticlesIndexPage() {
                 key={article.slug}
                 className="rounded-card border border-line bg-surface p-6 shadow-soft"
               >
-                <a className="block" href={articlePath(article.slug)}>
-                  <h2 className="font-display text-xl font-semibold text-ink transition hover:text-brand-700">
-                    {article.title}
-                  </h2>
-                  <p className="mt-2 text-sm leading-7 text-ink">{article.description}</p>
-                  <p className="mt-3 text-xs text-muted">{article.datePublished}</p>
+                <a
+                  className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6"
+                  href={articlePath(article.slug)}
+                >
+                  {article.eyecatch ? (
+                    <img
+                      className="aspect-[1200/630] w-full shrink-0 rounded-lg border border-line object-cover sm:w-48"
+                      src={article.eyecatch.src}
+                      alt=""
+                      width={article.eyecatch.width}
+                      height={article.eyecatch.height}
+                      loading="lazy"
+                    />
+                  ) : null}
+                  <div className="min-w-0">
+                    <h2 className="font-display text-xl font-semibold text-ink transition hover:text-brand-700">
+                      {article.title}
+                    </h2>
+                    <p className="mt-2 line-clamp-2 text-sm leading-7 text-ink">{article.description}</p>
+                    <p className="mt-3 text-xs text-muted">{article.datePublished}</p>
+                  </div>
                 </a>
               </li>
             ))}
