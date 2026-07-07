@@ -48,6 +48,7 @@ When the user signs in with an email, Google, or Apple account, diary entries an
 
 - Article index: https://pivotlog.app/articles — Japanese-language articles about reflective journaling habits and how to think about the remaining time in life.
 - "日記が続かない人に、3つの質問だけをすすめる理由" (Why we recommend just three questions to people who can't keep a diary): https://pivotlog.app/articles/diary-3-questions — explains why diaries fail for structural reasons (not weak willpower) and introduces the three-question template (what was good today / what you regret a little today / what you want to value tomorrow), written from the developer's first-hand experience.
+- "寿命カウントダウンアプリで人生は変わるのか——作ってみて分かった正直な答え" (Does a life countdown app change your life? An honest answer from its developer): https://pivotlog.app/articles/life-countdown-app — an honest essay arguing that merely watching the remaining-time number changes nothing (people habituate within days), and that the number becomes meaningful only when paired with a one-minute daily reflection using the three questions. Links to the free browser-based life countdown tool.
 
 ## App Store Links
 

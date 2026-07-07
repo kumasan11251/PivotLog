@@ -1,4 +1,4 @@
-import type { Article, ArticleSection } from '../../data/articles';
+import { getArticleBySlug, type Article, type ArticleSection } from '../../data/articles';
 import { StoreBadge } from '../../components/common';
 import { AppScreenshotPhone } from '../../components/landing/PhoneMockups';
 import { PageShell } from '../PageShell';
@@ -91,9 +91,11 @@ function QuestionCards({ cards }: { cards: NonNullable<ArticleSection['cards']> 
 }
 
 function ArticleInlineImage({ image }: { image: NonNullable<ArticleSection['image']> }) {
+  const aspectClass = image.aspect === "16/9" ? "aspect-[16/9]" : "aspect-[3/2]";
+
   return (
     <figure className="!mt-8 overflow-hidden rounded-card border border-line bg-surface shadow-soft">
-      <img className="aspect-[3/2] w-full object-cover" src={image.src} alt={image.alt} loading="lazy" />
+      <img className={`${aspectClass} w-full object-cover`} src={image.src} alt={image.alt} loading="lazy" />
       {image.caption ? (
         <figcaption className="border-t border-line bg-brand-50/40 px-5 py-3 text-sm leading-7 text-muted">
           {image.caption}
@@ -103,19 +105,55 @@ function ArticleInlineImage({ image }: { image: NonNullable<ArticleSection['imag
   );
 }
 
+// セクション末尾の内部リンクカード。目次・質問カードと同じ「紙のブロック」トーンで、関連ページへの導線を置く。
+// リンク先が記事の場合は、記事データからアイキャッチを引いてサムネイルとして添える（データの二重管理はしない）。
+function ArticleLinkCardBlock({ linkCard }: { linkCard: NonNullable<ArticleSection['linkCard']> }) {
+  const articleSlug = linkCard.href.startsWith("/articles/")
+    ? linkCard.href.slice("/articles/".length)
+    : null;
+  const eyecatch = articleSlug ? getArticleBySlug(articleSlug)?.eyecatch : undefined;
+
+  return (
+    <a
+      className="!mt-6 flex items-center gap-4 rounded-card border border-line/70 bg-surface px-5 py-4 transition hover:border-brand-100 hover:bg-brand-50/40 sm:gap-5 sm:px-6"
+      href={linkCard.href}
+    >
+      {eyecatch ? (
+        <img
+          className="aspect-[1200/630] w-24 shrink-0 rounded-lg border border-line object-cover sm:w-36"
+          src={eyecatch.src}
+          alt=""
+          width={eyecatch.width}
+          height={eyecatch.height}
+          loading="lazy"
+        />
+      ) : null}
+      <span className="block min-w-0">
+        <span className="block text-base font-semibold text-ink">{linkCard.title}</span>
+        <span className="mt-1 block text-sm leading-7 text-muted">{linkCard.description}</span>
+        <span className="mt-2 block text-sm font-semibold text-brand-700">
+          {linkCard.ctaLabel ?? "読んでみる"}
+          <span aria-hidden="true"> →</span>
+        </span>
+      </span>
+    </a>
+  );
+}
+
 // 記事末尾の共通CTA。押し売りしない控えめなトーンで、紙のノートでも十分はじめられる旨に触れる。
 // 日記入力画面のスマホモックを添えて「アプリだとこう見える」を伝える。
-function ArticleStoreCta() {
+// cta 未指定の記事は既定文言（日記文脈）にフォールバックする。
+function ArticleStoreCta({ cta }: { cta?: Article['cta'] }) {
   return (
     <aside className="mt-16 rounded-panel border border-line/70 bg-surface px-6 py-8 md:px-10 md:py-10">
       <div className="grid items-center gap-8 md:grid-cols-[1fr_auto]">
         <div>
           <p className="font-display text-xl font-semibold text-ink md:text-2xl">
-            今夜の3問から、はじめてみませんか
+            {cta?.title ?? '今夜の3問から、はじめてみませんか'}
           </p>
           <p className="mt-4 text-base leading-8 text-ink">
-            日記は、紙のノートでも十分にはじめられます。もしアプリで試してみたい方がいれば、PivotLogが
-            「今日、良かったこと」「今日、少し後悔していること」「明日、大切にしたいこと」の3つの問いを、毎日そっと用意します。
+            {cta?.body ??
+              '日記は、紙のノートでも十分にはじめられます。もしアプリで試してみたい方がいれば、PivotLogが「今日、良かったこと」「今日、少し後悔していること」「明日、大切にしたいこと」の3つの問いを、毎日そっと用意します。'}
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <StoreBadge platform="ios" />
@@ -173,11 +211,12 @@ export function ArticlePage({ article }: ArticlePageProps) {
                   ))}
                 </ul>
               ) : null}
+              {section.linkCard ? <ArticleLinkCardBlock linkCard={section.linkCard} /> : null}
             </section>
           ))}
         </div>
 
-        <ArticleStoreCta />
+        <ArticleStoreCta cta={article.cta} />
       </article>
     </PageShell>
   );
