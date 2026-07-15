@@ -52,6 +52,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
 
   // 1日の開始時刻（設定から読み込み）
   const [dayStartHour, setDayStartHour] = useState(0);
+  const [isDayStartHourLoaded, setIsDayStartHourLoaded] = useState(false);
 
   // カスタムフックで状態管理を分離
   const { timeLeft, lifeProgress, targetLifespan, birthday, currentAge } = useTimeCalculation();
@@ -120,6 +121,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
       if (settings) {
         setDayStartHour(settings.dayStartHour ?? 0);
       }
+      setIsDayStartHourLoaded(true);
     };
     loadSettings();
   }, []);
@@ -233,6 +235,8 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
             birthday={birthday ?? undefined}
             streakDays={streakDays}
             hasTodayEntry={hasTodayEntry}
+            date={getEffectiveToday(dayStartHour)}
+            isReady={isDayStartHourLoaded && birthday !== null && !isStreakLoading}
           />
         </View>
 

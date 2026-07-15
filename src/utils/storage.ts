@@ -63,6 +63,12 @@ const AI_CONSENT_KEY = '@pivot_log_ai_consent';
 const DIARY_VIEW_MODE_KEY = '@pivot_log_diary_view_mode';
 const SKIPPED_UPDATE_VERSION_KEY = '@pivot_log_skipped_update_version';
 const REVIEW_PROMPT_HISTORY_KEY = '@pivot_log_review_prompt_history';
+const PERSPECTIVE_HISTORY_KEY = '@pivot_log_perspective_history';
+
+export interface PerspectiveHistoryEntry {
+  date: string;
+  messageId: string;
+}
 
 /**
  * Firebaseにログイン中かどうかを確認
@@ -79,6 +85,10 @@ const getCacheKey = (suffix: string): string => {
   const user = getCurrentUser();
   return `@pivot_log_cache_${user!.uid}_${suffix}`;
 };
+
+const getPerspectiveHistoryKey = (): string => (
+  isLoggedIn() ? getCacheKey('perspective_history') : PERSPECTIVE_HISTORY_KEY
+);
 
 /**
  * オンボーディングが完了しているかチェック
@@ -557,7 +567,7 @@ export const deleteAllUserData = async (): Promise<void> => {
   try {
     if (isLoggedIn()) {
       // UID付きキャッシュキーを削除
-      const cacheKeys = ['settings', 'display', 'diaries', 'ai_consent', 'onboarding'].map(getCacheKey);
+      const cacheKeys = ['settings', 'display', 'diaries', 'ai_consent', 'onboarding', 'perspective_history'].map(getCacheKey);
       await AsyncStorage.multiRemove(cacheKeys);
 
       // 同期キューを削除
@@ -567,7 +577,14 @@ export const deleteAllUserData = async (): Promise<void> => {
       await deleteAllUserDataFromFirestore();
     }
     // ローカルストレージもクリア
-    await AsyncStorage.multiRemove([STORAGE_KEY, DIARY_KEY, HOME_DISPLAY_KEY, MIGRATION_KEY, ONBOARDING_KEY]);
+    await AsyncStorage.multiRemove([
+      STORAGE_KEY,
+      DIARY_KEY,
+      HOME_DISPLAY_KEY,
+      MIGRATION_KEY,
+      ONBOARDING_KEY,
+      PERSPECTIVE_HISTORY_KEY,
+    ]);
     console.log('すべてのユーザーデータを削除しました');
   } catch (error) {
     console.error('ユーザーデータの削除に失敗しました:', error);
@@ -727,6 +744,61 @@ export const saveSkippedUpdateVersion = async (version: string): Promise<void> =
   } catch (error) {
     console.error('スキップ済みバージョンの保存に失敗しました:', error);
     throw error;
+  }
+};
+
+// =============== 「今日の視点」の表示履歴 ===============
+
+const isPerspectiveHistoryEntry = (value: unknown): value is PerspectiveHistoryEntry => {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as Partial<PerspectiveHistoryEntry>;
+  return typeof entry.date === 'string'
+    && /^\d{4}-\d{2}-\d{2}$/.test(entry.date)
+    && typeof entry.messageId === 'string'
+    && entry.messageId.length > 0;
+};
+
+/**
+ * 端末に保存した「今日の視点」の表示履歴を読み込む。
+ * 破損した要素は無視し、同じ日付は最後の記録を採用する。
+ */
+export const loadPerspectiveHistory = async (): Promise<PerspectiveHistoryEntry[]> => {
+  try {
+    const raw = await AsyncStorage.getItem(getPerspectiveHistoryKey());
+    if (!raw) return [];
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    const entriesByDate = new Map<string, PerspectiveHistoryEntry>();
+    parsed.filter(isPerspectiveHistoryEntry).forEach(entry => {
+      entriesByDate.set(entry.date, entry);
+    });
+    return Array.from(entriesByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  } catch (error) {
+    console.error('今日の視点の表示履歴の読み込みに失敗しました:', error);
+    return [];
+  }
+};
+
+/**
+ * 「今日の視点」の表示履歴を日付単位で追加・更新する。
+ * 週内重複の判定に十分な直近14件だけを保持する。
+ */
+export const savePerspectiveHistoryEntry = async (
+  entry: PerspectiveHistoryEntry,
+): Promise<void> => {
+  try {
+    const history = await loadPerspectiveHistory();
+    const next = [
+      ...history.filter(item => item.date !== entry.date),
+      entry,
+    ]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-14);
+    await AsyncStorage.setItem(getPerspectiveHistoryKey(), JSON.stringify(next));
+  } catch (error) {
+    console.error('今日の視点の表示履歴の保存に失敗しました:', error);
   }
 };
 

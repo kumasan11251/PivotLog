@@ -29,14 +29,6 @@ const CATEGORY_WEIGHTS: Record<string, number> = {
 /**
  * 日付ベースでシード値を生成（同じ日は同じ値）
  */
-const getDailySeed = (): number => {
-  const today = new Date();
-  return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-};
-
-/**
- * 任意の日付からシード値を生成
- */
 const getSeedForDate = (date: Date): number => {
   return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
 };
@@ -200,11 +192,11 @@ const selectCategory = (
  * 前日のカテゴリを計算（決定論的に同じ計算を再現）
  */
 const getPreviousDayCategory = (
-  currentMonth: number,
+  date: Date,
   birthdayMonth?: number,
   context?: MessageContext
 ): string | undefined => {
-  const yesterday = new Date();
+  const yesterday = new Date(date);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdaySeed = getSeedForDate(yesterday);
   const yesterdayMonth = yesterday.getMonth() + 1;
@@ -251,11 +243,18 @@ const getPreviousDayCategory = (
  */
 export const getTodayPerspectiveMessage = (
   birthdayMonth?: number,
-  context?: MessageContext
+  context?: MessageContext,
+  options?: {
+    /** 選出基準日。未指定時は端末上の今日 */
+    date?: Date;
+    /** 直近に表示済みで、可能なら選出から外すメッセージID */
+    excludedMessageIds?: Iterable<string>;
+  }
 ): PerspectiveMessage => {
-  const today = new Date();
+  const today = options?.date ?? new Date();
   const currentMonth = today.getMonth() + 1;
-  const seed = getDailySeed();
+  const seed = getSeedForDate(today);
+  const excludedMessageIds = new Set(options?.excludedMessageIds ?? []);
 
   // 曜日をcontextに自動設定（未指定の場合）
   const effectiveContext: MessageContext | undefined = context ? {
@@ -269,27 +268,45 @@ export const getTodayPerspectiveMessage = (
 
   // 表示可能なメッセージがない場合のフォールバック
   if (availableCategories.length === 0) {
-    const index = Math.floor(seededRandom(seed) * PERSPECTIVE_MESSAGES.length);
-    return PERSPECTIVE_MESSAGES[index];
+    const unshownMessages = PERSPECTIVE_MESSAGES.filter(
+      message => !excludedMessageIds.has(message.id)
+    );
+    const fallbackMessages = unshownMessages.length > 0 ? unshownMessages : PERSPECTIVE_MESSAGES;
+    const index = Math.floor(seededRandom(seed) * fallbackMessages.length);
+    return fallbackMessages[index];
   }
 
   // 前日のカテゴリを計算
-  const previousCategory = getPreviousDayCategory(currentMonth, birthdayMonth, effectiveContext);
+  const previousCategory = getPreviousDayCategory(today, birthdayMonth, effectiveContext);
 
   // カテゴリを選択
   const selectedCategory = selectCategory(availableCategories, seed, previousCategory);
 
   // カテゴリ内でメッセージを選択
   const messagesInCategory = categoryMap.get(selectedCategory) || [];
-  if (messagesInCategory.length === 0) {
-    // フォールバック: 全カテゴリから選択
-    const allMessages = Array.from(categoryMap.values()).flat();
-    const index = Math.floor(seededRandomN(seed, 2) * allMessages.length);
-    return allMessages[index];
+  const unshownMessagesInCategory = messagesInCategory.filter(
+    message => !excludedMessageIds.has(message.id)
+  );
+
+  if (unshownMessagesInCategory.length > 0) {
+    const index = Math.floor(seededRandomN(seed, 2) * unshownMessagesInCategory.length);
+    return unshownMessagesInCategory[index];
   }
 
-  const index = Math.floor(seededRandomN(seed, 2) * messagesInCategory.length);
-  return messagesInCategory[index];
+  // 選ばれたカテゴリを使い切っていた場合も、別カテゴリに未表示候補があれば重複回避を優先する
+  const allMessages = Array.from(categoryMap.values()).flat();
+  const allUnshownMessages = allMessages.filter(
+    message => !excludedMessageIds.has(message.id)
+  );
+  if (allUnshownMessages.length > 0) {
+    const index = Math.floor(seededRandomN(seed, 2) * allUnshownMessages.length);
+    return allUnshownMessages[index];
+  }
+
+  // 候補をすべて表示済みの場合のみ、重複を許容して元のカテゴリから選ぶ
+  const fallbackMessages = messagesInCategory.length > 0 ? messagesInCategory : allMessages;
+  const index = Math.floor(seededRandomN(seed, 2) * fallbackMessages.length);
+  return fallbackMessages[index];
 };
 
 /**

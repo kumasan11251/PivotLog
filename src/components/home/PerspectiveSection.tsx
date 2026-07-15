@@ -1,9 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getColors, fonts, spacing, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getTodayPerspectiveMessage, formatPerspectiveMessage } from '../../utils/perspectiveHelpers';
+import { PERSPECTIVE_MESSAGES } from '../../constants/perspectives';
+import {
+  loadPerspectiveHistory,
+  savePerspectiveHistoryEntry,
+} from '../../utils/storage';
 
 interface PerspectiveSectionProps {
   /** 残り年数 */
@@ -22,6 +27,10 @@ interface PerspectiveSectionProps {
   streakDays?: number;
   /** 今日の日記記入済みか */
   hasTodayEntry?: boolean;
+  /** 1日の開始時刻を考慮した基準日（YYYY-MM-DD形式） */
+  date: string;
+  /** 誕生日・日記状態・基準日の読み込みが完了しているか */
+  isReady: boolean;
 }
 
 /**
@@ -37,6 +46,8 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
   birthday,
   streakDays,
   hasTodayEntry,
+  date,
+  isReady,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
@@ -46,11 +57,61 @@ const PerspectiveSection: React.FC<PerspectiveSectionProps> = ({
     ? parseInt(birthday.split('-')[1], 10)
     : undefined;
 
-  // 今日のメッセージを取得（誕生日月・ストリーク・日記記入状態を渡してフィルタリング）
-  const todayMessage = getTodayPerspectiveMessage(birthdayMonth, {
-    streakDays,
-    hasTodayEntry,
-  });
+  const perspectiveDate = useMemo(() => {
+    const [year, month, day] = date.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }, [date]);
+
+  // 履歴の読み込み前にも表示できる、日付ベースのフォールバック
+  const fallbackMessage = useMemo(() => getTodayPerspectiveMessage(
+    birthdayMonth,
+    { streakDays, hasTodayEntry },
+    { date: perspectiveDate },
+  ), [birthdayMonth, hasTodayEntry, perspectiveDate, streakDays]);
+  const [todayMessage, setTodayMessage] = useState(fallbackMessage);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const selectMessage = async () => {
+      if (!isReady) return;
+
+      const history = await loadPerspectiveHistory();
+      const todaysHistory = history.find(entry => entry.date === date);
+      const storedMessage = todaysHistory
+        ? PERSPECTIVE_MESSAGES.find(message => message.id === todaysHistory.messageId)
+        : undefined;
+
+      // 同じ日は日記記入状態などが変わっても、最初に表示した文言を維持する
+      if (storedMessage) {
+        if (!isCancelled) setTodayMessage(storedMessage);
+        return;
+      }
+
+      const sixDaysAgo = new Date(perspectiveDate);
+      sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+      const recentMessageIds = history
+        .filter(entry => {
+          const entryDate = new Date(`${entry.date}T00:00:00`);
+          return entryDate >= sixDaysAgo && entryDate < perspectiveDate;
+        })
+        .map(entry => entry.messageId);
+
+      const selectedMessage = getTodayPerspectiveMessage(
+        birthdayMonth,
+        { streakDays, hasTodayEntry },
+        { date: perspectiveDate, excludedMessageIds: recentMessageIds },
+      );
+
+      if (!isCancelled) setTodayMessage(selectedMessage);
+      await savePerspectiveHistoryEntry({ date, messageId: selectedMessage.id });
+    };
+
+    void selectMessage();
+    return () => {
+      isCancelled = true;
+    };
+  }, [birthdayMonth, date, hasTodayEntry, isReady, perspectiveDate, streakDays]);
   const formattedMessage = formatPerspectiveMessage(todayMessage, {
     remainingYears,
     remainingDays,
