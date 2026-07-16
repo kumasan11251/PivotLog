@@ -10,6 +10,7 @@ import ScreenHeader from './common/ScreenHeader';
 import CountdownSection from './home/CountdownSection';
 import ProgressSection from './home/ProgressSection';
 import PerspectiveSection from './home/PerspectiveSection';
+import SeasonalBackdrop from './home/SeasonalBackdrop';
 import { useTimeCalculation } from '../hooks/useTimeCalculation';
 import { useProgressAnimation } from '../hooks/useProgressAnimation';
 import { useDisplaySettings } from '../hooks/useDisplaySettings';
@@ -172,6 +173,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
 
   // 今日の日付とストリーク情報
   const todayDate = getTodayDateString();
+  const effectiveToday = getEffectiveToday(dayStartHour);
 
   // ストリーク情報（連続記録があればストリーク、なければ総記録日数を表示）
   const streakInfo = streakDays > 0
@@ -182,6 +184,8 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <SeasonalBackdrop date={effectiveToday} isDark={isDark} />
+
       <ScreenHeader
         title="ホーム"
         rightAction={{
@@ -235,7 +239,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
             birthday={birthday ?? undefined}
             streakDays={streakDays}
             hasTodayEntry={hasTodayEntry}
-            date={getEffectiveToday(dayStartHour)}
+            date={effectiveToday}
             isReady={isDayStartHourLoaded && birthday !== null && !isStreakLoading}
           />
         </View>
