@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View, ActivityIndicator, Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer, getStateFromPath as defaultGetStateFromPath, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, getStateFromPath as defaultGetStateFromPath, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
@@ -210,19 +210,25 @@ function MainNavigator() {
   const initialRouteName = isSetupComplete ? 'Home' : showOnboarding ? 'Onboarding' : 'InitialSetup';
 
   return (
-    <View style={styles.navigatorWrapper}>
+    <View style={[styles.navigatorWrapper, { backgroundColor: themeColors.background }]}>
       <Stack.Navigator
         initialRouteName={initialRouteName}
         screenOptions={{
           headerShown: false,
           gestureEnabled: true,
           animation: 'slide_from_right',
+          // 遷移アニメーション中に下地の白が見えないよう、画面背景をテーマ色で塗る
+          contentStyle: { backgroundColor: themeColors.background },
         }}
       >
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="InitialSetup" component={InitialSetupScreen} />
         <Stack.Screen name="Home" component={MainTabScreen} />
-        <Stack.Screen name="DiaryEntry" component={DiaryEntryScreen} />
+        <Stack.Screen
+          name="DiaryEntry"
+          component={DiaryEntryScreen}
+          options={{ gestureEnabled: false }}
+        />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="EditBirthday" component={EditBirthdayScreen} />
         <Stack.Screen name="EditLifespan" component={EditLifespanScreen} />
@@ -286,6 +292,28 @@ function RootNavigator() {
 function ThemedStatusBar() {
   const { isDark } = useTheme();
   return <StatusBar style={isDark ? 'light' : 'dark'} />;
+}
+
+// NavigationContainerにテーマ背景色を適用するラッパー
+// theme未指定だとDefaultTheme（白背景）が下地になり、ダークモードの画面遷移時に白が見える
+function ThemedNavigationContainer({ children }: { children: React.ReactNode }) {
+  const { isDark } = useTheme();
+  const themeColors = getColors(isDark);
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      background: themeColors.background,
+      card: themeColors.background,
+    },
+  };
+
+  return (
+    <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
+      {children}
+    </NavigationContainer>
+  );
 }
 
 // アップデート促進モーダルのホスト
@@ -375,9 +403,9 @@ export default function App() {
           <AIReflectionProvider>
             <WeeklyInsightProvider>
               <MonthlyInsightProvider>
-                <NavigationContainer ref={navigationRef} linking={linking}>
+                <ThemedNavigationContainer>
                   <RootNavigator />
-                </NavigationContainer>
+                </ThemedNavigationContainer>
               </MonthlyInsightProvider>
             </WeeklyInsightProvider>
           </AIReflectionProvider>

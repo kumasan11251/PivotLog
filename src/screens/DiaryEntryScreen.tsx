@@ -1,402 +1,455 @@
-import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Platform,
-  KeyboardAvoidingView,
+  AccessibilityInfo,
+  Alert,
   Keyboard,
-  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { DiaryEntryScreenNavigationProp } from '../types/navigation';
-import { getColors, spacing } from '../theme';
+import { useNavigation, usePreventRemove, useRoute, type RouteProp } from '@react-navigation/native';
+import PagerView from 'react-native-pager-view';
+import * as Haptics from 'expo-haptics';
+import type { DiaryEntryScreenNavigationProp, RootStackParamList } from '../types/navigation';
+import { getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { useSubscription } from '../contexts/SubscriptionContext';
 import ScreenHeader from '../components/common/ScreenHeader';
+import DatePickerModal from '../components/diary/DatePickerModal';
+import DiaryEntryPage, { DiaryEntryPageHandle } from '../components/diary/DiaryEntryPage';
+import type { DiaryFormState } from '../hooks/useDiaryEntry';
 import {
-  EncouragementHeader,
-  ProgressIndicator,
-  DateNavigator,
-  DiaryInputField,
-  DatePickerModal,
-  DiaryInputFieldRef,
-  PreviousDayFocusHint,
-  AIReflectionCard,
-  AIReflectionButton,
-  AIReflectionLoading,
-} from '../components/diary';
-import AIConsentModal from '../components/common/AIConsentModal';
-import { useDiaryEntry, DiaryFieldKey } from '../hooks/useDiaryEntry';
-import { usePreviousDayFocus } from '../hooks/usePreviousDayFocus';
-import { useAIReflection, showLimitAlert } from '../hooks/useAIReflection';
-import { useAIReflectionLimit } from '../hooks/useAIReflectionLimit';
-import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
-import { DIARY_QUESTIONS } from '../constants/diary';
-import { hasValidAIConsent, recordAIConsent } from '../utils/storage';
+  addDaysToDateString,
+  formatDateToString,
+  isDateAfterToday,
+  parseLocalDateString,
+} from '../utils/dateUtils';
+
+type DiaryRoute = RouteProp<RootStackParamList, 'DiaryEntry'>;
+type TransitionState = 'idle' | 'dragging' | 'settling' | 'recentering';
 
 const DiaryEntryScreen: React.FC = () => {
   const navigation = useNavigation<DiaryEntryScreenNavigationProp>();
+  const route = useRoute<DiaryRoute>();
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
-  const { isPremium } = useSubscription();
+  const initialDate = route.params?.initialDate;
+  const [centerDate, setCenterDate] = useState(() => {
+    if (initialDate && parseLocalDateString(initialDate) && !isDateAfterToday(initialDate)) return initialDate;
+    return formatDateToString(new Date());
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [isPaging, setIsPaging] = useState(false);
+  const [recenterBridgeDate, setRecenterBridgeDate] = useState<string | null>(null);
+  const [allowNextRemoval, setAllowNextRemoval] = useState(false);
+  const pagerRef = useRef<PagerView>(null);
+  const pageRefs = useRef(new Map<number, DiaryEntryPageHandle>());
+  const [formCache] = useState(() => new Map<string, DiaryFormState>());
+  const [previousFocusCache] = useState(() => new Map<string, string | null>());
+  const pagesRef = useRef<string[]>([]);
+  const transitionRef = useRef<TransitionState>('idle');
+  const dragSaveRef = useRef<Promise<boolean> | null>(null);
+  const pagerIdleRef = useRef(true);
+  const selectedPageIndexRef = useRef(1);
+  const pendingRecenterDateRef = useRef<string | null>(null);
+  const shouldFinishRecenterAfterRenderRef = useRef(false);
+  const recenterFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardDismissFrameRef = useRef<number | null>(null);
+  const errorAlertVisibleRef = useRef(false);
+  const leavingRef = useRef(false);
+  const pendingRemovalActionRef = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null);
+  const edgeSwipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const edgeSwipeHandledRef = useRef(false);
 
-  const handleNavigateToPaywall = useCallback(() => {
-    navigation.navigate('Paywall', { source: 'limit_reached' });
-  }, [navigation]);
-
-  const {
-    formState,
-    setFieldValue,
-    dateString,
-    changeDate,
-    selectedDate,
-    isToday,
-    focusedField,
-    setFocusedField,
-    showDatePicker,
-    setShowDatePicker,
-    progress,
-    encouragement,
-    placeholders,
-    handleBack,
-    handleDateChange,
-  } = useDiaryEntry();
-
-  // 前日の「明日、大切にしたいこと」（今日の振り返りの入り口としてそっと表示）
-  const previousFocus = usePreviousDayFocus(dateString);
-
-  // AI同意モーダル
-  const [showConsentModal, setShowConsentModal] = useState(false);
-
-  // Refs
-  const scrollViewRef = useRef<ScrollView>(null);
-  const scrollContentRef = useRef<View>(null);
-
-  // AIリフレクション機能
-  const {
-    reflectionState: aiReflectionState,
-    reflection: aiReflection,
-    fadeAnim: reflectionFadeAnim,
-    getReflection,
-    loadSavedReflection,
-    resetReflection: _resetReflection, // 将来使用予定
-    errorMessage: aiErrorMessage,
-    reflectionError: aiReflectionError,
-  } = useAIReflection({ dateString, formState, onUpgrade: handleNavigateToPaywall });
-
-  // ローカルにリフレクションがあるかどうか
-  const hasLocalReflection = aiReflectionState === 'loaded' && aiReflection !== null;
-
-  // AIリフレクション利用制限
-  const {
-    remainingThisMonth,
-    canRegenerate,
-    canGenerate,
-    limitReason,
-    isLoading: isLimitLoading,
-    refreshUsage,
-  } = useAIReflectionLimit({ diaryDate: dateString, hasLocalReflection });
-
-  // 同意後にリフレクションを取得する内部関数
-  const executeGetReflection = useCallback(async () => {
-    await getReflection();
-    refreshUsage();
-  }, [getReflection, refreshUsage]);
-
-  // AIリフレクション取得ボタンのハンドラ
-  // キーボードを閉じてからリフレクションを取得する
-  const handleGetAIReflection = useCallback(async () => {
-    // キーボードを閉じる
-    Keyboard.dismiss();
-
-    // 同意チェック
-    const hasConsent = await hasValidAIConsent();
-    if (!hasConsent) {
-      setShowConsentModal(true);
-      return;
-    }
-
-    // 無料ユーザーの再生成はPaywall画面に直接遷移
-    if (!isPremium && hasLocalReflection) {
-      handleNavigateToPaywall();
-      return;
-    }
-
-    // 事前に利用制限をチェック（サーバーリクエスト前にアラート表示）
-    if (!canGenerate && limitReason) {
-      showLimitAlert(limitReason, {
-        monthlyLimit: !isPremium ? DEFAULT_AI_USAGE_LIMITS.freeMonthlyReflectionLimit : undefined,
-        onUpgrade: handleNavigateToPaywall,
-      });
-      return;
-    }
-
-    await executeGetReflection();
-  }, [executeGetReflection, canGenerate, limitReason, isPremium, hasLocalReflection, handleNavigateToPaywall]);
-
-  // 同意後の処理
-  const handleConsent = useCallback(async () => {
-    await recordAIConsent();
-    setShowConsentModal(false);
-    // 同意後にリフレクションを取得
-    await executeGetReflection();
-  }, [executeGetReflection]);
-
-  // 日記が入力されているかどうか
-  const hasDiaryContent = formState.goodTime.trim() || formState.wastedTime.trim() || formState.tomorrow.trim();
-
-  // 日付が変わったら保存済みリフレクションを読み込む
+  const basePages = useMemo(() => {
+    const result = [addDaysToDateString(centerDate, -1), centerDate];
+    if (!isDateAfterToday(addDaysToDateString(centerDate, 1))) result.push(addDaysToDateString(centerDate, 1));
+    return result;
+  }, [centerDate]);
+  const pages = useMemo(() => {
+    if (!recenterBridgeDate) return basePages;
+    const bridgedPages = [...basePages];
+    bridgedPages[1] = recenterBridgeDate;
+    return bridgedPages;
+  }, [basePages, recenterBridgeDate]);
   useEffect(() => {
-    loadSavedReflection();
-  }, [dateString, loadSavedReflection]);
+    pagesRef.current = pages;
+  }, [pages]);
 
-  // Refs
-  const goodTimeRef = useRef<DiaryInputFieldRef>(null);
-  const wastedTimeRef = useRef<DiaryInputFieldRef>(null);
-  const tomorrowRef = useRef<DiaryInputFieldRef>(null);
-  const goodTimeContainerRef = useRef<View>(null);
-  const wastedTimeContainerRef = useRef<View>(null);
-  const tomorrowContainerRef = useRef<View>(null);
+  const cacheFormState = useCallback((dateString: string, formState: DiaryFormState) => {
+    formCache.set(dateString, formState);
+    const nextDate = addDaysToDateString(dateString, 1);
+    const tomorrow = formState.tomorrow.trim();
+    previousFocusCache.set(nextDate, tomorrow || null);
+  }, [formCache, previousFocusCache]);
 
-  // キーボードの高さを追跡
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const cachePreviousFocus = useCallback((dateString: string, previousFocus: string | null) => {
+    if (!previousFocusCache.has(dateString)) {
+      previousFocusCache.set(dateString, previousFocus);
+    }
+  }, [previousFocusCache]);
 
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const keyboardWillShow = Keyboard.addListener(showEvent, (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
-    });
-    const keyboardWillHide = Keyboard.addListener(hideEvent, () => {
-      setKeyboardHeight(0);
-    });
-
-    return () => {
-      keyboardWillShow.remove();
-      keyboardWillHide.remove();
-    };
+  const showSaveError = useCallback(() => {
+    if (errorAlertVisibleRef.current) return;
+    errorAlertVisibleRef.current = true;
+    Alert.alert(
+      '保存できませんでした',
+      '入力内容を保存できなかったため、日付を切り替えませんでした。もう一度お試しください。',
+      [{ text: 'OK', onPress: () => { errorAlertVisibleRef.current = false; } }]
+    );
   }, []);
 
-  // フィールドにフォーカスした時のスクロール処理
-  const scrollToField = useCallback(
-    (
-      fieldRef: React.RefObject<View | null>,
-      inputRef: React.RefObject<DiaryInputFieldRef | null>
-    ) => {
-      setTimeout(
-        () => {
-          if (inputRef.current) {
-            inputRef.current.measureInWindow((_x, y, _width, height) => {
-              const screenHeight = Dimensions.get('window').height;
-              const visibleHeight = screenHeight - keyboardHeight - 100;
-              const inputBottom = y + height;
+  const flushCenter = useCallback(() => (
+    pageRefs.current.get(1)?.flushPendingSave() ?? Promise.resolve(true)
+  ), []);
 
-              if (inputBottom > visibleHeight || fieldRef.current) {
-                if (fieldRef.current && scrollContentRef.current) {
-                  fieldRef.current.measureLayout(
-                    scrollContentRef.current as unknown as React.ElementRef<typeof View>,
-                    (_fx, fy) => {
-                      const scrollOffset = Math.max(0, fy - spacing.lg);
-                      scrollViewRef.current?.scrollTo({ y: scrollOffset, animated: true });
-                    },
-                    () => {
-                      console.log('measureLayout failed');
-                    }
-                  );
-                }
-              }
-            });
-          }
-        },
-        Platform.OS === 'ios' ? 50 : 150
-      );
-    },
-    [keyboardHeight]
-  );
+  const dismissDiaryKeyboard = useCallback(() => {
+    if (keyboardDismissFrameRef.current !== null) {
+      cancelAnimationFrame(keyboardDismissFrameRef.current);
+    }
+    const dismiss = () => {
+      pageRefs.current.forEach(page => page.dismissKeyboard());
+      Keyboard.dismiss();
+    };
+    dismiss();
+    // TextInput のフォーカス確定がPagerのdraggingイベントより後になる場合も閉じる。
+    keyboardDismissFrameRef.current = requestAnimationFrame(() => {
+      keyboardDismissFrameRef.current = null;
+      dismiss();
+    });
+  }, []);
 
-  // フィールドのフォーカスハンドラーを生成
-  const createFocusHandler = useCallback(
-    (
-      field: DiaryFieldKey,
-      containerRef: React.RefObject<View | null>,
-      inputRef: React.RefObject<DiaryInputFieldRef | null>
-    ) => {
-      return () => {
-        setFocusedField(field);
-        scrollToField(containerRef, inputRef);
-      };
-    },
-    [setFocusedField, scrollToField]
-  );
+  const unlock = useCallback(() => {
+    if (recenterFallbackTimerRef.current) {
+      clearTimeout(recenterFallbackTimerRef.current);
+      recenterFallbackTimerRef.current = null;
+    }
+    transitionRef.current = 'idle';
+    dragSaveRef.current = null;
+    pagerIdleRef.current = true;
+    selectedPageIndexRef.current = 1;
+    pendingRecenterDateRef.current = null;
+    shouldFinishRecenterAfterRenderRef.current = false;
+    setRecenterBridgeDate(null);
+    setScrollEnabled(true);
+    setIsPaging(false);
+  }, []);
 
-  // 入力フィールドの設定
-  const fieldConfigs = [
-    {
-      key: 'goodTime' as DiaryFieldKey,
-      label: DIARY_QUESTIONS.goodTime.label,
-      containerRef: goodTimeContainerRef,
-      inputRef: goodTimeRef,
-    },
-    {
-      key: 'wastedTime' as DiaryFieldKey,
-      label: DIARY_QUESTIONS.wastedTime.label,
-      containerRef: wastedTimeContainerRef,
-      inputRef: wastedTimeRef,
-    },
-    {
-      key: 'tomorrow' as DiaryFieldKey,
-      label: DIARY_QUESTIONS.tomorrow.label,
-      containerRef: tomorrowContainerRef,
-      inputRef: tomorrowRef,
-    },
-  ];
+  const finishPagingIfReady = useCallback(() => {
+    // 短いスワイプでは onPageSelected 後もsettlingが続くため、idleまでは入力を再有効化しない。
+    const state = transitionRef.current;
+    if (
+      !pagerIdleRef.current ||
+      selectedPageIndexRef.current !== 1 ||
+      (state !== 'dragging' && state !== 'settling' && state !== 'recentering')
+    ) return;
+
+    void (dragSaveRef.current ?? Promise.resolve(true)).then(() => {
+      const latestState = transitionRef.current;
+      if (
+        !pagerIdleRef.current ||
+        selectedPageIndexRef.current !== 1 ||
+        (latestState !== 'dragging' && latestState !== 'settling' && latestState !== 'recentering')
+      ) return;
+      dismissDiaryKeyboard();
+      unlock();
+    });
+  }, [dismissDiaryKeyboard, unlock]);
+
+  const recenter = useCallback((nextDate: string, announce: boolean) => {
+    transitionRef.current = 'recentering';
+    pendingRecenterDateRef.current = nextDate;
+    setRecenterBridgeDate(nextDate);
+    if (announce) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      AccessibilityInfo.announceForAccessibility(nextDate);
+    }
+  }, []);
+
+  const completeRecenter = useCallback(() => {
+    if (transitionRef.current !== 'recentering') return;
+    const nextDate = pendingRecenterDateRef.current;
+    if (!nextDate) return;
+
+    if (recenterFallbackTimerRef.current) {
+      clearTimeout(recenterFallbackTimerRef.current);
+      recenterFallbackTimerRef.current = null;
+    }
+    pendingRecenterDateRef.current = null;
+    shouldFinishRecenterAfterRenderRef.current = true;
+    pagerIdleRef.current = true;
+    selectedPageIndexRef.current = 1;
+    setCenterDate(nextDate);
+    setRecenterBridgeDate(null);
+    // 再描画後のfinishPagingIfReadyが何らかの理由で走らなくても、入力ロックを必ず解除する保険。
+    recenterFallbackTimerRef.current = setTimeout(() => {
+      recenterFallbackTimerRef.current = null;
+      if (transitionRef.current === 'recentering') {
+        dismissDiaryKeyboard();
+        unlock();
+      }
+    }, 500);
+  }, [dismissDiaryKeyboard, unlock]);
+
+  useEffect(() => {
+    if (!recenterBridgeDate || transitionRef.current !== 'recentering') return;
+
+    const frameId = requestAnimationFrame(() => {
+      if (transitionRef.current !== 'recentering') return;
+      pagerRef.current?.setPageWithoutAnimation(1);
+      // すでに中央indexの場合など、onPageSelectedが発火しないケースも完了させる。
+      recenterFallbackTimerRef.current = setTimeout(() => {
+        recenterFallbackTimerRef.current = null;
+        completeRecenter();
+      }, 250);
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [completeRecenter, recenterBridgeDate]);
+
+  useEffect(() => {
+    if (!shouldFinishRecenterAfterRenderRef.current) return;
+    shouldFinishRecenterAfterRenderRef.current = false;
+
+    const frameId = requestAnimationFrame(() => {
+      if (transitionRef.current !== 'recentering') return;
+      pagerIdleRef.current = true;
+      selectedPageIndexRef.current = 1;
+      finishPagingIfReady();
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [centerDate, finishPagingIfReady, recenterBridgeDate]);
+
+  useEffect(() => () => {
+    if (recenterFallbackTimerRef.current) clearTimeout(recenterFallbackTimerRef.current);
+    if (keyboardDismissFrameRef.current !== null) cancelAnimationFrame(keyboardDismissFrameRef.current);
+  }, []);
+
+  const handlePageSelected = useCallback(async (event: { nativeEvent: { position: number } }) => {
+    const index = event.nativeEvent.position;
+    selectedPageIndexRef.current = index;
+    dismissDiaryKeyboard();
+    if (transitionRef.current === 'recentering') {
+      if (index === 1) completeRecenter();
+      return;
+    }
+    if (index === 1) {
+      if (transitionRef.current === 'dragging' || transitionRef.current === 'settling') {
+        await dragSaveRef.current;
+        finishPagingIfReady();
+      }
+      return;
+    }
+    if (transitionRef.current === 'idle') return;
+
+    transitionRef.current = 'settling';
+    setScrollEnabled(false);
+    const eventPages = pagesRef.current;
+    const targetDate = eventPages[index];
+    const saved = await (dragSaveRef.current ?? flushCenter());
+    if (!saved || !targetDate || isDateAfterToday(targetDate)) {
+      transitionRef.current = 'recentering';
+      pagerRef.current?.setPage(1);
+      if (!saved) showSaveError();
+      recenterFallbackTimerRef.current = setTimeout(() => {
+        recenterFallbackTimerRef.current = null;
+        if (transitionRef.current === 'recentering') {
+          dismissDiaryKeyboard();
+          unlock();
+        }
+      }, 750);
+      return;
+    }
+    recenter(targetDate, true);
+  }, [completeRecenter, dismissDiaryKeyboard, finishPagingIfReady, flushCenter, recenter, showSaveError, unlock]);
+
+  const handlePageScrollStateChanged = useCallback((event: { nativeEvent: { pageScrollState: string } }) => {
+    const state = event.nativeEvent.pageScrollState;
+    if (state === 'dragging' && transitionRef.current === 'idle') {
+      transitionRef.current = 'dragging';
+      pagerIdleRef.current = false;
+      setIsPaging(true);
+      dismissDiaryKeyboard();
+      dragSaveRef.current = flushCenter();
+    } else if (state === 'settling' && transitionRef.current === 'dragging') {
+      transitionRef.current = 'settling';
+      pagerIdleRef.current = false;
+    } else if (state === 'idle') {
+      pagerIdleRef.current = true;
+      finishPagingIfReady();
+    }
+  }, [dismissDiaryKeyboard, finishPagingIfReady, flushCenter]);
+
+  const moveToIndex = useCallback(async (index: number) => {
+    if (transitionRef.current !== 'idle' || !pagesRef.current[index]) return;
+    dismissDiaryKeyboard();
+    transitionRef.current = 'settling';
+    pagerIdleRef.current = false;
+    setScrollEnabled(false);
+    setIsPaging(true);
+    dragSaveRef.current = flushCenter();
+    const saved = await dragSaveRef.current;
+    if (!saved) {
+      showSaveError();
+      unlock();
+      return;
+    }
+    pagerRef.current?.setPage(index);
+  }, [dismissDiaryKeyboard, flushCenter, showSaveError, unlock]);
+
+  const jumpToDate = useCallback(async (date: Date) => {
+    const nextDate = formatDateToString(date);
+    if (nextDate === centerDate || isDateAfterToday(nextDate) || transitionRef.current !== 'idle') return;
+    dismissDiaryKeyboard();
+    transitionRef.current = 'recentering';
+    setScrollEnabled(false);
+    setIsPaging(true);
+    if (!(await flushCenter())) {
+      showSaveError();
+      unlock();
+      return;
+    }
+    // Pagerは中央(index 1)に居るままなので、ブリッジやsetPageWithoutAnimationを介さず中央日付を直接差し替える。
+    // 同一ページへのsetPageはネイティブ側でイベントが一切発火せず、完了通知に依存するとロック解除されないため。
+    pendingRecenterDateRef.current = nextDate;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    AccessibilityInfo.announceForAccessibility(nextDate);
+    completeRecenter();
+  }, [centerDate, completeRecenter, dismissDiaryKeyboard, flushCenter, showSaveError, unlock]);
+
+  usePreventRemove(!allowNextRemoval, ({ data }) => {
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    pendingRemovalActionRef.current = data.action;
+    dismissDiaryKeyboard();
+    void flushCenter().then(saved => {
+      if (!saved) {
+        leavingRef.current = false;
+        pendingRemovalActionRef.current = null;
+        showSaveError();
+        return;
+      }
+      setAllowNextRemoval(true);
+    });
+  });
+
+  useEffect(() => {
+    if (!allowNextRemoval || !pendingRemovalActionRef.current) return;
+    const action = pendingRemovalActionRef.current;
+    pendingRemovalActionRef.current = null;
+    navigation.dispatch(action);
+  }, [allowNextRemoval, navigation]);
+
+  const handleBack = useCallback(async () => {
+    if (leavingRef.current) return;
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    leavingRef.current = true;
+    dismissDiaryKeyboard();
+    if (await flushCenter()) navigation.navigate('Home');
+    else {
+      leavingRef.current = false;
+      showSaveError();
+    }
+  }, [dismissDiaryKeyboard, flushCenter, navigation, showSaveError]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        <View style={styles.flex}>
-          <ScreenHeader
-            leftAction={{
-              type: 'backIcon',
-              onPress: handleBack,
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScreenHeader leftAction={{ type: 'backIcon', onPress: handleBack }} />
+        <View style={styles.pagerContainer}>
+          <PagerView
+            ref={pagerRef}
+            style={styles.flex}
+            initialPage={1}
+            scrollEnabled={scrollEnabled}
+            keyboardDismissMode="on-drag"
+            offscreenPageLimit={1}
+            overdrag={false}
+            overScrollMode="never"
+            layoutDirection="ltr"
+            onPageSelected={handlePageSelected}
+            onPageScrollStateChanged={handlePageScrollStateChanged}
+          >
+            {pages.map((dateString, index) => (
+              <View
+                // PagerViewの直接の子は位置を固定し、中央へ同じ日付を複製してから再配置する。
+                key={`pager-slot-${index}`}
+                style={styles.page}
+                collapsable={false}
+              >
+                <DiaryEntryPage
+                  key={dateString}
+                  ref={page => {
+                    if (page) pageRefs.current.set(index, page);
+                    else pageRefs.current.delete(index);
+                  }}
+                  dateString={dateString}
+                  initialFormState={formCache.get(dateString)}
+                  onFormStateChange={cacheFormState}
+                  initialPreviousFocus={previousFocusCache.get(dateString)}
+                  onPreviousFocusChange={cachePreviousFocus}
+                  isActive={index === 1}
+                  isPaging={isPaging}
+                  canNavigateNext={!isDateAfterToday(addDaysToDateString(dateString, 1))}
+                  onPrevious={() => moveToIndex(0)}
+                  onNext={() => moveToIndex(2)}
+                  onOpenDatePicker={() => transitionRef.current === 'idle' && setShowDatePicker(true)}
+                  onNavigateToPaywall={() => navigation.navigate('Paywall', { source: 'limit_reached' })}
+                />
+              </View>
+            ))}
+          </PagerView>
+          <View
+            // 画面左端の帯から始まった右方向スワイプはPagerの日付移動ではなく「戻る」として扱う。
+            style={styles.edgeBackArea}
+            onTouchStart={event => {
+              edgeSwipeStartRef.current = { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY };
+              edgeSwipeHandledRef.current = false;
+            }}
+            onTouchMove={event => {
+              const start = edgeSwipeStartRef.current;
+              if (!start || edgeSwipeHandledRef.current) return;
+              const dx = event.nativeEvent.pageX - start.x;
+              const dy = event.nativeEvent.pageY - start.y;
+              if (Math.abs(dy) > 24 && Math.abs(dy) > dx) {
+                // 縦方向が優勢なジェスチャーは誤発火防止のため以降無視する
+                edgeSwipeHandledRef.current = true;
+                return;
+              }
+              if (dx > 16 && dx > Math.abs(dy) * 1.5) {
+                edgeSwipeHandledRef.current = true;
+                if (transitionRef.current === 'idle') void handleBack();
+              }
+            }}
+            onTouchEnd={() => {
+              edgeSwipeStartRef.current = null;
             }}
           />
-
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View ref={scrollContentRef}>
-              <EncouragementHeader
-                emoji={encouragement.emoji}
-                title={encouragement.title}
-                subtitle={encouragement.subtitle}
-              />
-
-              <ProgressIndicator progress={progress} />
-
-              <DateNavigator
-                dateString={dateString}
-                isToday={isToday}
-                onPrevious={() => changeDate(-1)}
-                onNext={() => changeDate(1)}
-                onOpenPicker={() => setShowDatePicker(true)}
-              />
-
-              <PreviousDayFocusHint text={previousFocus} />
-
-              {fieldConfigs.map((config) => (
-                <View key={config.key} ref={config.containerRef}>
-                  <DiaryInputField
-                    ref={config.inputRef}
-                    label={config.label}
-                    value={formState[config.key]}
-                    placeholder={placeholders[config.key]}
-                    onChangeText={(text) => setFieldValue(config.key, text)}
-                    onFocus={createFocusHandler(
-                      config.key,
-                      config.containerRef,
-                      config.inputRef
-                    )}
-                    onBlur={() => setFocusedField(null)}
-                    isFocused={focusedField === config.key}
-                    showCheckmark={focusedField !== config.key && !!formState[config.key].trim()}
-                  />
-                </View>
-              ))}
-
-              {/* AIリフレクションセクション */}
-              <View>
-                {aiReflectionState === 'loading' && (
-                  <AIReflectionLoading />
-                )}
-
-                {aiReflectionState === 'loaded' && aiReflection && (
-                  <AIReflectionCard
-                    reflection={aiReflection}
-                    fadeAnim={reflectionFadeAnim}
-                    onRegenerate={handleGetAIReflection}
-                    canRegenerate={canRegenerate}
-                    isRegenerating={false}
-                    isPremium={isPremium}
-                  />
-                )}
-
-                {/* エラー時: エラーメッセージ + 再生成ボタン */}
-                {aiReflectionState === 'error' && (
-                  <AIReflectionButton
-                    onPress={handleGetAIReflection}
-                    disabled={!hasDiaryContent}
-                    remainingThisMonth={remainingThisMonth}
-                    isPremium={isPremium}
-                    isLimitReached={!canGenerate}
-                    isFeatureLocked={!isPremium && !isLimitLoading && !canGenerate}
-                    errorMessage={aiErrorMessage}
-                    retryable={aiReflectionError?.retryable ?? true}
-                  />
-                )}
-
-                {/* 初回生成時のみボタンを表示（再生成はカード内のアイコンから） */}
-                {(aiReflectionState === 'idle' || aiReflectionState === 'limit_reached') && (
-                  <AIReflectionButton
-                    onPress={handleGetAIReflection}
-                    disabled={!hasDiaryContent}
-                    remainingThisMonth={remainingThisMonth}
-                    isPremium={isPremium}
-                    isLimitReached={!canGenerate}
-                    isFeatureLocked={!isPremium && !isLimitLoading && !canGenerate}
-                  />
-                )}
-              </View>
-
-              {/* 下部の余白 */}
-              <View style={styles.bottomSpacer} />
-            </View>
-          </ScrollView>
-
-          <DatePickerModal
-            visible={showDatePicker}
-            selectedDate={selectedDate}
-            onDateChange={handleDateChange}
-            onClose={() => setShowDatePicker(false)}
-          />
-
-          <AIConsentModal
-            visible={showConsentModal}
-            onConsent={handleConsent}
-            onCancel={() => setShowConsentModal(false)}
-          />
         </View>
+        <DatePickerModal
+          visible={showDatePicker}
+          selectedDate={parseLocalDateString(centerDate) ?? new Date()}
+          onDateChange={(_event, date) => { if (date) void jumpToDate(date); }}
+          onClose={() => setShowDatePicker(false)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  flex: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    flexGrow: 1,
-  },
-  bottomSpacer: {
-    height: spacing.xxl * 2,
-  },
+  container: { flex: 1 },
+  flex: { flex: 1 },
+  pagerContainer: { flex: 1 },
+  page: { width: '100%', height: '100%' },
+  // iOSの標準エッジスワイプ領域（約20pt）に合わせる。screen padding(24)より狭くしてコンテンツのタップを塞がない。
+  edgeBackArea: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 20 },
 });
 
 export default DiaryEntryScreen;

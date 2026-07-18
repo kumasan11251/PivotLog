@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getRecentDiaryEntries } from '../utils/storage';
 
 /**
@@ -12,14 +12,24 @@ import { getRecentDiaryEntries } from '../utils/storage';
  * @param dateString 選択中の日付（YYYY-MM-DD）
  * @returns 前日の tomorrow（非空文字列）または null
  */
-export const usePreviousDayFocus = (dateString: string): string | null => {
-  const [previousFocus, setPreviousFocus] = useState<string | null>(null);
+export const usePreviousDayFocus = (
+  dateString: string,
+  initialPreviousFocus?: string | null,
+  onPreviousFocusChange?: (previousFocus: string | null) => void
+): string | null => {
+  const [previousFocus, setPreviousFocus] = useState<string | null>(initialPreviousFocus ?? null);
+  const initializedFromCacheRef = useRef(initialPreviousFocus !== undefined);
+  const onPreviousFocusChangeRef = useRef(onPreviousFocusChange);
 
   useEffect(() => {
-    let cancelled = false;
+    onPreviousFocusChangeRef.current = onPreviousFocusChange;
+  }, [onPreviousFocusChange]);
 
-    // 新しい日付の取得完了まで、前の日付のヒントを残さない
-    setPreviousFocus(null);
+  useEffect(() => {
+    // Pagerの中央ページ再生成時は、読み込み済みの値をそのまま引き継ぐ。
+    if (initializedFromCacheRef.current) return;
+
+    let cancelled = false;
 
     (async () => {
       try {
@@ -27,11 +37,14 @@ export const usePreviousDayFocus = (dateString: string): string | null => {
         if (cancelled) return;
 
         const tomorrow = entries[0]?.tomorrow?.trim();
-        setPreviousFocus(tomorrow ? tomorrow : null);
+        const nextPreviousFocus = tomorrow ? tomorrow : null;
+        setPreviousFocus(nextPreviousFocus);
+        onPreviousFocusChangeRef.current?.(nextPreviousFocus);
       } catch (error) {
         if (cancelled) return;
         console.error('前日の大切にしたいことの取得に失敗しました', error);
         setPreviousFocus(null);
+        onPreviousFocusChangeRef.current?.(null);
       }
     })();
 

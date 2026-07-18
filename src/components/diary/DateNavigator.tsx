@@ -26,7 +26,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.navigationContainer}>
-        <TouchableOpacity style={styles.arrowButton} onPress={onPrevious}>
+        <TouchableOpacity style={styles.arrowButton} onPress={onPrevious} accessibilityLabel="前の日へ移動">
           <Ionicons name="chevron-back" size={24} color={themeColors.primary} />
         </TouchableOpacity>
 
@@ -36,6 +36,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
             { backgroundColor: themeColors.surface, borderColor: themeColors.border },
           ]}
           onPress={onOpenPicker}
+          accessibilityLabel="日付を選択"
         >
           <Ionicons
             name="calendar-outline"
@@ -48,17 +49,20 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.arrowButton, isToday && styles.arrowButtonDisabled]}
-          onPress={onNext}
-          disabled={isToday}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={24}
-            color={isToday ? themeColors.border : themeColors.primary}
-          />
-        </TouchableOpacity>
+        {isToday ? (
+          // 今日は未来へ進めないため「＞」を表示しない。日付ボタンの中央位置を保つための同サイズスペーサー。
+          <View style={styles.arrowButton}>
+            <View style={styles.arrowPlaceholder} />
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.arrowButton}
+            onPress={onNext}
+            accessibilityLabel="次の日へ移動"
+          >
+            <Ionicons name="chevron-forward" size={24} color={themeColors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -78,8 +82,9 @@ const styles = StyleSheet.create({
   arrowButton: {
     padding: spacing.sm,
   },
-  arrowButtonDisabled: {
-    opacity: 0.3,
+  arrowPlaceholder: {
+    width: 24,
+    height: 24,
   },
   dateButton: {
     flexDirection: 'row',

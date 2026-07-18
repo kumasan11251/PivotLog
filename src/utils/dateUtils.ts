@@ -32,6 +32,31 @@ export const formatDateToString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+export const parseLocalDateString = (dateString: string): Date | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  return formatDateToString(date) === dateString ? date : null;
+};
+
+export const addDaysToDateString = (dateString: string, days: number): string => {
+  const date = parseLocalDateString(dateString);
+  if (!date) throw new Error(`Invalid local date string: ${dateString}`);
+  date.setDate(date.getDate() + days);
+  return formatDateToString(date);
+};
+
+export const isDateAfterToday = (dateString: string): boolean => {
+  const date = parseLocalDateString(dateString);
+  if (!date) return true;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date > today;
+};
+
 /**
  * 開始時刻を考慮して、指定した日付が「今日」かどうかを判定
  * @param dateString YYYY-MM-DD形式の日付

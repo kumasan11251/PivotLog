@@ -13,6 +13,9 @@ export type { DiaryInputFieldRef } from './DiaryInputField';
 export { default as PreviousDayFocusHint } from './PreviousDayFocusHint';
 export { default as DatePickerModal } from './DatePickerModal';
 export { default as YearMonthPickerModal } from './YearMonthPickerModal';
+export { default as DiaryEntryPage } from './DiaryEntryPage';
+export type { DiaryEntryPageHandle } from './DiaryEntryPage';
+export { default as DiaryAIReflectionSection } from './DiaryAIReflectionSection';
 
 // AIリフレクション機能
 export { default as AIReflectionCard } from './AIReflectionCard';

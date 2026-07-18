@@ -57,7 +57,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
 
   // カスタムフックで状態管理を分離
   const { timeLeft, lifeProgress, targetLifespan, birthday, currentAge } = useTimeCalculation();
-  const { countdownMode, progressMode, isLoading: isSettingsLoading, toggleCountdownMode, toggleProgressMode } = useDisplaySettings();
+  const { countdownMode, progressMode, seasonalBackdropEnabled, isLoading: isSettingsLoading, toggleCountdownMode, toggleProgressMode, refreshDisplaySettings } = useDisplaySettings();
   const { animatedValues, triggerAnimation } = useProgressAnimation(lifeProgress);
   const {
     hasTodayEntry,
@@ -138,6 +138,8 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
         }
       };
       reloadSettings();
+      // 表示設定を再読み込み（設定画面での季節の背景ON/OFFを反映）
+      refreshDisplaySettings();
       refreshTodayDiary();
       triggerFocusAnimation();
 
@@ -145,7 +147,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
       return () => {
         clearJustCompleted();
       };
-    }, [refreshTodayDiary, triggerFocusAnimation, clearJustCompleted])
+    }, [refreshDisplaySettings, refreshTodayDiary, triggerFocusAnimation, clearJustCompleted])
   );
 
   // タブ切り替えで非アクティブ → アクティブに変化した時に再読み込み
@@ -184,7 +186,7 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <SeasonalBackdrop date={effectiveToday} isDark={isDark} />
+      {seasonalBackdropEnabled && <SeasonalBackdrop date={effectiveToday} isDark={isDark} />}
 
       <ScreenHeader
         title="ホーム"

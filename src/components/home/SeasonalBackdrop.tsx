@@ -10,9 +10,9 @@ interface SeasonalBackdropProps {
   isDark: boolean;
 }
 
-type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 
-interface SeasonTheme {
+export interface SeasonTheme {
   gradient: readonly [string, string, string];
   primary: string;
   secondary: string;
@@ -21,7 +21,7 @@ interface SeasonTheme {
   glow: string;
 }
 
-const getSeason = (date: string): Season | null => {
+export const getSeason = (date: string): Season | null => {
   const month = Number(date.slice(5, 7));
   if (!Number.isInteger(month) || month < 1 || month > 12) return null;
   if (month >= 3 && month <= 5) return 'spring';
@@ -30,7 +30,7 @@ const getSeason = (date: string): Season | null => {
   return 'winter';
 };
 
-const getSeasonTheme = (season: Season, isDark: boolean): SeasonTheme => {
+export const getSeasonTheme = (season: Season, isDark: boolean): SeasonTheme => {
   const themes: Record<Season, { light: SeasonTheme; dark: SeasonTheme }> = {
     spring: {
       light: {

@@ -31,6 +31,7 @@ export interface DiaryEntry {
 export interface HomeDisplaySettings {
   countdownMode: 'detailed' | 'daysOnly' | 'weeksOnly' | 'yearsOnly';
   progressMode: 'bar' | 'circle' | 'grid';
+  seasonalBackdropEnabled?: boolean; // 季節の背景の表示（未設定はONとして扱う）
 }
 
 // ヘルパー関数

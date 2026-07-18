@@ -11,9 +11,11 @@ import {
   Animated,
   Linking,
   Platform,
+  Switch,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +27,9 @@ import { deleteAllUserData } from '../utils/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
+import { useDisplaySettings } from '../hooks/useDisplaySettings';
+import { getSeason, getSeasonTheme, Season } from '../components/home/SeasonalBackdrop';
+import { getEffectiveToday } from '../utils/dateUtils';
 import ScreenHeader from '../components/common/ScreenHeader';
 import DevDebugPanel from '../components/common/DevDebugPanel';
 import { LEGAL_URLS } from '../constants/legal';
@@ -37,6 +42,14 @@ const THEME_OPTIONS: { value: ThemeMode; label: string; icon: keyof typeof Ionic
   { value: 'light', label: 'ライト', icon: 'sunny-outline' },
   { value: 'dark', label: 'ダーク', icon: 'moon-outline' },
   { value: 'system', label: 'システム設定に従う', icon: 'phone-portrait-outline' },
+];
+
+// 季節の背景プレビュー用の季節一覧
+const SEASON_PREVIEWS: { value: Season; label: string; emoji: string }[] = [
+  { value: 'spring', label: '春', emoji: '🌸' },
+  { value: 'summer', label: '夏', emoji: '☀️' },
+  { value: 'autumn', label: '秋', emoji: '🍁' },
+  { value: 'winter', label: '冬', emoji: '❄️' },
 ];
 
 interface SettingItemProps {
@@ -93,6 +106,7 @@ const SettingsScreen: React.FC = () => {
   const [dayStartHour, setDayStartHour] = useState<number>(0);
   const [showDayStartPicker, setShowDayStartPicker] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showSeasonalPicker, setShowSeasonalPicker] = useState(false);
   const [showPremiumInfoModal, setShowPremiumInfoModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showDebugSection, setShowDebugSection] = useState(false);
@@ -101,6 +115,11 @@ const SettingsScreen: React.FC = () => {
   const { isPremium, status } = useSubscription();
   const { themeMode, setThemeMode, isDark } = useTheme();
   const themeColors = getColors(isDark);
+  const {
+    seasonalBackdropEnabled,
+    setSeasonalBackdropEnabled,
+    isLoading: isDisplaySettingsLoading,
+  } = useDisplaySettings();
 
   // デバッグセクションのアニメーション
   const debugHeightAnim = useRef(new Animated.Value(0)).current;
@@ -266,6 +285,9 @@ const SettingsScreen: React.FC = () => {
     return option?.label || 'システム設定に従う';
   };
 
+  // 現在の季節（プレビューのハイライト用。1日の開始時刻を考慮）
+  const currentSeason = getSeason(getEffectiveToday(dayStartHour));
+
   // 動的なスタイル
   const dynamicStyles = {
     container: {
@@ -376,6 +398,14 @@ const SettingsScreen: React.FC = () => {
               label="テーマ"
               value={getThemeLabel(themeMode)}
               onPress={() => setShowThemePicker(true)}
+              themeColors={themeColors}
+            />
+            <SettingItem
+              icon="leaf-outline"
+              label="季節の背景"
+              value={seasonalBackdropEnabled ? '表示中' : '非表示'}
+              onPress={() => setShowSeasonalPicker(true)}
+              isLoading={isDisplaySettingsLoading}
               themeColors={themeColors}
             />
             <SettingItem
@@ -819,6 +849,88 @@ const SettingsScreen: React.FC = () => {
         </TouchableOpacity>
       </Modal>
 
+      {/* 季節の背景モーダル */}
+      <Modal
+        visible={showSeasonalPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSeasonalPicker(false)}
+      >
+        <TouchableOpacity
+          style={[styles.modalOverlay, dynamicStyles.modalOverlay]}
+          activeOpacity={1}
+          onPress={() => setShowSeasonalPicker(false)}
+        >
+          <TouchableOpacity
+            style={[styles.modalContent, dynamicStyles.modalContent]}
+            activeOpacity={1}
+          >
+            <View style={[styles.modalHeader, dynamicStyles.modalHeader]}>
+              <Text style={[styles.modalTitle, dynamicStyles.modalTitle]}>季節の背景</Text>
+              <TouchableOpacity onPress={() => setShowSeasonalPicker(false)}>
+                <Ionicons name="close" size={24} color={themeColors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.modalDescription, { backgroundColor: `${themeColors.primary}08`, borderBottomColor: themeColors.border }]}>
+              <Text style={[styles.modalDescriptionText, dynamicStyles.settingValue]}>
+                春・夏・秋・冬の移ろいに合わせて、{"\n"}
+                ホーム画面の背景がやさしく変化します。
+              </Text>
+            </View>
+            <View style={[styles.seasonalToggleRow, { borderBottomColor: themeColors.border }]}>
+              <Text style={[styles.seasonalToggleLabel, { color: themeColors.text.primary }]}>
+                季節の背景を表示
+              </Text>
+              <Switch
+                value={seasonalBackdropEnabled}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSeasonalBackdropEnabled(value);
+                }}
+                trackColor={{ false: themeColors.border, true: themeColors.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+            <View style={[styles.seasonPreviewRow, !seasonalBackdropEnabled && styles.seasonPreviewRowDisabled]}>
+              {SEASON_PREVIEWS.map((season) => {
+                const seasonTheme = getSeasonTheme(season.value, isDark);
+                const isCurrentSeason = season.value === currentSeason;
+                return (
+                  <View key={season.value} style={styles.seasonPreviewItem}>
+                    <LinearGradient
+                      colors={seasonTheme.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[
+                        styles.seasonPreviewCard,
+                        { borderColor: isCurrentSeason ? themeColors.primary : themeColors.border },
+                        isCurrentSeason && styles.seasonPreviewCardCurrent,
+                      ]}
+                    >
+                      <Text style={styles.seasonPreviewEmoji}>{season.emoji}</Text>
+                      <View style={styles.seasonPreviewSwatches}>
+                        <View style={[styles.seasonPreviewSwatch, { backgroundColor: seasonTheme.primary }]} />
+                        <View style={[styles.seasonPreviewSwatch, { backgroundColor: seasonTheme.secondary }]} />
+                        <View style={[styles.seasonPreviewSwatch, { backgroundColor: seasonTheme.accent }]} />
+                      </View>
+                    </LinearGradient>
+                    <Text
+                      style={[
+                        styles.seasonPreviewLabel,
+                        { color: isCurrentSeason ? themeColors.primary : themeColors.text.secondary },
+                        isCurrentSeason && styles.seasonPreviewLabelCurrent,
+                      ]}
+                    >
+                      {season.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* プレミアム情報モーダル */}
       <Modal
         visible={showPremiumInfoModal}
@@ -1222,6 +1334,69 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     lineHeight: 18,
     ...textBase,
+  },
+  seasonalToggleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  seasonalToggleLabel: {
+    fontSize: fonts.size.body,
+    color: colors.text.primary,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  seasonPreviewRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  seasonPreviewRowDisabled: {
+    opacity: 0.35,
+  },
+  seasonPreviewItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  seasonPreviewCard: {
+    width: '100%',
+    aspectRatio: 0.9,
+    borderRadius: spacing.borderRadius.medium,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  seasonPreviewCardCurrent: {
+    borderWidth: 2,
+  },
+  seasonPreviewEmoji: {
+    fontSize: 20,
+  },
+  seasonPreviewSwatches: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  seasonPreviewSwatch: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  seasonPreviewLabel: {
+    fontSize: fonts.size.labelSmall,
+    color: colors.text.secondary,
+    fontFamily: fonts.family.regular,
+    ...textBase,
+  },
+  seasonPreviewLabelCurrent: {
+    fontWeight: fonts.weight.medium,
   },
   themeOptionContent: {
     flexDirection: 'row',

@@ -1,5 +1,17 @@
-import React, { forwardRef, useRef, useImperativeHandle, useMemo } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getColors, fonts, spacing, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -13,11 +25,16 @@ interface DiaryInputFieldProps {
   onFocus: () => void;
   onBlur: () => void;
   isFocused: boolean;
+  isPaging: boolean;
   showCheckmark: boolean;
 }
 
+const PRESS_RETENTION_OFFSET = 8;
+
 export interface DiaryInputFieldRef {
   focus: () => void;
+  blur: () => void;
+  isFocused: () => boolean;
   measureInWindow: (
     callback: (x: number, y: number, width: number, height: number) => void
   ) => void;
@@ -33,6 +50,7 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
       onFocus,
       onBlur,
       isFocused,
+      isPaging,
       showCheckmark,
     },
     ref
@@ -41,10 +59,21 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
     const themeColors = useMemo(() => getColors(isDark), [isDark]);
     const inputRef = useRef<TextInput>(null);
 
+    const blurInput = useCallback(() => {
+      inputRef.current?.blur();
+    }, []);
+
+    const activateInput = useCallback(() => {
+      if (isPaging) return;
+      inputRef.current?.focus();
+    }, [isPaging]);
+
     useImperativeHandle(ref, () => ({
-      focus: () => inputRef.current?.focus(),
+      focus: activateInput,
+      blur: blurInput,
+      isFocused: () => inputRef.current?.isFocused() ?? false,
       measureInWindow: (callback) => inputRef.current?.measureInWindow(callback),
-    }));
+    }), [activateInput, blurInput]);
 
     return (
       <View style={styles.container}>
@@ -80,12 +109,22 @@ const DiaryInputField = forwardRef<DiaryInputFieldRef, DiaryInputFieldProps>(
             onChangeText={onChangeText}
             onFocus={onFocus}
             onBlur={onBlur}
+            pointerEvents={isFocused ? 'auto' : 'none'}
             placeholder={placeholder}
             placeholderTextColor={themeColors.text.placeholder}
             multiline
             textAlignVertical="center"
             maxLength={MAX_CHARS}
           />
+          {!isFocused && (
+            <Pressable
+              style={styles.focusOverlay}
+              onPress={activateInput}
+              disabled={isPaging}
+              pressRetentionOffset={PRESS_RETENTION_OFFSET}
+              accessible={false}
+            />
+          )}
         </View>
       </View>
     );
@@ -136,6 +175,9 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     includeFontPadding: false,
     ...textBase,
+  },
+  focusOverlay: {
+    ...StyleSheet.absoluteFillObject,
   },
 });
 
