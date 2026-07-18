@@ -11,6 +11,7 @@ import CountdownSection from './home/CountdownSection';
 import ProgressSection from './home/ProgressSection';
 import PerspectiveSection from './home/PerspectiveSection';
 import SeasonalBackdrop from './home/SeasonalBackdrop';
+import NightMoon from './home/NightMoon';
 import { useTimeCalculation } from '../hooks/useTimeCalculation';
 import { useProgressAnimation } from '../hooks/useProgressAnimation';
 import { useDisplaySettings } from '../hooks/useDisplaySettings';
@@ -187,6 +188,8 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {seasonalBackdropEnabled && <SeasonalBackdrop date={effectiveToday} isDark={isDark} />}
+      {/* 夜間帯のみ月相を表示（背景装飾をオフにしている人には出さない） */}
+      {seasonalBackdropEnabled && <NightMoon isDark={isDark} />}
 
       <ScreenHeader
         title="ホーム"
