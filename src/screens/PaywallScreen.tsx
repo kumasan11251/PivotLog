@@ -10,9 +10,11 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import type { PaywallScreenNavigationProp } from '../types/navigation';
+import type { PaywallScreenNavigationProp, RootStackParamList } from '../types/navigation';
+import { logAnalyticsEvent } from '../services/firebase';
 import { fonts, spacing, textBase, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
@@ -27,9 +29,39 @@ const FEATURES = [
   { icon: 'refresh-outline' as const, text: '今日の気づき再生成' },
 ];
 
+// 「今日の気づき」の価値を具体的に伝えるサンプル文
+const SAMPLE_REFLECTION =
+  '「家族と夕食をゆっくり食べられた」ことを良かったこととして挙げた日は、後悔の記述が少ない傾向があります。あなたにとって、誰かと過ごす食事の時間が1日の満足度を支えているのかもしれません。';
+
+// 無料トライアル期間のラベルを返す（ストア側でIntro Offer未設定 or 有料Introの場合はnull）
+const getFreeTrialLabel = (pkg: PurchasesPackage | null): string | null => {
+  const intro = pkg?.product.introPrice;
+  if (!intro || intro.price !== 0) return null;
+  const units = intro.periodNumberOfUnits;
+  switch (intro.periodUnit) {
+    case 'DAY':
+      return `${units}日間`;
+    case 'WEEK':
+      return `${units * 7}日間`;
+    case 'MONTH':
+      return units === 1 ? '1ヶ月間' : `${units}ヶ月間`;
+    case 'YEAR':
+      return units === 1 ? '1年間' : `${units}年間`;
+    default:
+      return null;
+  }
+};
+
 export default function PaywallScreen() {
   const navigation = useNavigation<PaywallScreenNavigationProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Paywall'>>();
   const { isDark } = useTheme();
+
+  useEffect(() => {
+    logAnalyticsEvent('paywall_viewed', { source: route.params?.source ?? 'unknown' });
+    // マウント時に1回だけ記録する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const themeColors = getColors(isDark);
   const {
     purchasePackage,
@@ -100,14 +132,29 @@ export default function PaywallScreen() {
     return Math.round((1 - annualPrice / (monthlyPrice * 12)) * 100);
   })();
 
+  // 無料トライアル表示（ストア側でIntro Offerを設定すると自動で反映される）
+  const monthlyTrialLabel = getFreeTrialLabel(monthlyPackage);
+  const annualTrialLabel = getFreeTrialLabel(annualPackage);
+  const selectedTrialLabel = selectedPlan === 'annual' ? annualTrialLabel : monthlyTrialLabel;
+
+  // 年額プランの1日あたり換算（日本円のみ表示）
+  const annualPerDayLabel = (() => {
+    if (!annualPackage) return null;
+    const { price, currencyCode } = annualPackage.product;
+    if (price <= 0 || currencyCode !== 'JPY') return null;
+    return `1日あたり約${Math.round(price / 365)}円`;
+  })();
+
   const handlePurchase = async () => {
     const pkg = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
     if (!pkg) return;
 
+    logAnalyticsEvent('purchase_started', { plan: selectedPlan });
     try {
       const result = await purchasePackage(pkg);
       switch (result) {
         case 'purchased':
+          logAnalyticsEvent('purchase_completed', { plan: selectedPlan });
           navigation.goBack();
           break;
         case 'pending':
@@ -128,7 +175,7 @@ export default function PaywallScreen() {
           );
           break;
         case 'cancelled':
-          // 何もしない
+          logAnalyticsEvent('purchase_cancelled', { plan: selectedPlan });
           break;
       }
     } catch {
@@ -224,6 +271,19 @@ export default function PaywallScreen() {
           ))}
         </View>
 
+        {/* AIリフレクションのサンプル */}
+        <View style={[styles.sampleCard, { backgroundColor: themeColors.surface }]}>
+          <View style={styles.sampleHeader}>
+            <Ionicons name="sparkles" size={16} color={themeColors.primary} />
+            <Text style={[styles.sampleLabel, { color: themeColors.primary }, textBase]}>
+              今日の気づき（サンプル）
+            </Text>
+          </View>
+          <Text style={[styles.sampleText, { color: themeColors.text.secondary }, textBase]}>
+            {SAMPLE_REFLECTION}
+          </Text>
+        </View>
+
         {/* プラン選択 */}
         {isLoadingOfferings ? (
           <View style={styles.loadingContainer}>
@@ -240,9 +300,11 @@ export default function PaywallScreen() {
                 : 'ストアとの接続に失敗しました。'}
               {'\n'}再度お試しください。
             </Text>
-            <Text style={[styles.errorText, { color: themeColors.text.placeholder, fontSize: 11 }, textBase]}>
-              SDK初期化: {isRevenueCatReady ? 'OK' : 'NG'}
-            </Text>
+            {__DEV__ && (
+              <Text style={[styles.errorText, { color: themeColors.text.placeholder, fontSize: 11 }, textBase]}>
+                SDK初期化: {isRevenueCatReady ? 'OK' : 'NG'}
+              </Text>
+            )}
             <TouchableOpacity
               style={[
                 styles.retryButton,
@@ -291,6 +353,11 @@ export default function PaywallScreen() {
                   <Text style={[styles.planPrice, { color: themeColors.text.primary }, textBase]}>
                     {monthlyPackage.product.priceString}/月
                   </Text>
+                  {monthlyTrialLabel && (
+                    <Text style={[styles.discountBadge, { color: themeColors.primary }, textBase]}>
+                      {monthlyTrialLabel}無料トライアル付き
+                    </Text>
+                  )}
                 </View>
               </TouchableOpacity>
             )}
@@ -323,9 +390,14 @@ export default function PaywallScreen() {
                   <Text style={[styles.planPrice, { color: themeColors.text.primary }, textBase]}>
                     {annualPackage.product.priceString}/年
                   </Text>
+                  {annualTrialLabel && (
+                    <Text style={[styles.discountBadge, { color: themeColors.primary }, textBase]}>
+                      {annualTrialLabel}無料トライアル付き
+                    </Text>
+                  )}
                   {discountPercent !== null && discountPercent > 0 && (
                     <Text style={[styles.discountBadge, { color: themeColors.primary }, textBase]}>
-                      {discountPercent}%お得
+                      {discountPercent}%お得{annualPerDayLabel ? `・${annualPerDayLabel}` : ''}
                     </Text>
                   )}
                 </View>
@@ -348,10 +420,16 @@ export default function PaywallScreen() {
             <ActivityIndicator size="small" color={themeColors.text.inverse} />
           ) : (
             <Text style={[styles.purchaseButtonText, { color: themeColors.text.inverse }, textBase]}>
-              プレミアムを始める
+              {selectedTrialLabel ? `まずは${selectedTrialLabel}無料で試す` : 'プレミアムを始める'}
             </Text>
           )}
         </TouchableOpacity>
+
+        {selectedTrialLabel && (
+          <Text style={[styles.trialNote, { color: themeColors.text.secondary }, textBase]}>
+            無料期間中はいつでも解約できます
+          </Text>
+        )}
 
         {/* 復元・利用規約 */}
         <TouchableOpacity
@@ -438,6 +516,26 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.body,
     fontFamily: fonts.family.regular,
     flex: 1,
+  },
+  sampleCard: {
+    borderRadius: spacing.borderRadius.large,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  sampleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  sampleLabel: {
+    fontSize: fonts.size.labelSmall,
+    fontFamily: fonts.family.bold,
+  },
+  sampleText: {
+    fontSize: fonts.size.label,
+    fontFamily: fonts.family.regular,
+    lineHeight: 22,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -531,6 +629,12 @@ const styles = StyleSheet.create({
   purchaseButtonText: {
     fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
+  },
+  trialNote: {
+    fontSize: fonts.size.labelSmall,
+    fontFamily: fonts.family.regular,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
   restoreButton: {
     alignItems: 'center',

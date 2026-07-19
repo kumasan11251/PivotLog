@@ -14,7 +14,7 @@ import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { useWeeklyInsight, isLastWeek, MIN_ENTRIES_FOR_INSIGHT } from '../hooks/useWeeklyInsight';
-import { WeeklyInsightCard, WeekSelector, InsightHistoryList } from '../components/insight';
+import { WeeklyInsightCard, WeekSelector, InsightHistoryList, InsightTeaserCard } from '../components/insight';
 import { WeeklyInsightCardV2 } from '../components/insight/WeeklyInsightCardV2';
 import { isWeeklyInsightV2 } from '../types/weeklyInsight';
 import { weeklyToHistoryItem } from '../utils/insightHistoryAdapters';
@@ -54,6 +54,7 @@ const WeeklyInsightScreen: React.FC = () => {
     isCurrentWeekCached,
     regenerateCurrentWeekInsight,
     canRegenerate,
+    remainingThisMonth,
   } = useWeeklyInsight({ initialWeekKey, onUpgrade: handleNavigateToPaywall });
 
   // 初期化時にインサイト履歴を読み込み
@@ -209,6 +210,16 @@ const WeeklyInsightScreen: React.FC = () => {
           canRegenerate={canRegenerate}
           isRegenerating={false}
           isPremium={isPremium}
+        />
+      );
+    }
+
+    // 無料枠を使い切った週はチラ見せとプレミアム導線を表示（生成ボタンの代わり）
+    if (!isPremium && remainingThisMonth === 0 && canGenerateInsight && !isCurrentWeekCached) {
+      return (
+        <InsightTeaserCard
+          type="weekly"
+          onUpgrade={() => navigation.navigate('Paywall', { source: 'weekly_insight_teaser' })}
         />
       );
     }

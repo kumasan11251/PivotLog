@@ -18,3 +18,6 @@ export { MonthSelector } from './MonthSelector';
 
 // コンパクトボタン
 export { CompactInsightButtons } from './CompactInsightButtons';
+
+// チラ見せ（無料ユーザー向けぼかしプレビュー）
+export { InsightTeaserCard } from './InsightTeaserCard';

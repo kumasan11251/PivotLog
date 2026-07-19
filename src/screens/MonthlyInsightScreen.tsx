@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { fonts, spacing, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useMonthlyInsight, MIN_ENTRIES_FOR_MONTHLY_INSIGHT } from '../hooks/useMonthlyInsight';
-import { MonthlyInsightCard, MonthSelector, InsightHistoryList } from '../components/insight';
+import { MonthlyInsightCard, MonthSelector, InsightHistoryList, InsightTeaserCard } from '../components/insight';
 import { monthlyToHistoryItem } from '../utils/insightHistoryAdapters';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -49,13 +49,6 @@ const MonthlyInsightScreen: React.FC = () => {
     regenerateCurrentMonthInsight,
     canRegenerate,
   } = useMonthlyInsight({ initialMonthKey });
-
-  // プレミアムチェック（フォールバック保護）
-  useEffect(() => {
-    if (!isPremium) {
-      navigation.replace('Paywall', { source: 'monthly_insight' });
-    }
-  }, [isPremium, navigation]);
 
   // 初期化時にふりかえり履歴を読み込み
   useEffect(() => {
@@ -255,9 +248,25 @@ const MonthlyInsightScreen: React.FC = () => {
     );
   };
 
-  // replace完了までは空画面を表示（テーマ背景色でちらつき防止）
+  // 無料ユーザーにはサンプルのチラ見せとプレミアム導線を表示
   if (!isPremium) {
-    return <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} />;
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color={themeColors.text.primary} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: themeColors.text.primary }]}>
+            月間ふりかえり
+          </Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <InsightTeaserCard
+          type="monthly"
+          onUpgrade={() => navigation.navigate('Paywall', { source: 'monthly_insight_teaser' })}
+        />
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -324,6 +333,10 @@ const styles = StyleSheet.create({
   },
   historyIconButton: {
     padding: spacing.xs,
+  },
+  // 閉じるボタンと左右対称にしてタイトルを中央に保つ
+  headerSpacer: {
+    width: 24 + spacing.xs * 2,
   },
   content: {
     flex: 1,

@@ -16,7 +16,13 @@ export type RootStackParamList = {
   WeeklyInsight: { weekKey?: string } | undefined;
   MonthlyInsight: { monthKey?: string } | undefined;
   Paywall: {
-    source?: 'limit_reached' | 'weekly_insight' | 'monthly_insight' | 'settings';
+    source?:
+      | 'limit_reached'
+      | 'weekly_insight'
+      | 'monthly_insight'
+      | 'weekly_insight_teaser'
+      | 'monthly_insight_teaser'
+      | 'settings';
   } | undefined;
 };
 
