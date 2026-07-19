@@ -27,6 +27,7 @@ import type {
 import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
 import { useAuth } from './AuthContext';
 import { COLLECTIONS } from '../services/firebase/config';
+import { setAnalyticsUserProperty } from '../services/firebase/analytics';
 import {
   ensureInitialized as ensureRevenueCatInitialized,
   identifyUser,
@@ -562,6 +563,13 @@ export const SubscriptionProvider: React.FC<SubscriptionProviderProps> = ({
     }
     return status.tier;
   }, [status.tier, devOverrideTier]);
+
+  // アナリティクスのユーザープロパティにティアを反映
+  // （継続率・イベントを無料/プレミアムでセグメント比較するため）
+  useEffect(() => {
+    if (isLoading) return;
+    setAnalyticsUserProperty('subscription_tier', effectiveTier);
+  }, [effectiveTier, isLoading]);
 
   const value = useMemo((): SubscriptionContextType => ({
     status: {

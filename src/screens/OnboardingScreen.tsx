@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { OnboardingScreenNavigationProp } from '../types/navigation';
 import { setOnboardingComplete, loadUserSettings } from '../utils/storage';
+import { logAnalyticsEvent } from '../services/firebase';
 import { colors, fonts, spacing } from '../theme';
 import {
   AnimatedHourglassIcon,
@@ -172,6 +173,7 @@ const OnboardingScreen: React.FC = () => {
   };
 
   const handleStart = async () => {
+    logAnalyticsEvent('onboarding_completed', { skipped: 0 });
     try {
       await setOnboardingComplete();
       navigation.reset({
@@ -189,6 +191,7 @@ const OnboardingScreen: React.FC = () => {
   };
 
   const handleSkip = async () => {
+    logAnalyticsEvent('onboarding_completed', { skipped: 1 });
     try {
       await setOnboardingComplete();
       navigation.reset({

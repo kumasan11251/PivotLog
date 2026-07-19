@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import type { InitialSetupScreenNavigationProp } from '../types/navigation';
 import { saveUserSettings } from '../utils/storage';
 import { syncWidgetData } from '../utils/widgetStorage';
+import { logAnalyticsEvent } from '../services/firebase';
 import { colors, fonts, spacing, textBase } from '../theme';
 import LifespanSlider from '../components/common/LifespanSlider';
 import {
@@ -306,6 +307,7 @@ const InitialSetupScreen: React.FC = () => {
         birthday: birthdayString,
         targetLifespan: adjustedLifespan,
       });
+      logAnalyticsEvent('initial_setup_completed');
 
       // 初回設定直後の widget data 初期書き込み（App.tsx の cold start 同期だけでは
       // MainNavigator の isSetupComplete 更新タイミングに乗らないため、ここでも同期する）

@@ -6,6 +6,7 @@ import { DEFAULT_AI_USAGE_LIMITS } from '../types/subscription';
 import { getDiaryByDate } from '../utils/storage';
 import { useAIReflectionContext } from '../contexts/AIReflectionContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import { logAnalyticsEvent } from '../services/firebase';
 
 /** 構造化エラー型 */
 export interface ReflectionError {
@@ -170,6 +171,7 @@ export const useAIReflection = ({
     setLastLimitReason(null);
 
     try {
+      logAnalyticsEvent('ai_reflection_requested');
       await startGeneration({ dateString, formState });
     } catch (error) {
       // エラーは subscribeToCompletion のコールバックで処理される

@@ -32,6 +32,7 @@ import { OfflineBanner } from './src/components/common/OfflineBanner';
 import UpdateModal from './src/components/common/UpdateModal';
 import { useUpdateCheck } from './src/hooks/useUpdateCheck';
 import { getEffectiveToday } from './src/utils/dateUtils';
+import { logScreenView } from './src/services/firebase';
 import { useWidgetAppStateSync } from './src/hooks/useWidgetSync';
 import { syncWidgetData } from './src/utils/widgetStorage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
@@ -309,8 +310,27 @@ function ThemedNavigationContainer({ children }: { children: React.ReactNode }) 
     },
   };
 
+  // アナリティクスの画面ビュー計測用（直前の画面名を保持し、変化時のみ送信）
+  const currentRouteNameRef = React.useRef<string | undefined>(undefined);
+
   return (
-    <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      theme={navigationTheme}
+      onReady={() => {
+        const routeName = navigationRef.getCurrentRoute()?.name;
+        currentRouteNameRef.current = routeName;
+        if (routeName) logScreenView(routeName);
+      }}
+      onStateChange={() => {
+        const routeName = navigationRef.getCurrentRoute()?.name;
+        if (routeName && routeName !== currentRouteNameRef.current) {
+          currentRouteNameRef.current = routeName;
+          logScreenView(routeName);
+        }
+      }}
+    >
       {children}
     </NavigationContainer>
   );

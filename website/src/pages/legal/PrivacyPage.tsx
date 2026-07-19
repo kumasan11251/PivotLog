@@ -12,7 +12,7 @@ import {
 
 export function PrivacyPage() {
   return (
-    <LegalLayout title="プライバシーポリシー" updated="最終更新日: 2026年4月1日">
+    <LegalLayout title="プライバシーポリシー" updated="最終更新日: 2026年7月18日">
       <LegalParagraph>
         PivotLog（以下「本アプリ」）は、ユーザーのプライバシーを尊重し、個人情報の保護に努めています。本プライバシーポリシーは、本アプリがどのような情報を収集し、どのように使用するかを説明します。
       </LegalParagraph>
@@ -35,11 +35,17 @@ export function PrivacyPage() {
           </li>
         </LegalList>
 
-        <LegalSubheading>1.2 通知機能に関する情報</LegalSubheading>
-        <LegalParagraph>
-          本アプリは、利用状況の分析やデバイス情報の収集を行う分析・解析ツール（Firebase Analytics、Crashlytics等）を一切組み込んでいません。自動的に取得・送信される情報は、以下の通知トークンのみです。
-        </LegalParagraph>
+        <LegalSubheading>1.2 自動的に収集される情報</LegalSubheading>
         <LegalList>
+          <li>
+            <b>利用状況データ</b>:
+            本アプリは、アプリの品質向上を目的としてGoogle Firebase
+            Analyticsを使用し、画面の表示履歴や機能の利用状況（日記の保存操作、AI機能の利用など）を統計的に収集します。<b>日記に入力された本文の内容が収集されることはありません</b>
+          </li>
+          <li>
+            <b>デバイス情報</b>: Firebase
+            Analyticsにより、デバイスのモデル名、OSバージョン、アプリのバージョン、言語設定、およびアプリインスタンス識別子が収集されます。これらは広告配信の目的では使用されません
+          </li>
           <li>
             <b>プッシュ通知トークン</b>:
             リマインダー通知機能を有効にした場合、expo-notificationsを通じてプッシュ通知トークンが生成されます。このトークンはExpoのプッシュ通知サーバーを経由して通知の配信に使用され、デバイスのローカルストレージに保存されます。Firestoreへの保存は行いません
@@ -53,6 +59,7 @@ export function PrivacyPage() {
           <li>アプリの基本機能の提供（日記の保存、カウントダウン表示など）</li>
           <li>AI機能の提供</li>
           <li>機能提供に必要な保守</li>
+          <li>アプリの利用状況の統計的な分析および品質向上（Firebase Analyticsを使用）</li>
           <li>ユーザーからのお問い合わせへの対応・ユーザーサポートの提供</li>
         </LegalList>
       </LegalSection>
@@ -156,7 +163,7 @@ export function PrivacyPage() {
           </thead>
           <tbody>
             <tr>
-              <LegalTd>Firebase（Firestore / Authentication）</LegalTd>
+              <LegalTd>Firebase（Firestore / Authentication / Analytics）</LegalTd>
               <LegalTd>Google LLC</LegalTd>
               <LegalTd>米国</LegalTd>
               <LegalTd>
@@ -207,7 +214,9 @@ export function PrivacyPage() {
 
       <LegalSection title="6. Cookieおよび類似技術">
         <LegalParagraph>
-          本アプリはWebブラウザベースのアプリケーションではないため、一般的なCookieは使用しません。ただし、Firebase SDKが認証状態の管理やサービスの提供のために、デバイス上にローカルストレージやトークンなどの類似技術を使用する場合があります。これらはアプリの正常な動作に必要なものであり、広告やトラッキング目的では使用されません。
+          本アプリはWebブラウザベースのアプリケーションではないため、一般的なCookieは使用しません。ただし、Firebase
+          SDKが認証状態の管理やサービスの提供のために、デバイス上にローカルストレージやトークンなどの類似技術を使用する場合があります。また、Firebase
+          Analyticsが利用状況の統計分析のためにアプリインスタンス識別子を使用します。これらはアプリの正常な動作と品質向上に必要なものであり、広告配信や広告目的のトラッキングには使用されません。
         </LegalParagraph>
       </LegalSection>
 

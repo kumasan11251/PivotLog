@@ -48,6 +48,14 @@ export type { UserSettings, DiaryEntry, HomeDisplaySettings, WidgetSettingsFires
 // アプリ設定サービス
 export { fetchAppVersionConfig } from './appConfig';
 
+// アナリティクスサービス
+export {
+  logAnalyticsEvent,
+  logScreenView,
+  setAnalyticsUserProperty,
+} from './analytics';
+export type { AnalyticsEventParams } from './analytics';
+
 // Cloud Functionsサービス
 export {
   generateReflectionViaCloudFunctions,

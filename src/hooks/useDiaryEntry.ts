@@ -9,6 +9,7 @@ import {
 import { PLACEHOLDERS, ENCOURAGEMENT_MESSAGES, getDailyElement } from '../constants/diaryEntry';
 import { getEffectiveToday } from '../utils/dateUtils';
 import { cancelTodayReminderAndReschedule, clearBadge } from '../services/notification';
+import { logAnalyticsEvent } from '../services/firebase';
 
 export type DiaryFieldKey = 'goodTime' | 'wastedTime' | 'tomorrow';
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
@@ -124,7 +125,12 @@ export const useDiaryEntry = (
           } else {
             const now = new Date().toISOString();
             const entry: DiaryEntry = { id: dateString, date: dateString, ...snapshot, createdAt: now, updatedAt: now };
+            const isNewEntry = isEmpty(savedRef.current);
             await saveDiaryEntry(entry);
+            logAnalyticsEvent('diary_saved', {
+              is_new: isNewEntry ? 1 : 0,
+              filled_fields: [snapshot.goodTime, snapshot.wastedTime, snapshot.tomorrow].filter(Boolean).length,
+            });
 
             const userSettings = await loadUserSettings();
             if (dateString === getEffectiveToday(userSettings?.dayStartHour ?? 0)) {
