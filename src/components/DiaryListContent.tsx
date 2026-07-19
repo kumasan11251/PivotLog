@@ -41,6 +41,8 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   const [viewMode, setViewMode] = useState<DiaryViewMode>('calendar');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isYearMonthPickerVisible, setYearMonthPickerVisible] = useState(false);
+  // カレンダーの横スワイプ中は縦スクロールを止めて上下の揺れを防ぐ
+  const [isCalendarSwiping, setIsCalendarSwiping] = useState(false);
 
   // 起動時に保存済みの表示モードを復元
   useEffect(() => {
@@ -114,12 +116,9 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
   }, [navigation]);
 
   const handleNavigateToMonthlyInsight = useCallback(() => {
-    if (!isPremium) {
-      navigation.navigate('Paywall', { source: 'monthly_insight' });
-      return;
-    }
+    // 無料ユーザーもチラ見せ画面（MonthlyInsightScreen内）へ誘導する
     navigation.navigate('MonthlyInsight', {});
-  }, [navigation, isPremium]);
+  }, [navigation]);
 
   // 日記削除ハンドラー
   const handleDeleteDiary = useCallback(
@@ -255,6 +254,7 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
           style={styles.calendarScrollView}
           contentContainerStyle={styles.calendarScrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!isCalendarSwiping}
         >
           <CalendarView
             selectedYear={selectedYear}
@@ -264,6 +264,10 @@ const DiaryListContent: React.FC<DiaryListContentProps> = ({ shouldRefresh }) =>
             onSelectedDateChange={setSelectedDate}
             onNavigateToEntry={handleNavigateToEntry}
             onDelete={handleDeleteDiary}
+            onSwipePreviousMonth={handlePreviousMonth}
+            onSwipeNextMonth={handleNextMonth}
+            isNextMonthDisabled={isNextDisabled}
+            onSwipeActiveChange={setIsCalendarSwiping}
           />
         </ScrollView>
       )}
