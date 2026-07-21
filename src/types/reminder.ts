@@ -7,6 +7,7 @@ export interface ReminderSettings {
   enabled: boolean; // リマインダー有効/無効
   hour: number; // 通知時刻（時）: 0-23
   minute: number; // 通知時刻（分）: 0-59
+  quoteTomorrow: boolean; // 前日の「明日、大切にしたいこと」を通知本文に引用する
 }
 
 // デフォルトのリマインダー設定
@@ -14,6 +15,7 @@ export const DEFAULT_REMINDER_SETTINGS: ReminderSettings = {
   enabled: false,
   hour: 21, // デフォルト: 21:00（夜の振り返りに最適）
   minute: 0,
+  quoteTomorrow: true,
 };
 
 // 通知メッセージの型

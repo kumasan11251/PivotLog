@@ -46,46 +46,46 @@ export const DAILY_MESSAGES = [
   '感謝の気持ちを忘れずに',
 ] as const;
 
-// 記録完了時の祝福メッセージ（バリエーション）
+// 記録完了時のメッセージ（バリエーション）
+// お祝い調ではなく先輩トーンで、記録が「残った」ことを静かに伝える
 export const CELEBRATION_MESSAGES = [
-  { emoji: '🎉', text: '今日も記録できました！', subtext: '素晴らしいですね' },
-  { emoji: '✨', text: '記録完了！', subtext: 'よく頑張りました' },
-  { emoji: '🌟', text: 'お疲れさまでした！', subtext: '今日も一日お疲れさま' },
-  { emoji: '👏', text: 'やりましたね！', subtext: '自分を褒めてあげて' },
-  { emoji: '🌼', text: '今日も記録できた！', subtext: '素敵な一日でしたね' },
-  { emoji: '😊', text: '記録ありがとう！', subtext: '継続は力なり' },
-  { emoji: '🌱', text: '今日も一歩前進！', subtext: '小さな積み重ねが大切' },
-  { emoji: '🌈', text: '記録完了です！', subtext: '明日も良い日になりますように' },
-  { emoji: '📝', text: '今日の記録完了！', subtext: '振り返りは大切ですね' },
-  { emoji: '🍀', text: 'お疲れさま！', subtext: '今日もよく頑張りました' },
+  { emoji: '🌿', text: '今日も、記録が残りました', subtext: '未来のあなたが読み返す1ページです' },
+  { emoji: '✨', text: '今日の分、たしかに残りました', subtext: 'おつかれさまでした' },
+  { emoji: '🌙', text: '今日という日が、かたちになりました', subtext: 'ゆっくり休んでくださいね' },
+  { emoji: '📖', text: '1ページ、増えました', subtext: '積み重なった分だけ、あなたが見えてきます' },
+  { emoji: '🍀', text: '今日の記録、残りました', subtext: '書いた分だけ、明日が少し軽くなります' },
+  { emoji: '🌱', text: '小さな1日が、記録になりました', subtext: '気づけば大きな景色になっています' },
+  { emoji: '☕', text: '今日を振り返る時間が、とれましたね', subtext: 'その数分が、明日を変えていきます' },
+  { emoji: '🌾', text: '今日の分が、積み重なりました', subtext: 'また明日、ここで' },
 ] as const;
 
-// 再開時の励ましメッセージ（連続記録が途切れた時）
+// 再開時のメッセージ（連続記録が途切れた時）
+// 途切れたことを責めず、戻ってきたことをそのまま受けとめる
 export const RESTART_MESSAGES = [
-  { emoji: '🌅', text: 'おかえりなさい！', subtext: 'また記録を始められたことが素晴らしい' },
-  { emoji: '💪', text: 'また始められましたね！', subtext: '続けようとする気持ちが大切です' },
-  { emoji: '🌱', text: '新しいスタート！', subtext: '何度でもやり直せます' },
-  { emoji: '🤗', text: 'お帰りなさい！', subtext: '戻ってきてくれてありがとう' },
-  { emoji: '✨', text: '今日から再スタート！', subtext: '休んでもまた始められる、それが強さです' },
+  { emoji: '🌅', text: 'おかえりなさい', subtext: '休んだ日も、あなたの時間の一部です' },
+  { emoji: '🌱', text: 'また、ここから', subtext: '何度でも始められます' },
+  { emoji: '🍃', text: '記録が、また動き出しました', subtext: '空いた日々も含めて、あなたの日々です' },
+  { emoji: '🕊️', text: '久しぶりの1ページですね', subtext: '間が空いても、積み重ねは消えません' },
+  { emoji: '✨', text: '今日からまた、続きが書けます', subtext: '休みも物語のうちです' },
 ] as const;
 
-// 連続記録マイルストーン達成時のメッセージ
+// 連続記録マイルストーン達成時のメッセージ（先輩トーン）
 export const MILESTONE_MESSAGES: Record<number, { emoji: string; title: string; subtitle: string }> = {
-  3: { emoji: '🔥', title: '3日連続達成！', subtitle: '良いスタートです！この調子で続けましょう' },
-  7: { emoji: '🎉', title: '1週間達成！', subtitle: '素晴らしい！習慣になってきましたね' },
-  14: { emoji: '✨', title: '2週間達成！', subtitle: 'すごい！もう立派な習慣です' },
-  30: { emoji: '🌟', title: '1ヶ月達成！', subtitle: 'おめでとうございます！継続の力を証明しました' },
-  100: { emoji: '💎', title: '100日達成！', subtitle: '圧巻です！あなたは本当に素晴らしい' },
-  365: { emoji: '🏆', title: '1年達成！', subtitle: '偉業達成！あなたは真のチャンピオンです' },
+  3: { emoji: '🔥', title: '3日、続いています', subtitle: '振り返りが、少しずつ日常になってきました' },
+  7: { emoji: '🎉', title: '7日間、毎日ここに', subtitle: '1週間分のあなたが記録に残っています' },
+  14: { emoji: '✨', title: '14日、続いています', subtitle: '2週間、自分と向き合ってきた証です' },
+  30: { emoji: '🌟', title: '30日、毎日書きました', subtitle: '1ヶ月分の日々が、ここに積み重なっています' },
+  100: { emoji: '💎', title: '100日、続いています', subtitle: '100日分のあなたが、ここにいます' },
+  365: { emoji: '🏆', title: '365日、毎日ここに', subtitle: '1年間の毎日が、この記録に生きています' },
 };
 
-// 総記録マイルストーン達成時のメッセージ
+// 総記録マイルストーン達成時のメッセージ（先輩トーン。途切れてもゼロにならない数字を主役に）
 export const TOTAL_MILESTONE_MESSAGES: Record<number, { emoji: string; title: string; subtitle: string }> = {
-  10: { emoji: '📚', title: '累計10日記録！', subtitle: '振り返りの習慣が始まりましたね' },
-  50: { emoji: '🌿', title: '累計50日記録！', subtitle: 'たくさんの思い出が積み重なりました' },
-  100: { emoji: '🎊', title: '累計100日記録！', subtitle: '100日分の大切な記録、素晴らしいです' },
-  200: { emoji: '🌳', title: '累計200日記録！', subtitle: 'あなたの日記は立派な財産です' },
-  365: { emoji: '📖', title: '累計365日記録！', subtitle: '1年分の人生が詰まった日記帳ですね' },
-  500: { emoji: '💫', title: '累計500日記録！', subtitle: '圧倒的な記録量、尊敬します' },
-  1000: { emoji: '👑', title: '累計1000日記録！', subtitle: '伝説の記録者です！' },
+  10: { emoji: '📚', title: '記録が10日分に', subtitle: '気づいてみると、10日分のあなたがここにいます' },
+  50: { emoji: '🌿', title: '記録が50日分に', subtitle: '50の日々が、静かに積み重なっています' },
+  100: { emoji: '🎊', title: '記録が100日分に', subtitle: '100日分の時間と、向き合ってきた証です' },
+  200: { emoji: '🌳', title: '記録が200日分に', subtitle: '振り返りが、あなたの一部になっています' },
+  365: { emoji: '📖', title: '記録が365日分に', subtitle: '1年分の人生が、この日記に詰まっています' },
+  500: { emoji: '💫', title: '記録が500日分に', subtitle: '500日分のあなたが、ここに息づいています' },
+  1000: { emoji: '👑', title: '記録が1000日分に', subtitle: '1000の日々。言葉にならないほどの積み重ねです' },
 };

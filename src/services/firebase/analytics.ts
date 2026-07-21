@@ -33,6 +33,18 @@ export type AnalyticsEventParams = {
   onboarding_completed: { skipped: 0 | 1 };
   /** 初期設定（誕生日・目標寿命）完了 */
   initial_setup_completed: undefined;
+  /** 通知タップでアプリを開いた。personalized: 前日の言葉の引用付き通知かどうか */
+  notification_opened: { type: string; personalized: 0 | 1 };
+  /**
+   * リマインダーの再スケジュール（1回の再スケジュール＝1イベント）。
+   * 発火前に組み直されて消える通知が分母に混ざるため、
+   * 開封率は絶対値ではなく personalized 0/1 間の相対比較として読む
+   */
+  reminder_scheduled: { personalized: 0 | 1 };
+  /** マイルストーン祝福演出の表示 */
+  milestone_celebrated: { kind: 'streak' | 'total'; days: number };
+  /** タイムホップ（あの日の自分）カードの展開 */
+  timehop_viewed: { distance: 'week' | 'month' | 'year' };
 };
 
 /**

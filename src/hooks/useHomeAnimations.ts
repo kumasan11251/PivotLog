@@ -3,7 +3,7 @@
  * 祝福演出・マイルストーン演出・カード切り替えを管理
  */
 
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { Animated } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import {
@@ -12,6 +12,7 @@ import {
   TOTAL_MILESTONE_MESSAGES,
 } from '../constants/home';
 import { getRandomCelebration, getRandomRestartMessage } from '../utils/homeHelpers';
+import { logAnalyticsEvent } from '../services/firebase';
 
 // 祝福メッセージの型（定数から生成すると複雑になるので簡潔に定義）
 interface CelebrationMessage {
@@ -145,9 +146,19 @@ export const useHomeAnimations = ({
     }
   }, [justCompleted, achievedMilestone, achievedTotalMilestone, celebrationAnim, clearJustCompleted]);
 
+  // milestone_celebrated の二重送信ガード（依存する関数のidentity変化でeffectが再実行される場合に備える）
+  const loggedMilestoneKeyRef = useRef<string | null>(null);
+
   // マイルストーン達成時の特別演出
   useEffect(() => {
     if (activeMilestone && milestoneMessage) {
+      const milestoneKind: 'streak' | 'total' = achievedMilestone ? 'streak' : 'total';
+      const milestoneKey = `${milestoneKind}:${activeMilestone}`;
+      if (loggedMilestoneKeyRef.current !== milestoneKey) {
+        loggedMilestoneKeyRef.current = milestoneKey;
+        logAnalyticsEvent('milestone_celebrated', { kind: milestoneKind, days: activeMilestone });
+      }
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);

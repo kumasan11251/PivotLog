@@ -185,6 +185,18 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       onSelectedDateChange,
     });
 
+  // 積み重ねを労う先輩トーンのサマリー文言（件数の事務的な表記はしない）
+  const summaryText = useMemo(() => {
+    const now = new Date();
+    const isCurrentMonth =
+      selectedYear === now.getFullYear() && selectedMonth === now.getMonth() + 1;
+    const monthLabel = isCurrentMonth ? '今月' : 'この月';
+    if (diaryCount === 0) {
+      return isCurrentMonth ? '今月の記録は、まだこれからです' : 'この月の記録はありません';
+    }
+    return `${monthLabel}は${diaryCount}日、自分と向き合えました`;
+  }, [selectedYear, selectedMonth, diaryCount]);
+
   const renderSelectedDateCard = () => {
     if (!selectedDate) return null;
 
@@ -307,6 +319,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                       >
                         {day}
                       </Text>
+                      {/* 記録がある日の小さなドット（塗り＋ドットで「積み重なっている」感を控えめに強調） */}
+                      {hasDiary && !isToday && !isSelected && (
+                        <View style={[styles.diaryDot, { backgroundColor: themeColors.primary }]} />
+                      )}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -322,7 +338,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       {/* この月の記録サマリー */}
       {!selectedDate && (
         <View style={[styles.calendarSummary, { borderTopColor: themeColors.border }]}>
-          <Text style={[styles.summaryText, { color: themeColors.text.secondary }]}>この月の記録: {diaryCount}件</Text>
+          <Text style={[styles.summaryText, { color: themeColors.text.secondary }]}>{summaryText}</Text>
         </View>
       )}
     </View>
@@ -379,6 +395,13 @@ const styles = StyleSheet.create({
   hasDiaryText: {},
   todayText: {},
   selectedText: {},
+  diaryDot: {
+    position: 'absolute',
+    bottom: 3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
   sundayText: {
     color: '#E57373',
   },

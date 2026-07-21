@@ -9,7 +9,8 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ReminderSettings, NotificationMessage } from '../../types/reminder';
 import { DEFAULT_REMINDER_SETTINGS } from '../../types/reminder';
-import { DAILY_REMINDER_MESSAGES, getMessageByDate } from './messages';
+import { DAILY_REMINDER_MESSAGES, getMessageByDate, getScheduledReminderMessage } from './messages';
+import { logAnalyticsEvent } from '../firebase';
 
 const REMINDER_SETTINGS_KEY = '@pivot_log_reminder_settings';
 const DAILY_REMINDER_IDENTIFIER = 'daily-reminder';
@@ -128,7 +129,9 @@ export const loadReminderSettings = async (): Promise<ReminderSettings> => {
   try {
     const json = await AsyncStorage.getItem(REMINDER_SETTINGS_KEY);
     if (json) {
-      return JSON.parse(json) as ReminderSettings;
+      // 既存ユーザーのストレージには後から追加したキー（quoteTomorrow等）が無いため、
+      // デフォルト値とマージして返す（マイグレーション）
+      return { ...DEFAULT_REMINDER_SETTINGS, ...(JSON.parse(json) as Partial<ReminderSettings>) };
     }
     return DEFAULT_REMINDER_SETTINGS;
   } catch (error) {
@@ -155,7 +158,7 @@ export const scheduleDailyReminder = async (
       content: {
         title: notificationMessage.title,
         body: notificationMessage.body,
-        data: { type: 'daily_reminder' },
+        data: { type: 'daily_reminder', personalized: 0 },
         badge: 1,
       },
       trigger: {
@@ -166,6 +169,7 @@ export const scheduleDailyReminder = async (
       identifier: DAILY_REMINDER_IDENTIFIER,
     });
 
+    logAnalyticsEvent('reminder_scheduled', { personalized: 0 });
     console.log(`リマインダーをスケジュール: ${hour}:${minute.toString().padStart(2, '0')}`);
     return identifier;
   } catch (error) {
@@ -216,7 +220,9 @@ export const enableReminder = async (hour: number, minute: number): Promise<bool
     return false;
   }
 
+  const currentSettings = await loadReminderSettings();
   const settings: ReminderSettings = {
+    ...currentSettings,
     enabled: true,
     hour,
     minute,
@@ -319,11 +325,28 @@ export const initializeReminder = async (): Promise<void> => {
   await scheduleDailyReminder(settings.hour, settings.minute);
 };
 
+// 日記保存後の再スケジュールに渡すオプション
+export interface RescheduleOptions {
+  /** 保存した日記の「明日、大切にしたいこと」。翌日分の通知本文への引用に使う */
+  tomorrowText?: string;
+  /**
+   * 保存時点の連続記録日数（保存した日を含む）の遅延取得。
+   * 引用が使えない場合のみ呼ばれる。storageへの依存を呼び出し側に寄せるための関数渡し
+   */
+  getStreakDays?: () => Promise<number>;
+}
+
 /**
- * 当日のリマインダーをキャンセルし、翌日から再スケジュール
+ * 当日のリマインダーをキャンセルし、翌日〜7日後の DATE trigger で再スケジュール
  * 日記を書いた後に呼び出す
+ *
+ * 保存時刻に関わらず常に 7日分の DATE trigger に統一する
+ * （時刻後の保存を DAILY に戻すと、翌日分の DATE と重なって二重通知になるため）。
+ * 文言は日別に出し分ける: 1日目=引用または実streak値、2〜7日目=復帰文言
  */
-export const cancelTodayReminderAndReschedule = async (): Promise<void> => {
+export const cancelTodayReminderAndReschedule = async (
+  options: RescheduleOptions = {}
+): Promise<void> => {
   try {
     const settings = await loadReminderSettings();
     if (!settings.enabled) return;
@@ -333,48 +356,52 @@ export const cancelTodayReminderAndReschedule = async (): Promise<void> => {
 
     await cancelDailyReminder();
 
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-
-    // リマインダー時刻がまだ来ていない場合は、翌日〜7日後まで DATE trigger でスケジュール
-    const isBeforeReminderTime =
-      currentHour < settings.hour ||
-      (currentHour === settings.hour && currentMinute < settings.minute);
-
-    if (isBeforeReminderTime) {
-      // DATE trigger は1回限りのため、アプリを開かない期間をカバーするために
-      // 7日分の DATE trigger を個別にスケジュールする
-      for (let i = 1; i <= BACKUP_DAYS; i++) {
-        const targetDate = new Date();
-        targetDate.setDate(targetDate.getDate() + i);
-        targetDate.setHours(settings.hour, settings.minute, 0, 0);
-
-        const message = getMessageByDate(DAILY_REMINDER_MESSAGES);
-        const identifier = i === 1
-          ? DAILY_REMINDER_IDENTIFIER
-          : `${DAILY_REMINDER_BACKUP_PREFIX}${i}`;
-
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: message.title,
-            body: message.body,
-            data: { type: 'daily_reminder' },
-            badge: 1,
-          },
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: targetDate,
-          },
-          identifier,
-        });
+    // 引用が使えない場合のみ streak を算出する（保存のたびの全件読み込みを避ける）
+    const tomorrowText = settings.quoteTomorrow ? options.tomorrowText?.trim() : undefined;
+    let streakDays = 0;
+    if (!tomorrowText && options.getStreakDays) {
+      try {
+        streakDays = await options.getStreakDays();
+      } catch (streakError) {
+        console.error('streak算出に失敗（汎用文言で続行）:', streakError);
       }
-
-      console.log(`翌日〜${BACKUP_DAYS}日後の DATE trigger でリマインダーをスケジュール`);
-    } else {
-      // リマインダー時刻を過ぎている → 通常の DAILY で再スケジュール（翌日から発火）
-      await scheduleDailyReminder(settings.hour, settings.minute);
     }
+
+    // DATE trigger は1回限りのため、アプリを開かない期間をカバーするために
+    // 翌日〜7日後の DATE trigger を個別にスケジュールする
+    let hasPersonalized = false;
+    for (let i = 1; i <= BACKUP_DAYS; i++) {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + i);
+      targetDate.setHours(settings.hour, settings.minute, 0, 0);
+
+      const { message, personalized } = getScheduledReminderMessage(i, targetDate, {
+        tomorrowText,
+        streakDays,
+      });
+      if (personalized) hasPersonalized = true;
+
+      const identifier = i === 1
+        ? DAILY_REMINDER_IDENTIFIER
+        : `${DAILY_REMINDER_BACKUP_PREFIX}${i}`;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: message.title,
+          body: message.body,
+          data: { type: 'daily_reminder', personalized: personalized ? 1 : 0 },
+          badge: 1,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: targetDate,
+        },
+        identifier,
+      });
+    }
+
+    logAnalyticsEvent('reminder_scheduled', { personalized: hasPersonalized ? 1 : 0 });
+    console.log(`翌日〜${BACKUP_DAYS}日後の DATE trigger でリマインダーをスケジュール`);
   } catch (error) {
     console.error('リマインダーの再スケジュールに失敗:', error);
   }

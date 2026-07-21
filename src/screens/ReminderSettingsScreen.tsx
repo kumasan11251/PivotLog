@@ -94,6 +94,7 @@ const ReminderSettingsScreen: React.FC = () => {
   const [enabled, setEnabled] = useState(false);
   const [hour, setHour] = useState(DEFAULT_REMINDER_SETTINGS.hour);
   const [minute, setMinute] = useState(DEFAULT_REMINDER_SETTINGS.minute);
+  const [quoteTomorrow, setQuoteTomorrow] = useState(DEFAULT_REMINDER_SETTINGS.quoteTomorrow);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   // 元の値（変更検知用）
@@ -109,6 +110,7 @@ const ReminderSettingsScreen: React.FC = () => {
       setHour(settings.hour);
       // 分を5分刻みに丸める
       setMinute(Math.round(settings.minute / 5) * 5);
+      setQuoteTomorrow(settings.quoteTomorrow);
       setOriginalValues(settings);
     } catch (error) {
       console.error('リマインダー設定の読み込みに失敗:', error);
@@ -136,7 +138,8 @@ const ReminderSettingsScreen: React.FC = () => {
   const hasChanges =
     enabled !== originalValues.enabled ||
     hour !== originalValues.hour ||
-    minute !== Math.round(originalValues.minute / 5) * 5;
+    minute !== Math.round(originalValues.minute / 5) * 5 ||
+    quoteTomorrow !== originalValues.quoteTomorrow;
 
   const handleSave = async () => {
     if (!hasChanges) {
@@ -148,10 +151,12 @@ const ReminderSettingsScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      const newSettings: ReminderSettings = { enabled, hour, minute };
+      const newSettings: ReminderSettings = { enabled, hour, minute, quoteTomorrow };
       await saveReminderSettings(newSettings);
 
       if (enabled) {
+        // 再スケジュールで既存の通知を組み直す
+        // （引用OFFに変えた場合、スケジュール済みの引用入り通知もここで消える）
         await scheduleDailyReminder(hour, minute);
       } else {
         await cancelDailyReminder();
@@ -372,6 +377,33 @@ const ReminderSettingsScreen: React.FC = () => {
               </>
             )}
 
+            {/* 昨日の言葉を通知に表示 */}
+            <View style={styles.section}>
+              <View style={[styles.toggleCard, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                <View style={styles.toggleItemSingle}>
+                  <View style={styles.toggleLabelContainer}>
+                    <View style={styles.toggleLabelRow}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={22} color={themeColors.primary} />
+                      <Text style={[styles.toggleLabel, { color: themeColors.text.primary }]}>
+                        昨日の言葉を通知に表示
+                      </Text>
+                    </View>
+                    <Text style={[styles.toggleDescription, { color: themeColors.text.secondary }]}>
+                      前日に書いた「明日、大切にしたいこと」の一部が通知（ロック画面）に表示されます
+                    </Text>
+                  </View>
+                  <Switch
+                    value={quoteTomorrow}
+                    onValueChange={(value) => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setQuoteTomorrow(value);
+                    }}
+                    trackColor={{ false: themeColors.border, true: themeColors.primary }}
+                    thumbColor="#FFFFFF"
+                  />
+                </View>
+              </View>
+            </View>
           </>
         )}
 

@@ -32,7 +32,7 @@ import { OfflineBanner } from './src/components/common/OfflineBanner';
 import UpdateModal from './src/components/common/UpdateModal';
 import { useUpdateCheck } from './src/hooks/useUpdateCheck';
 import { getEffectiveToday } from './src/utils/dateUtils';
-import { logScreenView } from './src/services/firebase';
+import { logAnalyticsEvent, logScreenView } from './src/services/firebase';
 import { useWidgetAppStateSync } from './src/hooks/useWidgetSync';
 import { syncWidgetData } from './src/utils/widgetStorage';
 import { useFonts, NotoSansJP_400Regular, NotoSansJP_700Bold } from '@expo-google-fonts/noto-sans-jp';
@@ -366,35 +366,67 @@ export default function App() {
 
   // 通知レスポンスリスナーのref
   const notificationResponseListener = useRef<Notifications.Subscription | null>(null);
+  // 処理済みの通知タップ（リスナーと getLastNotificationResponseAsync が同じタップに両方発火するケースの二重計測ガード）
+  const handledNotificationTapsRef = useRef<Set<string>>(new Set());
 
   // 通知タップ時のハンドリング
   useEffect(() => {
-    // 通知をタップしたときのリスナー
-    notificationResponseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
+    const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
+      const { notification } = response;
+      const data = notification.request.content.data;
+
+      // リマインダー通知以外は対象外
+      if (data?.type !== 'daily_reminder') return;
+
+      // identifier は日々再利用されるため、配信時刻と組み合わせてデデュープする
+      const dedupeKey = `${notification.request.identifier}:${notification.date}`;
+      if (handledNotificationTapsRef.current.has(dedupeKey)) return;
+      handledNotificationTapsRef.current.add(dedupeKey);
+
       console.log('通知がタップされました:', data);
+      logAnalyticsEvent('notification_opened', {
+        type: String(data.type),
+        personalized: data.personalized === 1 ? 1 : 0,
+      });
 
-      // リマインダー通知の場合は日記入力画面へ遷移
-      if (data?.type === 'daily_reminder') {
-        // バッジをクリア
-        clearBadge();
+      // バッジをクリア
+      clearBadge();
 
-        // ナビゲーションの準備ができるまで少し待つ
-        setTimeout(async () => {
-          if (navigationRef.isReady()) {
-            let dayStartHour = 0;
-            try {
-              const settings = await loadUserSettings();
-              dayStartHour = settings?.dayStartHour ?? 0;
-            } catch {
-              // 設定読み込み失敗時はデフォルト値（dayStartHour=0）を使用
-            }
-            const effectiveToday = getEffectiveToday(dayStartHour);
-            navigationRef.navigate('DiaryEntry', { initialDate: effectiveToday });
+      // コールドスタート時はナビゲーションの準備完了までリトライして遷移する
+      const navigateToToday = async (attempt: number) => {
+        if (!navigationRef.isReady() || !navigationRef.getCurrentRoute()) {
+          if (attempt < 50) {
+            setTimeout(() => { void navigateToToday(attempt + 1); }, 200);
           }
-        }, 100);
+          return;
+        }
+        let dayStartHour = 0;
+        try {
+          const settings = await loadUserSettings();
+          dayStartHour = settings?.dayStartHour ?? 0;
+        } catch {
+          // 設定読み込み失敗時はデフォルト値（dayStartHour=0）を使用
+        }
+        const effectiveToday = getEffectiveToday(dayStartHour);
+        navigationRef.navigate('DiaryEntry', { initialDate: effectiveToday });
+      };
+      setTimeout(() => { void navigateToToday(0); }, 100);
+    };
+
+    // フォアグラウンド／バックグラウンド起動中の通知タップ
+    notificationResponseListener.current = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+
+    // コールドスタート: アプリ完全終了状態から通知タップで起動したケースを拾う
+    try {
+      const lastResponse = Notifications.getLastNotificationResponse();
+      if (lastResponse) {
+        handleNotificationResponse(lastResponse);
+        // 次回以降の再取得（履歴からの再起動等）で同じレスポンスを再処理しないようクリア
+        Notifications.clearLastNotificationResponse();
       }
-    });
+    } catch (error) {
+      console.warn('起動時の通知レスポンス取得に失敗:', error);
+    }
 
     return () => {
       if (notificationResponseListener.current) {

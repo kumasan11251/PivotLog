@@ -4,8 +4,10 @@ import {
   getDiaryByDate,
   deleteDiaryEntry,
   DiaryEntry,
+  loadDiaryEntries,
   loadUserSettings,
 } from '../utils/storage';
+import { calculateStreakFromEntries } from '../utils/streakCalculator';
 import { PLACEHOLDERS, ENCOURAGEMENT_MESSAGES, getDailyElement } from '../constants/diaryEntry';
 import { getEffectiveToday } from '../utils/dateUtils';
 import { cancelTodayReminderAndReschedule, clearBadge } from '../services/notification';
@@ -21,6 +23,20 @@ export interface DiaryFormState {
 }
 
 const EMPTY_FORM: DiaryFormState = { goodTime: '', wastedTime: '', tomorrow: '' };
+
+/**
+ * その日の初回保存時にそっと添える一言（先輩トーン）
+ * 連続日数は主役にせず、途切れてもゼロにならない累計・月間日数を主役にする
+ */
+const buildFirstSaveNote = (dateString: string, monthCount: number, totalCount: number): string => {
+  // 累計が節目（10日ごと）のときは累計を主役に
+  if (totalCount >= 10 && totalCount % 10 === 0) {
+    return `気づいてみると、通算${totalCount}日分のあなたがここにいます`;
+  }
+  const isCurrentMonth = dateString.slice(0, 7) === getEffectiveToday().slice(0, 7);
+  const monthLabel = isCurrentMonth ? '今月' : 'この月';
+  return `${monthLabel}${monthCount}日目の記録です`;
+};
 const normalized = (form: DiaryFormState): DiaryFormState => ({
   goodTime: form.goodTime.trim(),
   wastedTime: form.wastedTime.trim(),
@@ -41,6 +57,8 @@ export const useDiaryEntry = (
   const [focusedField, setFocusedField] = useState<DiaryFieldKey | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [isLoaded, setIsLoaded] = useState(initialFormState !== undefined);
+  // その日の初回保存時にのみ表示する一言（自動保存のたびに点滅しないよう初回に限定）
+  const [firstSaveNote, setFirstSaveNote] = useState<string | null>(null);
 
   const formRef = useRef(formState);
   const savedRef = useRef<DiaryFormState>(normalized(formState));
@@ -52,6 +70,8 @@ export const useDiaryEntry = (
   const isLoadedRef = useRef(initialFormState !== undefined);
   const initializedFromCacheRef = useRef(initialFormState !== undefined);
   const onFormStateChangeRef = useRef(onFormStateChange);
+  // 自動保存のたびに全日記を読み込まないよう、streak算出結果を保持する
+  const streakDaysRef = useRef<number | null>(null);
 
   useEffect(() => {
     onFormStateChangeRef.current = onFormStateChange;
@@ -132,10 +152,37 @@ export const useDiaryEntry = (
               filled_fields: [snapshot.goodTime, snapshot.wastedTime, snapshot.tomorrow].filter(Boolean).length,
             });
 
+            // 初回保存時のみ、積み重ねをそっと伝える一言を用意する（失敗しても保存には影響させない）
+            if (isNewEntry) {
+              void (async () => {
+                try {
+                  const allDiaries = await loadDiaryEntries();
+                  const monthPrefix = dateString.slice(0, 7);
+                  const monthCount = allDiaries.filter(d => d.date.startsWith(monthPrefix)).length;
+                  if (!mountedRef.current) return;
+                  setFirstSaveNote(buildFirstSaveNote(dateString, monthCount, allDiaries.length));
+                } catch {
+                  // 取得失敗時は表示しないだけ
+                }
+              })();
+            }
+
             const userSettings = await loadUserSettings();
-            if (dateString === getEffectiveToday(userSettings?.dayStartHour ?? 0)) {
+            const dayStartHour = userSettings?.dayStartHour ?? 0;
+            if (dateString === getEffectiveToday(dayStartHour)) {
               try {
-                await cancelTodayReminderAndReschedule();
+                await cancelTodayReminderAndReschedule({
+                  tomorrowText: snapshot.tomorrow,
+                  // 引用が使えない場合のみ呼ばれる（streak文言用）。
+                  // 同一セッション内でstreakは変わらないため、算出結果はキャッシュする
+                  getStreakDays: async () => {
+                    if (streakDaysRef.current !== null) return streakDaysRef.current;
+                    const allDiaries = await loadDiaryEntries();
+                    const { streakDays } = calculateStreakFromEntries(allDiaries, dayStartHour);
+                    streakDaysRef.current = streakDays;
+                    return streakDays;
+                  },
+                });
                 await clearBadge();
               } catch (notificationError) {
                 console.error('日記保存後の通知更新に失敗しました', notificationError);
@@ -210,5 +257,6 @@ export const useDiaryEntry = (
     encouragement,
     placeholders,
     flushPendingSave,
+    firstSaveNote,
   };
 };
