@@ -16,9 +16,7 @@ import EncouragementHeader from './EncouragementHeader';
 import PreviousDayFocusHint from './PreviousDayFocusHint';
 import ProgressIndicator from './ProgressIndicator';
 import SaveMomentNote from './SaveMomentNote';
-import TimeHopCard from './TimeHopCard';
 import { usePreviousDayFocus } from '../../hooks/usePreviousDayFocus';
-import { useTimeHop } from '../../hooks/useTimeHop';
 
 export interface DiaryEntryPageHandle {
   flushPendingSave: () => Promise<boolean>;
@@ -38,7 +36,6 @@ interface Props {
   onNext: () => void;
   onOpenDatePicker: () => void;
   onNavigateToPaywall: () => void;
-  onJumpToDate: (dateString: string) => void;
 }
 
 const DiaryEntryPage = forwardRef<DiaryEntryPageHandle, Props>(({
@@ -54,7 +51,6 @@ const DiaryEntryPage = forwardRef<DiaryEntryPageHandle, Props>(({
   onNext,
   onOpenDatePicker,
   onNavigateToPaywall,
-  onJumpToDate,
 }, ref) => {
   const cacheFormState = useCallback(
     (nextFormState: DiaryFormState) => onFormStateChange(dateString, nextFormState),
@@ -81,7 +77,6 @@ const DiaryEntryPage = forwardRef<DiaryEntryPageHandle, Props>(({
     initialPreviousFocus,
     cachePreviousFocus
   );
-  const timeHop = useTimeHop(dateString);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollContentRef = useRef<View>(null);
@@ -163,13 +158,7 @@ const DiaryEntryPage = forwardRef<DiaryEntryPageHandle, Props>(({
             onNext={onNext}
             onOpenPicker={onOpenDatePicker}
           />
-          {/* カード渋滞の回避: タイムホップがある日はタイムホップを優先し1枚のみ表示
-              （出現頻度が低く再会価値が高いため） */}
-          {timeHop ? (
-            <TimeHopCard key={timeHop.dateString} timeHop={timeHop} onNavigateToDate={onJumpToDate} />
-          ) : (
-            <PreviousDayFocusHint text={previousFocus} />
-          )}
+          <PreviousDayFocusHint text={previousFocus} />
           <SaveMomentNote text={firstSaveNote} />
           {fields.map(field => (
             <View key={field.key} ref={field.container}>

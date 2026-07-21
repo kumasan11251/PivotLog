@@ -319,10 +319,6 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                       >
                         {day}
                       </Text>
-                      {/* 記録がある日の小さなドット（塗り＋ドットで「積み重なっている」感を控えめに強調） */}
-                      {hasDiary && !isToday && !isSelected && (
-                        <View style={[styles.diaryDot, { backgroundColor: themeColors.primary }]} />
-                      )}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -395,13 +391,6 @@ const styles = StyleSheet.create({
   hasDiaryText: {},
   todayText: {},
   selectedText: {},
-  diaryDot: {
-    position: 'absolute',
-    bottom: 3,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
   sundayText: {
     color: '#E57373',
   },

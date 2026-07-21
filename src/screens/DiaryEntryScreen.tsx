@@ -401,10 +401,6 @@ const DiaryEntryScreen: React.FC = () => {
                   onNext={() => moveToIndex(2)}
                   onOpenDatePicker={() => transitionRef.current === 'idle' && setShowDatePicker(true)}
                   onNavigateToPaywall={() => navigation.navigate('Paywall', { source: 'limit_reached' })}
-                  onJumpToDate={dateStr => {
-                    const parsed = parseLocalDateString(dateStr);
-                    if (parsed) void jumpToDate(parsed);
-                  }}
                 />
               </View>
             ))}
