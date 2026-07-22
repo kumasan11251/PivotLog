@@ -42,6 +42,16 @@ export const getDisplayMoonPhase = (date: Date): number => {
 };
 
 /**
+ * その日のうちに満月の瞬間（月相0.5）を迎えるかどうか
+ * 1朔望月につきちょうど1日だけtrueになる
+ */
+export const isFullMoonDay = (date: Date): boolean => {
+  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1, 0, 0, 0, 0);
+  return getMoonPhase(startOfDay) <= 0.5 && getMoonPhase(endOfDay) > 0.5;
+};
+
+/**
  * 月を表示する夜間帯（19時〜翌5時）かどうか
  */
 export const isNightTime = (date: Date): boolean => {

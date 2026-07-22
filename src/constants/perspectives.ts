@@ -4,6 +4,14 @@
  * 毎日異なる視点で気づきをもたらす
  */
 
+/** 月日指定（年をまたがない単一の日付） */
+export interface MonthDay {
+  /** 月（1-12） */
+  month: number;
+  /** 日（1-31） */
+  day: number;
+}
+
 /**
  * 表示条件の型定義
  * 複数条件が設定された場合はすべてAND条件
@@ -11,6 +19,8 @@
 export interface DisplayCondition {
   /** 表示する月（1=1月, 12=12月）。未指定なら通年表示 */
   displayMonths?: number[];
+  /** 表示する日付範囲（両端含む）。start > end の場合は年またぎとして扱う */
+  displayDateRanges?: { start: MonthDay; end: MonthDay }[];
   /** 誕生日月に表示するか */
   requiresBirthday?: boolean;
   /** 表示する曜日（0=日, 1=月, ..., 6=土） */
@@ -19,6 +29,8 @@ export interface DisplayCondition {
   streakRange?: { min?: number; max?: number };
   /** 今日の日記記入状態（true=記入済み, false=未記入） */
   hasTodayEntry?: boolean;
+  /** 満月の日のみ表示するか */
+  fullMoonOnly?: boolean;
 }
 
 export interface PerspectiveMessage {
@@ -61,13 +73,14 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   // 「限りあるからこそ尊い」というトーン
   // ============================================================
 
-  // --- 通年 (10) ---
+  // --- 通年 (9)・週末限定 (1) ---
   {
     id: 'weekends',
     category: 'countdown',
     template: 'あと約{remainingWeekends}回の週末がある',
     subtext: '予定のない土曜日の朝も、かけがえのない一回',
     emoji: '☀️',
+    displayCondition: { dayOfWeek: [5, 6, 0] },
   },
   {
     id: 'countdown-meetings',
@@ -115,7 +128,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     id: 'sleeps',
     category: 'countdown',
     template: 'あと{remainingDays}回、目を閉じて眠りにつく',
-    subtext: '今日という日を抱きしめて、おやすみなさい',
+    subtext: '今夜は、今日という日を抱きしめて眠ろう',
     emoji: '🌙',
   },
   {
@@ -140,7 +153,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingSprings}回の桜を見届けられる',
     subtext: '今年の桜は、今年だけのもの',
     emoji: '🌸',
-    displayCondition: { displayMonths: [3, 4, 5] },
+    displayCondition: { displayMonths: [3, 4] },
   },
   {
     id: 'summers',
@@ -156,7 +169,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingAutumns}回の紅葉の秋',
     subtext: '色づく季節は、何度でも心を動かす',
     emoji: '🍂',
-    displayCondition: { displayMonths: [9, 10, 11] },
+    displayCondition: { displayMonths: [10, 11] },
   },
   {
     id: 'winters',
@@ -172,7 +185,8 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingYears}回のお正月',
     subtext: '新しい年の空気を、胸いっぱいに吸い込もう',
     emoji: '🎍',
-    displayCondition: { displayMonths: [12, 1] },
+    // 年の瀬〜松の内（12/15〜1/7）のみ表示
+    displayCondition: { displayDateRanges: [{ start: { month: 12, day: 15 }, end: { month: 1, day: 7 } }] },
   },
   {
     id: 'birthdays',
@@ -188,7 +202,8 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと約{remainingYears}回のクリスマス',
     subtext: '街が少しだけ優しくなる季節を、味わおう',
     emoji: '🎄',
-    displayCondition: { displayMonths: [12] },
+    // クリスマス当日まで（12/26以降は非表示）
+    displayCondition: { displayDateRanges: [{ start: { month: 12, day: 1 }, end: { month: 12, day: 25 } }] },
   },
   {
     id: 'countdown-rain',
@@ -196,7 +211,8 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと{remainingYears}回の梅雨を過ごせる',
     subtext: '雨の日にしか聞こえない音がある',
     emoji: '☔',
-    displayCondition: { displayMonths: [6, 7] },
+    // 本州の平年の梅雨明けごろまで
+    displayCondition: { displayDateRanges: [{ start: { month: 6, day: 1 }, end: { month: 7, day: 20 } }] },
   },
 
   // ============================================================
@@ -204,7 +220,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   // 発見と好奇心のトーン
   // ============================================================
 
-  // --- 通年 (13) ---
+  // --- 通年 (12)・満月限定 (1) ---
   {
     id: 'sunsets',
     category: 'reframe',
@@ -225,6 +241,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'あと約{remainingMonths}回の満月',
     subtext: '今夜、窓から空を見上げてみて',
     emoji: '🌕',
+    displayCondition: { fullMoonOnly: true },
   },
   {
     id: 'heartbeats',
@@ -312,7 +329,8 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: 'ホタルの光は、ほんの2週間だけ。その短さが、光を美しくする',
     subtext: '限りある時間こそ、輝ける理由',
     emoji: '✨',
-    displayCondition: { displayMonths: [6, 7] },
+    // ホタルの見頃（6月〜7月上旬）のみ表示
+    displayCondition: { displayDateRanges: [{ start: { month: 6, day: 1 }, end: { month: 7, day: 10 } }] },
   },
   {
     id: 'reframe-autumn-colors',
@@ -320,7 +338,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     template: '同じ紅葉は二度と見られない。今年の赤は、今年だけの赤',
     subtext: '窓の外の景色も、日々少しずつ変わっている',
     emoji: '🍁',
-    displayCondition: { displayMonths: [9, 10, 11] },
+    displayCondition: { displayMonths: [10, 11] },
   },
   {
     id: 'reframe-snow',
@@ -447,7 +465,7 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
     id: 'reflection-friday',
     category: 'reflection',
     template: '今週の自分を振り返って、一番心に残っていることは？',
-    subtext: '金曜の夜は、一週間の読み返し',
+    subtext: '金曜日は、一週間の読み返しにちょうどいい',
     emoji: '🌆',
     displayCondition: { dayOfWeek: [5] },
   },
@@ -739,8 +757,8 @@ export const PERSPECTIVE_MESSAGES: PerspectiveMessage[] = [
   {
     id: 'awareness-morning',
     category: 'awareness',
-    template: '目が覚めた。今日というページが開いた',
-    subtext: '白紙の一日に、何を描こう',
+    template: '今日というページに、いま何行目まで書いただろう',
+    subtext: '続きを描くのは、これからの自分',
     emoji: '📃',
   },
 

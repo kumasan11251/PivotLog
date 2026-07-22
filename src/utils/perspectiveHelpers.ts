@@ -1,4 +1,5 @@
 import { PERSPECTIVE_MESSAGES, type PerspectiveMessage } from '../constants/perspectives';
+import { isFullMoonDay } from './moonPhase';
 
 /**
  * メッセージ選択時に渡すコンテキスト情報
@@ -10,6 +11,8 @@ export interface MessageContext {
   streakDays?: number;
   /** 今日の日記を記入済みか */
   hasTodayEntry?: boolean;
+  /** 満月の日か。未指定時は選出基準日から自動計算 */
+  isFullMoon?: boolean;
 }
 
 /**
@@ -59,11 +62,12 @@ const seededRandomN = (seed: number, n: number): number => {
  */
 const isMessageDisplayable = (
   message: PerspectiveMessage,
-  currentMonth: number,
+  date: Date,
   birthdayMonth?: number,
   context?: MessageContext
 ): boolean => {
   const condition = message.displayCondition;
+  const currentMonth = date.getMonth() + 1;
 
   // 条件がなければ通年表示
   if (!condition) {
@@ -81,6 +85,21 @@ const isMessageDisplayable = (
   // 表示月条件
   if (condition.displayMonths && condition.displayMonths.length > 0) {
     if (!condition.displayMonths.includes(currentMonth)) {
+      return false;
+    }
+  }
+
+  // 日付範囲条件（月日で比較、start > end は年またぎとして扱う）
+  if (condition.displayDateRanges && condition.displayDateRanges.length > 0) {
+    const currentMonthDay = currentMonth * 100 + date.getDate();
+    const inRange = condition.displayDateRanges.some(({ start, end }) => {
+      const startMonthDay = start.month * 100 + start.day;
+      const endMonthDay = end.month * 100 + end.day;
+      return startMonthDay <= endMonthDay
+        ? currentMonthDay >= startMonthDay && currentMonthDay <= endMonthDay
+        : currentMonthDay >= startMonthDay || currentMonthDay <= endMonthDay;
+    });
+    if (!inRange) {
       return false;
     }
   }
@@ -107,6 +126,13 @@ const isMessageDisplayable = (
     }
   }
 
+  // 満月条件（満月の日以外は表示しない）
+  if (condition.fullMoonOnly) {
+    if (!context?.isFullMoon) {
+      return false;
+    }
+  }
+
   // 日記記入状態条件（contextなしの場合はスキップ）
   if (condition.hasTodayEntry !== undefined) {
     if (context?.hasTodayEntry === undefined) {
@@ -124,14 +150,14 @@ const isMessageDisplayable = (
  * 表示可能なメッセージをフィルタリングし、カテゴリ別にグループ化
  */
 const getDisplayableMessagesByCategory = (
-  currentMonth: number,
+  date: Date,
   birthdayMonth?: number,
   context?: MessageContext
 ): Map<string, PerspectiveMessage[]> => {
   const categoryMap = new Map<string, PerspectiveMessage[]>();
 
   PERSPECTIVE_MESSAGES.forEach(msg => {
-    if (isMessageDisplayable(msg, currentMonth, birthdayMonth, context)) {
+    if (isMessageDisplayable(msg, date, birthdayMonth, context)) {
       const existing = categoryMap.get(msg.category) || [];
       existing.push(msg);
       categoryMap.set(msg.category, existing);
@@ -199,15 +225,15 @@ const getPreviousDayCategory = (
   const yesterday = new Date(date);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdaySeed = getSeedForDate(yesterday);
-  const yesterdayMonth = yesterday.getMonth() + 1;
 
-  // 前日のコンテキストは不明なので、月と曜日だけで判定
+  // 前日のコンテキストは不明なので、日付・曜日・満月だけで判定
   const yesterdayContext: MessageContext | undefined = context ? {
     dayOfWeek: yesterday.getDay(),
+    isFullMoon: isFullMoonDay(yesterday),
     // streakDaysとhasTodayEntryは前日の値が不明なので含めない
   } : undefined;
 
-  const categoryMap = getDisplayableMessagesByCategory(yesterdayMonth, birthdayMonth, yesterdayContext);
+  const categoryMap = getDisplayableMessagesByCategory(yesterday, birthdayMonth, yesterdayContext);
   const availableCategories = Array.from(categoryMap.keys());
 
   if (availableCategories.length === 0) {
@@ -252,18 +278,18 @@ export const getTodayPerspectiveMessage = (
   }
 ): PerspectiveMessage => {
   const today = options?.date ?? new Date();
-  const currentMonth = today.getMonth() + 1;
   const seed = getSeedForDate(today);
   const excludedMessageIds = new Set(options?.excludedMessageIds ?? []);
 
-  // 曜日をcontextに自動設定（未指定の場合）
+  // 曜日・満月をcontextに自動設定（未指定の場合）
   const effectiveContext: MessageContext | undefined = context ? {
     ...context,
     dayOfWeek: context.dayOfWeek ?? today.getDay(),
-  } : { dayOfWeek: today.getDay() };
+    isFullMoon: context.isFullMoon ?? isFullMoonDay(today),
+  } : { dayOfWeek: today.getDay(), isFullMoon: isFullMoonDay(today) };
 
   // カテゴリ別にグループ化
-  const categoryMap = getDisplayableMessagesByCategory(currentMonth, birthdayMonth, effectiveContext);
+  const categoryMap = getDisplayableMessagesByCategory(today, birthdayMonth, effectiveContext);
   const availableCategories = Array.from(categoryMap.keys());
 
   // 表示可能なメッセージがない場合のフォールバック
@@ -380,15 +406,15 @@ export const getPerspectiveMessageForDate = (
   birthdayMonth?: number,
   context?: MessageContext
 ): PerspectiveMessage => {
-  const currentMonth = date.getMonth() + 1;
   const seed = getSeedForDate(date);
 
   const effectiveContext: MessageContext | undefined = context ? {
     ...context,
     dayOfWeek: context.dayOfWeek ?? date.getDay(),
-  } : { dayOfWeek: date.getDay() };
+    isFullMoon: context.isFullMoon ?? isFullMoonDay(date),
+  } : { dayOfWeek: date.getDay(), isFullMoon: isFullMoonDay(date) };
 
-  const categoryMap = getDisplayableMessagesByCategory(currentMonth, birthdayMonth, effectiveContext);
+  const categoryMap = getDisplayableMessagesByCategory(date, birthdayMonth, effectiveContext);
   const availableCategories = Array.from(categoryMap.keys());
 
   if (availableCategories.length === 0) {

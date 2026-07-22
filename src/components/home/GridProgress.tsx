@@ -1,7 +1,10 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { getColors, fonts, spacing, textBase } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
+
+// バー/円形（useProgressAnimation）と同じアニメーション設定
+const ANIMATION_DURATION = 1200;
 
 interface GridProgressProps {
   targetLifespan: number;
@@ -24,6 +27,53 @@ const GridProgress: React.FC<GridProgressProps> = ({
   const completedYears = Math.floor(currentAge);
   // 現在進行中の年の進捗（0-1）
   const currentYearProgress = currentAge - completedYears;
+
+  // 入場アニメーション（0→1）。モード切替時は本コンポーネントが再マウントされるため、
+  // 切替のたびにアニメーションする（バー/円形のtriggerAnimationと同等の挙動）
+  const [animProgress] = useState(() => new Animated.Value(0));
+  const hasAnimatedRef = useRef(false);
+
+  useEffect(() => {
+    // 年齢の読み込み完了を待ってから一度だけアニメーション
+    if (currentAge > 0 && !hasAnimatedRef.current) {
+      hasAnimatedRef.current = true;
+      Animated.timing(animProgress, {
+        toValue: 1,
+        duration: ANIMATION_DURATION,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [currentAge, animProgress]);
+
+  /**
+   * 経過ブロックのフェードイン用opacity
+   * アニメーションの進行（0→1）が年齢に対する各年の位置を通過するタイミングで表示される
+   * （バーが左から埋まるのと同じく、左上から順に埋まっていく）
+   * 経過ブロックでは常に year <= currentAge のため inputRange は単調増加かつ1以下に収まる
+   */
+  const getBlockFillOpacity = (year: number): Animated.AnimatedInterpolation<number> => {
+    return animProgress.interpolate({
+      inputRange: [(year - 1) / currentAge, year / currentAge],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
+  };
+
+  /**
+   * 進行中ブロックの部分フィル用height
+   * 経過ブロックが埋まりきった後、残りの時間で現在の年の進捗まで伸びる
+   */
+  const getCurrentFillHeight = (): Animated.AnimatedInterpolation<string> | null => {
+    if (currentAge <= 0) return null;
+    const start = completedYears / currentAge;
+    if (start >= 1) return null;
+    return animProgress.interpolate({
+      inputRange: [start, 1],
+      outputRange: ['0%', `${currentYearProgress * 100}%`],
+      extrapolate: 'clamp',
+    });
+  };
 
   // グリッドのサイズ計算（コンテナに収まるように調整）
   const { columns, blockSize, gap } = useMemo(() => {
@@ -73,27 +123,38 @@ const GridProgress: React.FC<GridProgressProps> = ({
     <View style={styles.container}>
       {/* グリッド表示 */}
       <View style={[styles.gridContainer, { width: columns * (blockSize + gap) - gap, gap }]}>
-        {blocks.map((block) => (
-          <View
-            key={block.year}
-            style={[
-              styles.block,
-              { width: blockSize, height: blockSize },
-              block.status === 'completed' && { backgroundColor: themeColors.primary },
-              block.status === 'current' && { backgroundColor: themeColors.progress.background, borderWidth: 1, borderColor: themeColors.primary },
-              block.status === 'remaining' && { backgroundColor: themeColors.progress.background },
-            ]}
-          >
-            {block.status === 'current' && (
-              <View
-                style={[
-                  styles.blockCurrentFill,
-                  { height: `${currentYearProgress * 100}%`, backgroundColor: themeColors.primary }
-                ]}
-              />
-            )}
-          </View>
-        ))}
+        {blocks.map((block) => {
+          const fillOpacity = block.status === 'completed' ? getBlockFillOpacity(block.year) : null;
+          const fillHeight = block.status === 'current' ? getCurrentFillHeight() : null;
+          return (
+            <View
+              key={block.year}
+              style={[
+                styles.block,
+                { width: blockSize, height: blockSize, backgroundColor: themeColors.progress.background },
+                block.status === 'current' && [styles.blockCurrent, { borderColor: themeColors.primary }],
+              ]}
+            >
+              {block.status === 'completed' && (
+                <Animated.View
+                  style={[
+                    styles.blockCompletedFill,
+                    { backgroundColor: themeColors.primary },
+                    fillOpacity != null && { opacity: fillOpacity },
+                  ]}
+                />
+              )}
+              {block.status === 'current' && (
+                <Animated.View
+                  style={[
+                    styles.blockCurrentFill,
+                    { height: fillHeight ?? `${currentYearProgress * 100}%`, backgroundColor: themeColors.primary }
+                  ]}
+                />
+              )}
+            </View>
+          );
+        })}
       </View>
 
       {/* 統計情報 */}
@@ -129,6 +190,12 @@ const styles = StyleSheet.create({
   block: {
     borderRadius: 2,
     overflow: 'hidden',
+  },
+  blockCurrent: {
+    borderWidth: 1,
+  },
+  blockCompletedFill: {
+    ...StyleSheet.absoluteFillObject,
   },
   blockCurrentFill: {
     position: 'absolute',
