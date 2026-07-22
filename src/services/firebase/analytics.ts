@@ -19,6 +19,8 @@ export type AnalyticsEventParams = {
   diary_saved: { is_new: 0 | 1; filled_fields: number };
   /** AIリフレクションの生成リクエスト */
   ai_reflection_requested: undefined;
+  /** 生成成功したのに保存済み再読込でaiReflectionが見つからなかった（メモリフォールバック発動）。再発監視用 */
+  ai_reflection_reload_miss: undefined;
   /** ペイウォール表示。source: どの導線から来たか */
   paywall_viewed: { source: string };
   /** インサイトのチラ見せ（ぼかしプレビュー）表示 */
@@ -45,6 +47,16 @@ export type AnalyticsEventParams = {
   milestone_celebrated: { kind: 'streak' | 'total'; days: number };
   /** タイムホップ（あの日の自分）カードの展開 */
   timehop_viewed: { distance: 'week' | 'month' | 'year' };
+  /**
+   * トライアル資格チェックの判定確定（iOS限定・planごとに1イベント）。
+   * 再試行時は重複発火するため、集計時はpaywall_viewed単位でユニーク化する。
+   * 本番でunknownの比率が高い場合は「unknown=非表示」方針を再考する
+   */
+  trial_eligibility_checked: {
+    plan: 'monthly' | 'annual';
+    status: 'eligible' | 'ineligible' | 'unknown' | 'no_intro_offer' | 'error';
+    trial_shown: 0 | 1;
+  };
 };
 
 /**

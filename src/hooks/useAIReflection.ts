@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Animated, Alert } from 'react-native';
 import type { AIReflectionData, AIReflectionState } from '../types/aiReflection';
 import type { UsageLimitReason } from '../types/subscription';
@@ -70,6 +70,7 @@ export const useAIReflection = ({
     getGenerationTask,
     startGeneration,
     subscribeToCompletion,
+    getLatestResult,
   } = useAIReflectionContext();
 
   // ローカル表示用の状態
@@ -83,6 +84,16 @@ export const useAIReflection = ({
   const contextStatus = getGenerationStatus(dateString);
   const contextTask = getGenerationTask(dateString);
 
+  // loadSavedReflectionのuseCallback依存にcontextStatusを入れると
+  // generating→completedの遷移で消費側のuseEffectが再発火してしまうため、ref経由で最新値を参照する
+  const contextStatusRef = useRef(contextStatus);
+  useEffect(() => {
+    contextStatusRef.current = contextStatus;
+  }, [contextStatus]);
+
+  // 読み取りの順序逆転対策（複数回呼ばれた場合、最新の呼び出し以外の結果を破棄する）
+  const loadGenerationRef = useRef(0);
+
   // リフレクションをリセット
   const resetReflection = useCallback(() => {
     setReflection(null);
@@ -92,28 +103,69 @@ export const useAIReflection = ({
     fadeAnim.setValue(0);
   }, [fadeAnim]);
 
+  // リフレクションを表示状態にする
+  const showReflection = useCallback((data: AIReflectionData) => {
+    setReflection(data);
+    setLocalError(false);
+    setReflectionError(null);
+    fadeAnim.setValue(1); // 保存済みは即座に表示
+  }, [fadeAnim]);
+
   // 保存済みのリフレクションを読み込む
   const loadSavedReflection = useCallback(async () => {
+    // refの直接比較はawaitを跨いでTSの型絞り込みが残るため、getter経由で毎回読み直す
+    const currentStatus = () => contextStatusRef.current;
+
     // 生成中の場合は何もしない（コールバックで結果を受け取る）
-    if (contextStatus === 'generating') {
+    if (currentStatus() === 'generating') {
       return;
     }
 
+    const generation = ++loadGenerationRef.current;
+
     try {
       const diary = await getDiaryByDate(dateString);
-      if (diary?.aiReflection) {
-        setReflection(diary.aiReflection);
-        setLocalError(false);
-        setReflectionError(null);
-        fadeAnim.setValue(1); // 保存済みは即座に表示
-      } else {
+
+      // 順序逆転ガード: この読み取りが最新の呼び出しでなければ破棄
+      if (generation !== loadGenerationRef.current) return;
+      // ガードはawait解決後に再評価する
+      // （マウント時に開始した読み取りが生成完了後に解決するケースで、古い判断で表示を消さないため）
+      if (currentStatus() === 'generating') return;
+
+      // ストレージとメモリ（このセッションの生成結果）の新しい方を採用する。
+      // ストレージ優先だと書き込みキュー落ち時に古い結果が新しい再生成結果を覆い、
+      // メモリ優先だと他端末での再生成結果を古いメモリが覆うため、generatedAtで判定する
+      const stored = diary?.aiReflection ?? null;
+      const memory = getLatestResult(dateString);
+      const latest = stored && memory
+        ? (stored.generatedAt >= memory.generatedAt ? stored : memory)
+        : (stored ?? memory);
+
+      // 生成成功したのに保存済み再読込でaiReflectionが見つからないケースの再発監視
+      if (!stored && memory && currentStatus() === 'completed') {
+        logAnalyticsEvent('ai_reflection_reload_miss');
+      }
+
+      if (latest) {
+        showReflection(latest);
+      } else if (currentStatus() !== 'completed') {
+        // completed時はリセットしない（このセッションの生成結果の表示を保護する保険）
         resetReflection();
       }
     } catch (error) {
       console.error('リフレクションの読み込みに失敗:', error);
-      resetReflection();
+      if (generation !== loadGenerationRef.current) return;
+      if (currentStatus() === 'generating') return;
+
+      // 読み取り失敗でもメモリの生成結果があれば表示を維持する
+      const memory = getLatestResult(dateString);
+      if (memory) {
+        showReflection(memory);
+      } else if (currentStatus() !== 'completed') {
+        resetReflection();
+      }
     }
-  }, [dateString, fadeAnim, resetReflection, contextStatus]);
+  }, [dateString, resetReflection, getLatestResult, showReflection]);
 
   // 生成完了時のコールバックを登録
   useEffect(() => {

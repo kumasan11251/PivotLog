@@ -226,6 +226,44 @@ export const saveDiaryEntryToFirestore = async (
 };
 
 /**
+ * 日記のAIリフレクションのみを部分更新
+ * 本文フィールドには触れないため、生成中のユーザー編集を上書きしない
+ */
+export const updateDiaryAIReflectionInFirestore = async (
+  id: string,
+  aiReflection: AIReflectionData
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    const now = new Date().toISOString();
+
+    await withRetry(
+      async () => {
+        await userDoc.collection(COLLECTIONS.DIARIES).doc(id).set(
+          {
+            id,
+            date: id,
+            aiReflection,
+            updatedAt: now,
+          },
+          { merge: true }
+        );
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] AIリフレクション保存リトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
+  } catch (error) {
+    console.error('AIリフレクションの保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
  * すべての日記を読み込み（日付降順）
  */
 export const loadDiaryEntriesFromFirestore = async (): Promise<DiaryEntry[]> => {

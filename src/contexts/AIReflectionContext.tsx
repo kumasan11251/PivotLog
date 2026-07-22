@@ -6,7 +6,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import type { AIReflectionData } from '../types/aiReflection';
 import type { UsageLimitReason } from '../types/subscription';
-import { getDiaryByDate, saveDiaryEntry, DiaryEntry, loadUserSettings, getRecentDiaryEntries } from '../utils/storage';
+import { updateDiaryAIReflection, loadUserSettings, getRecentDiaryEntries } from '../utils/storage';
 import { generateReflection } from '../services/ai';
 import { calculateCurrentAge, calculateTimeLeft } from '../utils/timeCalculations';
 
@@ -50,8 +50,8 @@ interface AIReflectionContextType {
   startGeneration: (params: StartGenerationParams) => Promise<void>;
   /** 生成完了時のコールバックを登録 */
   subscribeToCompletion: (dateString: string, callback: CompletionCallback) => () => void;
-  /** 生成結果を取得（キャッシュから） */
-  getGeneratedReflection: (dateString: string) => Promise<AIReflectionData | null>;
+  /** このセッションで生成に成功した最新の結果を取得（メモリ保持、依存なしで安定） */
+  getLatestResult: (dateString: string) => AIReflectionData | null;
 }
 
 const AIReflectionContext = createContext<AIReflectionContextType | null>(null);
@@ -72,6 +72,10 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
 
   // 進行中のPromiseを保持（重複実行防止）
   const activeGenerationsRef = useRef<Map<string, Promise<AIReflectionData | null>>>(new Map());
+
+  // このセッションで生成に成功した結果をメモリ保持
+  // （保存後のストレージ再読込がstaleでも表示をフォールバックできるように）
+  const resultsRef = useRef<Map<string, AIReflectionData>>(new Map());
 
   // 特定の日付の生成状態を取得（タイムアウト考慮）
   const getGenerationStatus = useCallback((dateString: string): ReflectionGenerationStatus => {
@@ -184,35 +188,21 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
           recentEntries: recentEntries.length > 0 ? recentEntries : undefined,
         });
 
-        // 日記にリフレクションを保存
+        // 生成結果をメモリ保持（completedを見た消費者が確実に読めるよう、通知より先に行う）
+        resultsRef.current.set(dateString, newReflection);
+
+        // 完了通知を保存より先に実行する
+        // （Firestoreの書き込みがオフラインで保留されてもカード表示がブロックされないように）
+        updateTask(dateString, { status: 'completed', completedAt: Date.now() });
+        notifyCompletion(dateString, newReflection);
+
+        // 日記にリフレクションを保存（aiReflectionのみの部分更新。保留・失敗してもUIは表示済み）
         try {
-          const existingDiary = await getDiaryByDate(dateString);
-          if (existingDiary) {
-            const updatedDiary: DiaryEntry = {
-              ...existingDiary,
-              aiReflection: newReflection,
-              updatedAt: new Date().toISOString(),
-            };
-            await saveDiaryEntry(updatedDiary);
-          } else {
-            const newDiary: DiaryEntry = {
-              id: dateString,
-              date: dateString,
-              goodTime: formState.goodTime.trim(),
-              wastedTime: formState.wastedTime.trim(),
-              tomorrow: formState.tomorrow.trim(),
-              aiReflection: newReflection,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            await saveDiaryEntry(newDiary);
-          }
+          await updateDiaryAIReflection(dateString, newReflection, formState);
         } catch (saveError) {
           console.error('リフレクションの保存に失敗（生成は成功）:', saveError);
         }
 
-        updateTask(dateString, { status: 'completed', completedAt: Date.now() });
-        notifyCompletion(dateString, newReflection);
         return newReflection;
       } catch (err) {
         console.error('リフレクションの生成に失敗:', err);
@@ -280,10 +270,10 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
     };
   }, []);
 
-  // 生成結果を取得（キャッシュから）
-  const getGeneratedReflection = useCallback(async (dateString: string): Promise<AIReflectionData | null> => {
-    const diary = await getDiaryByDate(dateString);
-    return diary?.aiReflection ?? null;
+  // このセッションで生成に成功した最新の結果を取得
+  // （ref読み取りのみで依存が無く、再生成されない安定な関数）
+  const getLatestResult = useCallback((dateString: string): AIReflectionData | null => {
+    return resultsRef.current.get(dateString) ?? null;
   }, []);
 
   const value: AIReflectionContextType = {
@@ -292,7 +282,7 @@ export const AIReflectionProvider: React.FC<AIReflectionProviderProps> = ({ chil
     getGenerationTask,
     startGeneration,
     subscribeToCompletion,
-    getGeneratedReflection,
+    getLatestResult,
   };
 
   return (

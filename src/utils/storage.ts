@@ -6,6 +6,7 @@ import {
   saveHomeDisplaySettingsToFirestore,
   loadHomeDisplaySettingsFromFirestore,
   saveDiaryEntryToFirestore,
+  updateDiaryAIReflectionInFirestore,
   loadDiaryEntriesFromFirestore,
   getDiaryByDateFromFirestore,
   deleteDiaryEntryFromFirestore,
@@ -365,7 +366,14 @@ export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
     const index = existingDiaries.findIndex((e) => e.id === entry.id);
 
     if (index >= 0) {
-      existingDiaries[index] = { ...entry, updatedAt: new Date().toISOString() };
+      // Firestore側のmerge保存と挙動を揃える（entryに無いフィールド＝aiReflection等を保全）
+      const existing = existingDiaries[index];
+      existingDiaries[index] = {
+        ...existing,
+        ...entry,
+        createdAt: existing.createdAt ?? entry.createdAt,
+        updatedAt: new Date().toISOString(),
+      };
     } else {
       existingDiaries.push(entry);
     }
@@ -382,7 +390,14 @@ export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
   const cachedDiaries: DiaryEntry[] = cachedJson ? JSON.parse(cachedJson) : [];
   const index = cachedDiaries.findIndex((e) => e.id === entry.id);
   if (index >= 0) {
-    cachedDiaries[index] = { ...entry, updatedAt: new Date().toISOString() };
+    // Firestore側のmerge保存と挙動を揃える（entryに無いフィールド＝aiReflection等を保全）
+    const existing = cachedDiaries[index];
+    cachedDiaries[index] = {
+      ...existing,
+      ...entry,
+      createdAt: existing.createdAt ?? entry.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
   } else {
     cachedDiaries.push(entry);
   }
@@ -394,6 +409,74 @@ export const saveDiaryEntry = async (entry: DiaryEntry): Promise<void> => {
     await saveDiaryEntryToFirestore(entry);
   } catch {
     await addToSyncQueue({ type: 'saveDiary', targetId: entry.id, data: entry });
+  }
+
+  void syncWidgetAfterDiaryChange();
+};
+
+/**
+ * 日記のAIリフレクションのみを部分更新する（生成完了時の保存専用）。
+ * 本文フィールドには一切触れないため、生成中に進んだユーザー編集（自動保存済み）を
+ * 巻き戻さない。ローカルにエントリが無い場合のみ fallbackForm から新規作成する。
+ */
+export const updateDiaryAIReflection = async (
+  date: string,
+  reflection: AIReflectionData,
+  fallbackForm: { goodTime: string; wastedTime: string; tomorrow: string }
+): Promise<void> => {
+  const now = new Date().toISOString();
+  const buildNewEntry = (): DiaryEntry => ({
+    id: date,
+    date,
+    goodTime: fallbackForm.goodTime.trim(),
+    wastedTime: fallbackForm.wastedTime.trim(),
+    tomorrow: fallbackForm.tomorrow.trim(),
+    aiReflection: reflection,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  if (!isLoggedIn()) {
+    const existingDiaries = await loadDiaryEntries();
+    const index = existingDiaries.findIndex((e) => e.id === date);
+    if (index >= 0) {
+      existingDiaries[index] = { ...existingDiaries[index], aiReflection: reflection, updatedAt: now };
+    } else {
+      existingDiaries.push(buildNewEntry());
+      existingDiaries.sort((a, b) => b.date.localeCompare(a.date));
+    }
+    await AsyncStorage.setItem(DIARY_KEY, JSON.stringify(existingDiaries));
+    void syncWidgetAfterDiaryChange();
+    return;
+  }
+
+  // 1. キャッシュを部分更新（本文はキャッシュの最新状態を保持）
+  const cacheKey = getCacheKey('diaries');
+  const cachedJson = await AsyncStorage.getItem(cacheKey);
+  const cachedDiaries: DiaryEntry[] = cachedJson ? JSON.parse(cachedJson) : [];
+  const index = cachedDiaries.findIndex((e) => e.id === date);
+  const hasExisting = index >= 0;
+  let mergedEntry: DiaryEntry;
+  if (hasExisting) {
+    mergedEntry = { ...cachedDiaries[index], aiReflection: reflection, updatedAt: now };
+    cachedDiaries[index] = mergedEntry;
+  } else {
+    mergedEntry = buildNewEntry();
+    cachedDiaries.push(mergedEntry);
+    cachedDiaries.sort((a, b) => b.date.localeCompare(a.date));
+  }
+  await AsyncStorage.setItem(cacheKey, JSON.stringify(cachedDiaries));
+
+  // 2. Firestore書き込み（既存エントリはaiReflectionのみのmerge、失敗時は同期キューへ）
+  try {
+    if (hasExisting) {
+      await updateDiaryAIReflectionInFirestore(date, reflection);
+    } else {
+      await saveDiaryEntryToFirestore(mergedEntry);
+    }
+  } catch {
+    // merge: true で再送されるため、マージ済みエントリを積んでも安全
+    await addToSyncQueue({ type: 'saveDiary', targetId: date, data: mergedEntry });
   }
 
   void syncWidgetAfterDiaryChange();
