@@ -18,8 +18,8 @@ import { logAnalyticsEvent } from '../services/firebase';
 import { fonts, spacing, textBase, getColors } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { getOfferings } from '../services/revenueCat';
-import type { PurchasesPackage } from '../services/revenueCat';
+import { getOfferings, getTrialEligibility } from '../services/revenueCat';
+import type { PurchasesPackage, TrialEligibilityStatus } from '../services/revenueCat';
 import { LEGAL_URLS } from '../constants/legal';
 
 const FEATURES = [
@@ -78,10 +78,16 @@ export default function PaywallScreen() {
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [isLoadingOfferings, setIsLoadingOfferings] = useState(true);
   const [offeringError, setOfferingError] = useState(false);
+  // iOSのユーザー単位トライアル資格（null = 未チェック or Android → introPriceベース判定）
+  const [trialEligibility, setTrialEligibility] = useState<Record<
+    string,
+    TrialEligibilityStatus
+  > | null>(null);
 
   const loadOfferings = useCallback(async () => {
     setIsLoadingOfferings(true);
     setOfferingError(false);
+    setTrialEligibility(null);
     try {
       const offerings = await getOfferings();
       if (offerings?.current) {
@@ -91,8 +97,32 @@ export default function PaywallScreen() {
         const annual = offerings.current.availablePackages.find(
           (pkg) => pkg.packageType === 'ANNUAL',
         );
+        // 資格チェックを待ってからローディングを解除する
+        // （introPriceベースのラベルが一瞬表示されるチラつきを防ぐ）
+        const productIds = [monthly, annual]
+          .filter((pkg): pkg is PurchasesPackage => pkg != null)
+          .map((pkg) => pkg.product.identifier);
+        const eligibility =
+          productIds.length > 0 ? await getTrialEligibility(productIds) : null;
         setMonthlyPackage(monthly ?? null);
         setAnnualPackage(annual ?? null);
+        setTrialEligibility(eligibility);
+        // iOSで資格チェックを通った場合のみ記録（planごとに1イベント）
+        if (eligibility) {
+          for (const [plan, pkg] of [
+            ['monthly', monthly],
+            ['annual', annual],
+          ] as const) {
+            if (!pkg) continue;
+            const status = eligibility[pkg.product.identifier];
+            logAnalyticsEvent('trial_eligibility_checked', {
+              plan,
+              status,
+              trial_shown:
+                getFreeTrialLabel(pkg) !== null && status === 'eligible' ? 1 : 0,
+            });
+          }
+        }
       } else {
         setOfferingError(true);
       }
@@ -133,8 +163,20 @@ export default function PaywallScreen() {
   })();
 
   // 無料トライアル表示（ストア側でIntro Offerを設定すると自動で反映される）
-  const monthlyTrialLabel = getFreeTrialLabel(monthlyPackage);
-  const annualTrialLabel = getFreeTrialLabel(annualPackage);
+  // iOSではユーザー単位の資格が 'eligible' の場合のみ表示する
+  // （トライアル利用済みユーザーへの「7日間無料」誤表示を防ぐ。迷ったら非表示）
+  const getTrialLabelWithEligibility = (
+    pkg: PurchasesPackage | null,
+  ): string | null => {
+    const label = getFreeTrialLabel(pkg);
+    if (!label) return null;
+    if (trialEligibility !== null && pkg) {
+      return trialEligibility[pkg.product.identifier] === 'eligible' ? label : null;
+    }
+    return label; // Android等はintroPriceベース判定のまま
+  };
+  const monthlyTrialLabel = getTrialLabelWithEligibility(monthlyPackage);
+  const annualTrialLabel = getTrialLabelWithEligibility(annualPackage);
   const selectedTrialLabel = selectedPlan === 'annual' ? annualTrialLabel : monthlyTrialLabel;
 
   // 年額プランの1日あたり換算（日本円のみ表示）

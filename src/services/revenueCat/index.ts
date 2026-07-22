@@ -8,6 +8,7 @@ import Purchases, {
   type CustomerInfo,
   type PurchasesOfferings,
   type PurchasesPackage,
+  INTRO_ELIGIBILITY_STATUS,
   LOG_LEVEL,
   PURCHASES_ERROR_CODE,
 } from 'react-native-purchases';
@@ -154,6 +155,79 @@ export async function getOfferings(): Promise<PurchasesOfferings | null> {
   } catch (error) {
     console.error('[RevenueCat] Offering取得に失敗しました:', error);
     throw error;
+  }
+}
+
+/** トライアル資格ステータスの生値（表示判定とアナリティクス記録の両方に使う） */
+export type TrialEligibilityStatus =
+  | 'eligible'
+  | 'ineligible'
+  | 'unknown'
+  | 'no_intro_offer'
+  | 'error';
+
+/** 資格チェックのタイムアウト（ms）。超過時は全product 'error'＝非表示にフォールバック */
+const ELIGIBILITY_CHECK_TIMEOUT_MS = 5000;
+
+/** 指定時間内に解決しなければrejectするヘルパー */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`タイムアウト（${ms}ms）`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+/**
+ * product IDごとのトライアル資格ステータスを返す（iOS専用）
+ * Androidの場合のみnullを返し、呼び出し側でintroPriceベースの判定に
+ * フォールバックさせる。iOSでは失敗・タイムアウト時も必ずマップを返す
+ * （全product 'error' ＝ トライアル文言は非表示に倒す）
+ */
+export async function getTrialEligibility(
+  productIdentifiers: string[],
+): Promise<Record<string, TrialEligibilityStatus> | null> {
+  if (Platform.OS !== 'ios') return null;
+  const errorResult = (): Record<string, TrialEligibilityStatus> =>
+    Object.fromEntries(productIdentifiers.map((id) => [id, 'error']));
+  if (!(await ensureInitialized())) return errorResult();
+  try {
+    const result = await withTimeout(
+      Purchases.checkTrialOrIntroductoryPriceEligibility(productIdentifiers),
+      ELIGIBILITY_CHECK_TIMEOUT_MS,
+    );
+    const statuses: Record<string, TrialEligibilityStatus> = {};
+    for (const id of productIdentifiers) {
+      switch (result[id]?.status) {
+        case INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE:
+          statuses[id] = 'eligible';
+          break;
+        case INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_INELIGIBLE:
+          statuses[id] = 'ineligible';
+          break;
+        case INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_NO_INTRO_OFFER_EXISTS:
+          statuses[id] = 'no_intro_offer';
+          break;
+        default:
+          // UNKNOWN(0) と「結果にproductが含まれない」場合の両方をここで吸収
+          statuses[id] = 'unknown';
+      }
+    }
+    if (__DEV__) {
+      console.log('[RevenueCat] トライアル資格チェック結果:', statuses);
+    }
+    return statuses;
+  } catch (error) {
+    console.error('[RevenueCat] トライアル資格チェックに失敗しました:', error);
+    return errorResult();
   }
 }
 
