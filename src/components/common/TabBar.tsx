@@ -3,12 +3,27 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, spacing, textBase, getColors } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import type { MainTabType } from '../../types/navigation';
 
-type TabType = 'home' | 'diaryList';
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+interface TabDefinition {
+  key: MainTabType;
+  label: string;
+  activeIcon: IoniconName;
+  inactiveIcon: IoniconName;
+}
+
+// タブ定義（表示順もこの配列の順序に従う）
+const TABS: TabDefinition[] = [
+  { key: 'home', label: 'ホーム', activeIcon: 'home', inactiveIcon: 'home-outline' },
+  { key: 'diaryList', label: '記録一覧', activeIcon: 'list', inactiveIcon: 'list-outline' },
+  { key: 'habit', label: '習慣', activeIcon: 'checkmark-circle', inactiveIcon: 'checkmark-circle-outline' },
+];
 
 interface TabBarProps {
-  activeTab: TabType;
-  onTabChange: (tab: TabType) => void;
+  activeTab: MainTabType;
+  onTabChange: (tab: MainTabType) => void;
 }
 
 export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
@@ -17,39 +32,28 @@ export default function TabBar({ activeTab, onTabChange }: TabBarProps) {
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
-      <TouchableOpacity
-        style={styles.tab}
-        onPress={() => onTabChange('home')}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.iconContainer, activeTab === 'home' && { backgroundColor: themeColors.primary + '15' }]}>
-          <Ionicons
-            name={activeTab === 'home' ? 'home' : 'home-outline'}
-            size={20}
-            color={activeTab === 'home' ? themeColors.primary : themeColors.text.secondary}
-          />
-        </View>
-        <Text style={[styles.label, { color: themeColors.text.secondary }, activeTab === 'home' && { color: themeColors.primary }]}>
-          ホーム
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.tab}
-        onPress={() => onTabChange('diaryList')}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.iconContainer, activeTab === 'diaryList' && { backgroundColor: themeColors.primary + '15' }]}>
-          <Ionicons
-            name={activeTab === 'diaryList' ? 'list' : 'list-outline'}
-            size={20}
-            color={activeTab === 'diaryList' ? themeColors.primary : themeColors.text.secondary}
-          />
-        </View>
-        <Text style={[styles.label, { color: themeColors.text.secondary }, activeTab === 'diaryList' && { color: themeColors.primary }]}>
-          記録一覧
-        </Text>
-      </TouchableOpacity>
+      {TABS.map((tab) => {
+        const isActive = activeTab === tab.key;
+        return (
+          <TouchableOpacity
+            key={tab.key}
+            style={styles.tab}
+            onPress={() => onTabChange(tab.key)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.iconContainer, isActive && { backgroundColor: themeColors.primary + '15' }]}>
+              <Ionicons
+                name={isActive ? tab.activeIcon : tab.inactiveIcon}
+                size={20}
+                color={isActive ? themeColors.primary : themeColors.text.secondary}
+              />
+            </View>
+            <Text style={[styles.label, { color: themeColors.text.secondary }, isActive && { color: themeColors.primary }]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -84,18 +88,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 0,
   },
-  activeIcon: {
-    backgroundColor: colors.primary + '15', // 15% opacity
-    borderRadius: 16,
-  },
   label: {
     fontSize: 10,
     color: colors.text.secondary,
     fontFamily: fonts.family.regular,
     ...textBase,
-  },
-  activeLabel: {
-    color: colors.primary,
-    fontFamily: fonts.family.bold,
   },
 });

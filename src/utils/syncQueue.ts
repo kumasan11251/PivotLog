@@ -4,12 +4,25 @@ import {
   saveHomeDisplaySettingsToFirestore,
   saveDiaryEntryToFirestore,
   deleteDiaryEntryFromFirestore,
+  saveHabitDayToFirestore,
 } from '../services/firebase/firestore';
+import type { HabitItem } from '../types/habit';
 
 const SYNC_QUEUE_KEY = '@pivot_log_sync_queue';
 const MAX_QUEUE_SIZE = 100;
 
-type SyncOperationType = 'saveSettings' | 'saveDisplaySettings' | 'saveDiary' | 'deleteDiary';
+type SyncOperationType =
+  | 'saveSettings'
+  | 'saveDisplaySettings'
+  | 'saveDiary'
+  | 'deleteDiary'
+  | 'saveHabits';
+
+/** saveHabits 操作のペイロード（items が空なら Firestore 側は削除） */
+export interface SaveHabitsPayload {
+  date: string;
+  items: HabitItem[];
+}
 
 interface SyncOperation {
   id: string;
@@ -107,6 +120,21 @@ export const processSyncQueue = async (): Promise<void> => {
 };
 
 /**
+ * まだ Firestore に届いていない習慣の保存操作を返す（日付ごとに最新のみ）。
+ * Firestore から全件を取り直すときに、未送信のローカル変更を上書きしないために使う。
+ */
+export const getPendingHabitOperations = async (): Promise<SaveHabitsPayload[]> => {
+  try {
+    const queue = await loadQueue();
+    const deduped = deduplicateQueue(queue.filter((op) => op.type === 'saveHabits'));
+    return deduped.map((op) => op.data as SaveHabitsPayload);
+  } catch (error) {
+    console.error('[SyncQueue] 未送信の習慣操作の取得に失敗:', error);
+    return [];
+  }
+};
+
+/**
  * 同期キューを全削除
  */
 export const clearSyncQueue = async (): Promise<void> => {
@@ -185,5 +213,10 @@ const executeOperation = async (op: SyncOperation): Promise<void> => {
     case 'deleteDiary':
       await deleteDiaryEntryFromFirestore(op.targetId!);
       break;
+    case 'saveHabits': {
+      const payload = op.data as SaveHabitsPayload;
+      await saveHabitDayToFirestore(payload.date, payload.items);
+      break;
+    }
   }
 };

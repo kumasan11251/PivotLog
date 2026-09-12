@@ -7,6 +7,7 @@ import { COLLECTIONS, USER_SUBCOLLECTIONS } from './config';
 import { getCurrentUser } from './auth';
 import { withRetry } from '../../utils/retry';
 import type { AIReflectionData } from '../../types/aiReflection';
+import type { HabitItem, HabitsByDate } from '../../types/habit';
 
 // 型定義
 export interface UserSettings {
@@ -384,11 +385,88 @@ export const getDiariesByMonthFromFirestore = async (
   );
 };
 
+// =============== 習慣 ===============
+
+/** Firestore 上の習慣ドキュメント（users/{uid}/habits/{YYYY-MM-DD}） */
+interface HabitDayDocument {
+  date: string;
+  items: HabitItem[];
+  updatedAt: string;
+}
+
+/**
+ * 指定日の習慣一覧を保存する。
+ * 項目が空になった日はドキュメントごと削除して、全件取得時のノイズを減らす。
+ */
+export const saveHabitDayToFirestore = async (
+  date: string,
+  items: HabitItem[]
+): Promise<void> => {
+  try {
+    const userDoc = getUserDocRef();
+    const docRef = userDoc.collection(COLLECTIONS.HABITS).doc(date);
+
+    await withRetry(
+      async () => {
+        if (items.length === 0) {
+          await docRef.delete();
+          return;
+        }
+        const data: HabitDayDocument = {
+          date,
+          items,
+          updatedAt: new Date().toISOString(),
+        };
+        await docRef.set(data);
+      },
+      {
+        maxRetries: 3,
+        baseDelayMs: 1000,
+        onRetry: (attempt, error) => {
+          console.warn(`[Firestore] 習慣保存リトライ (${attempt}/3):`, error.message);
+        },
+      }
+    );
+  } catch (error) {
+    console.error('習慣の保存に失敗しました:', error);
+    throw error;
+  }
+};
+
+/**
+ * 習慣をすべて取得する（日付 → 項目一覧）。
+ * 1日あたり最大3件と小さいので、全件をまとめて読んでローカルキャッシュに載せる。
+ */
+export const loadAllHabitsFromFirestore = async (): Promise<HabitsByDate> => {
+  const userDoc = getUserDocRef();
+
+  return await withRetry(
+    async () => {
+      const snapshot = await userDoc.collection(COLLECTIONS.HABITS).get();
+      const result: HabitsByDate = {};
+      for (const doc of snapshot.docs) {
+        const data = doc.data() as Partial<HabitDayDocument>;
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          result[doc.id] = data.items;
+        }
+      }
+      return result;
+    },
+    {
+      maxRetries: 1,
+      baseDelayMs: 1000,
+      onRetry: (attempt, error) => {
+        console.warn(`[Firestore] 習慣取得リトライ (${attempt}/1):`, error.message);
+      },
+    }
+  );
+};
+
 /**
  * ユーザーのすべてのデータを削除（アカウント削除時に使用）
  *
  * USER_SUBCOLLECTIONS に列挙したすべてのサブコレクション
- * （settings / diaries / weeklyInsights / monthlyInsights / usage / subscription）を
+ * （settings / diaries / weeklyInsights / monthlyInsights / habits / usage / subscription）を
  * 全削除する。Firestoreはサブコレクションを連鎖削除しないため、ここで明示的に消す必要がある。
  * Firestoreのバッチは1コミット500件が上限のため、MAX_BATCH_WRITESごとに分割コミットする。
  *

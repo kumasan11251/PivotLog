@@ -99,8 +99,10 @@ android/.../pivotlog/    # Androidネイティブ（ウィジェット, ブリ�
   - `@pivot_log_widget_settings` - ウィジェット設定
   - `@pivot_log_migrated` - データ移行状態
   - `@pivot_log_skipped_update_version` - 「あとで」でスキップしたアップデートバージョン
-- **Firestore**: クラウド同期（`users/{userId}/settings`, `diaries`, `homeDisplay`, `widget`, `subscription`）。公開設定は `appConfig/version`（最新/最低バージョン情報、未認証読み取り可）
+  - `@pivot_log_habits` - 習慣（日付→項目一覧）。ログイン中は `_cache_{uid}` 付きキーが Firestore のキャッシュ
+- **Firestore**: クラウド同期（`users/{userId}/settings`, `diaries`, `habits`, `homeDisplay`, `widget`, `subscription`）。公開設定は `appConfig/version`（最新/最低バージョン情報、未認証読み取り可）
 - 日記エントリのIDは日付文字列（`YYYY-MM-DD`）。保存時は全エントリを読み込み→更新/追加→ソート→全体書き戻し
+- 習慣は `users/{userId}/habits/{YYYY-MM-DD}` に1日1ドキュメント（`items` 配列）。読み取りは常にローカルキャッシュ、`syncHabitsFromFirestore()` でキャッシュを最新化。書き込み失敗時は同期キュー（`saveHabits`）で再送
 
 ### ウィジェット通信
 

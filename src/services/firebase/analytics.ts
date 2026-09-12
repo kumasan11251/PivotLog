@@ -11,6 +11,7 @@
  * - GA4はboolean型パラメータの扱いが不安定なため、フラグは 0 | 1 の数値で送る
  */
 import analytics from '@react-native-firebase/analytics';
+import type { MainTabType } from '../../types/navigation';
 
 // アプリ内で使用するカスタムイベントの一覧。
 // イベントを追加するときは必ずここに型を足すこと（呼び出し側で型チェックが効く）。
@@ -47,6 +48,11 @@ export type AnalyticsEventParams = {
   milestone_celebrated: { kind: 'streak' | 'total'; days: number };
   /** タイムホップ（あの日の自分）カードの展開 */
   timehop_viewed: { distance: 'week' | 'month' | 'year' };
+  /**
+   * メインタブのタップ切り替え（同じタブの再タップは送らない）。
+   * tab: 切り替え先、from: 切り替え元。タブ順序の見直し材料にする
+   */
+  tab_selected: { tab: MainTabType; from: MainTabType };
   /**
    * トライアル資格チェックの判定確定（iOS限定・planごとに1イベント）。
    * 再試行時は重複発火するため、集計時はpaywall_viewed単位でユニーク化する。

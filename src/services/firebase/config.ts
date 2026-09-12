@@ -24,6 +24,7 @@ export const COLLECTIONS = {
   DIARIES: 'diaries',
   WEEKLY_INSIGHTS: 'weeklyInsights',
   MONTHLY_INSIGHTS: 'monthlyInsights',
+  HABITS: 'habits',
   USAGE: 'usage',
   SUBSCRIPTION: 'subscription',
   APP_CONFIG: 'appConfig',
@@ -37,6 +38,7 @@ export const USER_SUBCOLLECTIONS = [
   COLLECTIONS.DIARIES,
   COLLECTIONS.WEEKLY_INSIGHTS,
   COLLECTIONS.MONTHLY_INSIGHTS,
+  COLLECTIONS.HABITS,
   COLLECTIONS.USAGE,
   COLLECTIONS.SUBSCRIPTION,
 ] as const;

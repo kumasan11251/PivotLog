@@ -1,11 +1,14 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+// メインタブ（ホーム画面内のクライアントサイドタブ）の種類
+export type MainTabType = 'home' | 'diaryList' | 'habit';
+
 // ルートナビゲーションのパラメータ定義
 export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
   InitialSetup: undefined;
-  Home: { initialTab?: 'home' | 'diaryList' } | undefined;
+  Home: { initialTab?: MainTabType } | undefined;
   DiaryEntry: { initialDate?: string };
   Settings: undefined;
   EditBirthday: undefined;

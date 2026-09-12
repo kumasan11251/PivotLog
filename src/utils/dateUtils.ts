@@ -86,3 +86,97 @@ export const getEffectiveTodayDate = (dayStartHour: number = 0): Date => {
   now.setHours(0, 0, 0, 0);
   return now;
 };
+
+/**
+ * 指定日を含む週（日曜始まり）の7日分の日付文字列を返す
+ * @param dateString YYYY-MM-DD形式の日付
+ */
+export const getWeekDateStrings = (dateString: string): string[] => {
+  const date = parseLocalDateString(dateString);
+  if (!date) throw new Error(`Invalid local date string: ${dateString}`);
+  const sunday = new Date(date);
+  sunday.setDate(date.getDate() - date.getDay());
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    return formatDateToString(d);
+  });
+};
+
+const JP_WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+/**
+ * 「9月7日」または「9月7日（日）」の形式に整形する
+ */
+export const formatJapaneseMonthDay = (dateString: string, withWeekday = false): string => {
+  const date = parseLocalDateString(dateString);
+  if (!date) return dateString;
+  const base = `${date.getMonth() + 1}月${date.getDate()}日`;
+  return withWeekday ? `${base}（${JP_WEEKDAYS[date.getDay()]}）` : base;
+};
+
+/**
+ * 指定日から月単位で前後した日付を返す（日は月末で丸める）
+ * 例: 2026-08-31 の1ヶ月後 → 2026-09-30
+ */
+export const addMonthsToDateString = (dateString: string, months: number): string => {
+  const date = parseLocalDateString(dateString);
+  if (!date) throw new Error(`Invalid local date string: ${dateString}`);
+  const targetMonthStart = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const lastDayOfTarget = new Date(
+    targetMonthStart.getFullYear(),
+    targetMonthStart.getMonth() + 1,
+    0
+  ).getDate();
+  targetMonthStart.setDate(Math.min(date.getDate(), lastDayOfTarget));
+  return formatDateToString(targetMonthStart);
+};
+
+/**
+ * 指定日を含む月のカレンダーグリッド（日曜始まり・7列）を返す
+ * 月外のマスは null
+ */
+export const getMonthGridWeeks = (dateString: string): (string | null)[][] => {
+  const date = parseLocalDateString(dateString);
+  if (!date) throw new Error(`Invalid local date string: ${dateString}`);
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const startDayOfWeek = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const cells: (string | null)[] = Array.from({ length: startDayOfWeek }, () => null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    cells.push(formatDateToString(new Date(year, month, day)));
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
+
+  const weeks: (string | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    weeks.push(cells.slice(i, i + 7));
+  }
+  return weeks;
+};
+
+/**
+ * 指定日を含む月のカレンダーグリッドが覆う全日付（月外の前後日も含む）を返す
+ * グリッドは常に週単位なので、指定日を含む週の7日分も必ず含まれる
+ */
+export const getMonthGridDateStrings = (dateString: string): string[] => {
+  const date = parseLocalDateString(dateString);
+  if (!date) throw new Error(`Invalid local date string: ${dateString}`);
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const gridStart = new Date(year, month, 1);
+  gridStart.setDate(1 - gridStart.getDay());
+  const lastDay = new Date(year, month + 1, 0);
+  const gridEnd = new Date(lastDay);
+  gridEnd.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
+
+  const result: string[] = [];
+  for (const d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+    result.push(formatDateToString(d));
+  }
+  return result;
+};

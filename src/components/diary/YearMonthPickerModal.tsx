@@ -10,6 +10,8 @@ interface YearMonthPickerModalProps {
   initialMonth: number;
   onClose: () => void;
   onConfirm: (year: number, month: number) => void;
+  /** 未来の月も選べるようにする（習慣タブの予定など）。既定は過去〜今月のみ */
+  allowFuture?: boolean;
 }
 
 const MIN_YEAR = 1900;
@@ -20,6 +22,7 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
   initialMonth,
   onClose,
   onConfirm,
+  allowFuture = false,
 }) => {
   const { isDark } = useTheme();
   const themeColors = useMemo(() => getColors(isDark), [isDark]);
@@ -41,11 +44,12 @@ const YearMonthPickerModal: React.FC<YearMonthPickerModalProps> = ({
 
   const isFutureMonth = useCallback(
     (targetYear: number, targetMonth: number) => {
+      if (allowFuture) return false;
       if (targetYear > currentYear) return true;
       if (targetYear === currentYear && targetMonth > currentMonth) return true;
       return false;
     },
-    [currentYear, currentMonth]
+    [allowFuture, currentYear, currentMonth]
   );
 
   const clampToPast = useCallback(

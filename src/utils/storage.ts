@@ -20,6 +20,7 @@ import type { AIReflectionData } from '../types/aiReflection';
 import type { AIConsentStatus } from '../types/aiConsent';
 import { CURRENT_CONSENT_VERSION } from '../types/aiConsent';
 import { addToSyncQueue, clearSyncQueue } from './syncQueue';
+import { clearAllHabits } from './habitStorage';
 import {
   normalizeReviewPromptHistory,
   type ReviewPromptAttempt,
@@ -669,6 +670,8 @@ export const deleteAllUserData = async (): Promise<void> => {
       ONBOARDING_KEY,
       PERSPECTIVE_HISTORY_KEY,
     ]);
+    // 習慣データも削除
+    await clearAllHabits();
     console.log('すべてのユーザーデータを削除しました');
   } catch (error) {
     console.error('ユーザーデータの削除に失敗しました:', error);
