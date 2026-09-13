@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import * as StoreReview from 'expo-store-review';
 import Constants from 'expo-constants';
 import { loadReviewPromptHistory, saveReviewPromptAttempt } from '../utils/storage';
+import { logAnalyticsEvent } from '../services/firebase';
 import {
   isReviewPromptHistoryEligible,
   type ReviewPromptTrigger,
@@ -98,6 +99,9 @@ export const useReviewRequest = ({
           trigger,
           appVersion: getCurrentAppVersion(),
         });
+
+        // 試行した事実を計測（表示有無は取得できないため試行回数のみ）
+        logAnalyticsEvent('review_prompt_attempted', { trigger });
 
         // 試行（表示保証なし・throw してもその場でリトライ連打しない）
         try {

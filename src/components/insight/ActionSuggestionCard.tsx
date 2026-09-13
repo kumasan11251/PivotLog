@@ -31,14 +31,14 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
           <View style={[styles.iconContainer, { backgroundColor: `${actionColor}15` }]}>
             <Ionicons name="navigate" size={18} color={actionColor} />
           </View>
-          <Text style={[styles.title, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.title, { color: themeColors.text.primary }]}>
             {mainSuggestion.action}
           </Text>
         </View>
 
         {/* 理由 */}
         {mainSuggestion.reason && (
-          <Text style={[styles.reasonText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.reasonText, { color: themeColors.text.primary }]}>
             {mainSuggestion.reason}
           </Text>
         )}
@@ -55,7 +55,7 @@ export const ActionSuggestionCard: React.FC<ActionSuggestionCardProps> = ({
               続けたいこと
             </Text>
           </View>
-          <Text style={[styles.keepDoingText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.keepDoingText, { color: themeColors.text.primary }]}>
             {keepDoing}
           </Text>
         </View>

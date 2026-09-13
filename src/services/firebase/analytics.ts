@@ -12,6 +12,8 @@
  */
 import analytics from '@react-native-firebase/analytics';
 import type { MainTabType } from '../../types/navigation';
+import type { ReviewPromptTrigger } from '../../utils/reviewPrompt';
+import type { LifeMilestoneKind } from '../../utils/lifeMilestones';
 
 // アプリ内で使用するカスタムイベントの一覧。
 // イベントを追加するときは必ずここに型を足すこと（呼び出し側で型チェックが効く）。
@@ -46,6 +48,14 @@ export type AnalyticsEventParams = {
   reminder_scheduled: { personalized: 0 | 1 };
   /** マイルストーン祝福演出の表示 */
   milestone_celebrated: { kind: 'streak' | 'total'; days: number };
+  /** 人生の節目カード（生後○日・残り○日・進捗○%など）のその日の初回表示。value: 節目の値 */
+  life_milestone_shown: { kind: LifeMilestoneKind; value: number };
+  /**
+   * ストア評価依頼（純正 StoreReview）の試行。全ガード通過後、requestReview() 直前に送る。
+   * OS はダイアログの表示有無・評価有無を返さないため「試行した事実」のみ。
+   * 効果は App Store Connect / Play Console の評価件数と突き合わせて読む
+   */
+  review_prompt_attempted: { trigger: ReviewPromptTrigger };
   /** タイムホップ（あの日の自分）カードの展開 */
   timehop_viewed: { distance: 'week' | 'month' | 'year' };
   /**

@@ -50,6 +50,101 @@ const Section: React.FC<SectionProps> = ({
 );
 
 /**
+ * 「明日へのヒント」本文の1行を表す型
+ * - paragraph: 通常の文章（気づき・見出しなど）
+ * - item: 「1. 〜」形式の候補（番号と本文を分けて描画）
+ */
+type TomorrowLine =
+  | { kind: 'paragraph'; text: string; isHeading: boolean }
+  | { kind: 'item'; number: string; text: string };
+
+/** 候補行（「1. 〜」「1．〜」「1、〜」など）を判定する */
+const TOMORROW_ITEM_PATTERN = /^\s*(\d+)\s*[.．、)）:：]\s*(.+)$/;
+
+/** 「明日、試してみるなら」の見出し行（サーバー側 EXPERIMENTS_HEADING と揃える） */
+const TOMORROW_HEADING_PATTERN = /^明日、?試してみるなら[：:]?$/;
+
+/**
+ * tomorrow 文字列を行単位に分解する
+ * サーバーは「気づき\n\n見出し\n1. 候補\n2. 候補」の形で組み立てるため、
+ * 番号付き行だけを item として切り出し、それ以外は段落として扱う
+ */
+export const parseTomorrowLines = (text: string): TomorrowLine[] => {
+  const lines: TomorrowLine[] = [];
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match = line.match(TOMORROW_ITEM_PATTERN);
+    if (match) {
+      lines.push({ kind: 'item', number: match[1], text: match[2].trim() });
+    } else {
+      lines.push({
+        kind: 'paragraph',
+        text: line,
+        isHeading: TOMORROW_HEADING_PATTERN.test(line),
+      });
+    }
+  }
+  return lines;
+};
+
+interface TomorrowContentProps {
+  text: string;
+  textColor: string;
+  accentColor: string;
+}
+
+/**
+ * 「明日へのヒント」本文
+ * 候補（1〜3）はぶら下げインデントで描き、番号と本文の頭を揃える
+ */
+const TomorrowContent: React.FC<TomorrowContentProps> = ({ text, textColor, accentColor }) => {
+  const lines = useMemo(() => parseTomorrowLines(text), [text]);
+
+  // 候補行が1つも無ければ従来どおり1つの Text で描く（改行もそのまま活かす）
+  if (!lines.some((line) => line.kind === 'item')) {
+    return <Text selectable style={[styles.v2MessageText, { color: textColor }]}>{text}</Text>;
+  }
+
+  return (
+    <View>
+      {lines.map((line, index) => {
+        const prev = lines[index - 1];
+        if (line.kind === 'item') {
+          return (
+            <View
+              key={index}
+              style={[
+                styles.tomorrowItemRow,
+                prev?.kind === 'item' ? styles.tomorrowItemRowFollowing : undefined,
+              ]}
+            >
+              <Text selectable style={[styles.tomorrowItemNumber, { color: accentColor }]}>
+                {line.number}.
+              </Text>
+              <Text selectable style={[styles.tomorrowItemText, { color: textColor }]}>{line.text}</Text>
+            </View>
+          );
+        }
+        return (
+          <Text selectable
+            key={index}
+            style={[
+              styles.v2MessageText,
+              { color: textColor },
+              line.isHeading ? styles.tomorrowHeading : undefined,
+              index > 0 ? styles.tomorrowParagraphFollowing : undefined,
+            ]}
+          >
+            {line.text}
+          </Text>
+        );
+      })}
+    </View>
+  );
+};
+
+/**
  * AIリフレクションカード（拡張版）
  * 日記に対するPivotLogからの気づきと問いかけを表示
  *
@@ -212,13 +307,13 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}10`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.v2MessageText, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.v2MessageText, { color: themeColors.text.primary }]}>
               {v2Data.understanding}
             </Text>
           </Section>
         ) : (
           // 1セクションのみの場合はラベルなし
-          <Text style={[styles.contentText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.contentText, { color: themeColors.text.primary }]}>
             {v2Data.understanding}
           </Text>
         )}
@@ -231,7 +326,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}08`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.v2MessageText, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.v2MessageText, { color: themeColors.text.primary }]}>
               {v2Data.perspective}
             </Text>
           </Section>
@@ -245,9 +340,11 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}12`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.v2MessageText, { color: themeColors.text.primary }]}>
-              {v2Data.tomorrow}
-            </Text>
+            <TomorrowContent
+              text={v2Data.tomorrow}
+              textColor={themeColors.text.primary}
+              accentColor={themeColors.primary}
+            />
           </Section>
         )}
       </Animated.View>
@@ -327,17 +424,17 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}10`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.emotionDetected, { color: themeColors.primary }]}>
+            <Text selectable style={[styles.emotionDetected, { color: themeColors.primary }]}>
               {v1Data.emotionInsight.detected}
             </Text>
-            <Text style={[styles.emotionDepth, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.emotionDepth, { color: themeColors.text.primary }]}>
               {v1Data.emotionInsight.depth}
             </Text>
           </Section>
         )}
 
         {/* 共感メッセージ */}
-        <Text style={[styles.contentText, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.contentText, { color: themeColors.text.primary }]}>
           {v1Data.content}
         </Text>
 
@@ -352,7 +449,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             <Text style={[styles.connectionDate, { color: themeColors.text.secondary }]}>
               {formatDateLabel(v1Data.continuity.connectionToPast.referenceDate)}の日記より
             </Text>
-            <Text style={[styles.connectionText, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.connectionText, { color: themeColors.text.primary }]}>
               {v1Data.continuity.connectionToPast.connection}
             </Text>
           </Section>
@@ -366,7 +463,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}0A`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.growthText, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.growthText, { color: themeColors.text.primary }]}>
               {v1Data.continuity.growthObservation.observation}
             </Text>
           </Section>
@@ -380,7 +477,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}08`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.lifeContextText, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.lifeContextText, { color: themeColors.text.primary }]}>
               {v1Data.lifeContext.perspective}
             </Text>
           </Section>
@@ -394,10 +491,10 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}12`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.actionMicro, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.actionMicro, { color: themeColors.text.primary }]}>
               {v1Data.actionSuggestion.micro}
             </Text>
-            <Text style={[styles.actionReason, { color: themeColors.text.secondary }]}>
+            <Text selectable style={[styles.actionReason, { color: themeColors.text.secondary }]}>
               → {v1Data.actionSuggestion.reason}
             </Text>
           </Section>
@@ -411,7 +508,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
             backgroundColor={`${themeColors.primary}15`}
             labelColor={themeColors.text.secondary}
           >
-            <Text style={[styles.questionText, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.questionText, { color: themeColors.text.primary }]}>
               {v1Data.question}
             </Text>
           </Section>
@@ -485,7 +582,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
       </Modal>
 
       {/* メッセージ本文 */}
-      <Text style={[styles.contentText, { color: themeColors.text.primary }]}>
+      <Text selectable style={[styles.contentText, { color: themeColors.text.primary }]}>
         {basicV1Data.content}
       </Text>
 
@@ -498,7 +595,7 @@ const AIReflectionCard: React.FC<AIReflectionCardProps> = ({
               明日へのヒント
             </Text>
           </View>
-          <Text style={[styles.questionText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.questionText, { color: themeColors.text.primary }]}>
             {basicV1Data.question}
           </Text>
         </View>
@@ -701,6 +798,37 @@ const styles = StyleSheet.create({
   },
   // V2用スタイル
   v2MessageText: {
+    fontSize: fonts.size.body,
+    fontFamily: fonts.family.regular,
+    lineHeight: 26,
+    ...textBase,
+  },
+  // 「明日へのヒント」候補リスト
+  tomorrowParagraphFollowing: {
+    marginTop: spacing.sm,
+  },
+  tomorrowHeading: {
+    fontFamily: fonts.family.bold,
+    marginTop: spacing.md,
+  },
+  tomorrowItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: spacing.xs,
+    paddingLeft: spacing.xs,
+  },
+  tomorrowItemRowFollowing: {
+    marginTop: spacing.sm,
+  },
+  tomorrowItemNumber: {
+    width: 22,
+    fontSize: fonts.size.body,
+    fontFamily: fonts.family.bold,
+    lineHeight: 26,
+    ...textBase,
+  },
+  tomorrowItemText: {
+    flex: 1,
     fontSize: fonts.size.body,
     fontFamily: fonts.family.regular,
     lineHeight: 26,

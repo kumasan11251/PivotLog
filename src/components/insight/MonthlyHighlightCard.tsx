@@ -74,18 +74,18 @@ export const MonthlyHighlightCard: React.FC<MonthlyHighlightCardProps> = ({ high
               {formatDateDisplay(highlight.date)}
             </Text>
           </View>
-          <Text style={[styles.title, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.title, { color: themeColors.text.primary }]}>
             {highlight.title}
           </Text>
         </View>
       </View>
 
-      <Text style={[styles.description, { color: themeColors.text.primary }]}>
+      <Text selectable style={[styles.description, { color: themeColors.text.primary }]}>
         {highlight.description}
       </Text>
       {highlight.quote && (
         <View style={[styles.quoteContainer, isDark ? styles.quoteContainerDark : styles.quoteContainerLight]}>
-          <Text style={[styles.quoteText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.quoteText, { color: themeColors.text.primary }]}>
             「{highlight.quote}」
           </Text>
         </View>

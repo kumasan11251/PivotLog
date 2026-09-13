@@ -100,6 +100,7 @@ android/.../pivotlog/    # Androidネイティブ（ウィジェット, ブリ�
   - `@pivot_log_migrated` - データ移行状態
   - `@pivot_log_skipped_update_version` - 「あとで」でスキップしたアップデートバージョン
   - `@pivot_log_habits` - 習慣（日付→項目一覧）。ログイン中は `_cache_{uid}` 付きキーが Firestore のキャッシュ
+  - `@pivot_log_life_milestone_seen` - 人生の節目カード（`src/utils/lifeMilestones.ts`）を演出付きで表示した「日付:節目キー」。端末単位・同期なし
 - **Firestore**: クラウド同期（`users/{userId}/settings`, `diaries`, `habits`, `homeDisplay`, `widget`, `subscription`）。公開設定は `appConfig/version`（最新/最低バージョン情報、未認証読み取り可）
 - 日記エントリのIDは日付文字列（`YYYY-MM-DD`）。保存時は全エントリを読み込み→更新/追加→ソート→全体書き戻し
 - 習慣は `users/{userId}/habits/{YYYY-MM-DD}` に1日1ドキュメント（`items` 配列）。読み取りは常にローカルキャッシュ、`syncHabitsFromFirestore()` でキャッシュを最新化。書き込み失敗時は同期キュー（`saveHabits`）で再送

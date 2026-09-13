@@ -142,7 +142,7 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({
 
       {/* サマリー */}
       <View style={[styles.summaryContainer, { backgroundColor: summaryBgColor }]}>
-        <Text style={[styles.summaryText, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.summaryText, { color: themeColors.text.primary }]}>
           {insight.summary}
         </Text>
       </View>
@@ -165,7 +165,7 @@ export const WeeklyInsightCard: React.FC<WeeklyInsightCardProps> = ({
             来週への問いかけ
           </Text>
         </View>
-        <Text style={[styles.questionText, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.questionText, { color: themeColors.text.primary }]}>
           {insight.question}
         </Text>
       </View>

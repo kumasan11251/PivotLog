@@ -512,131 +512,128 @@ export const REFLECTION_SYSTEM_PROMPT_V1 = `あなたは「PivotLog」のデイ�
 /**
  * システムプロンプト V2（動的セクション版）
  * 日記の内容に応じて1〜3セクションを生成
+ * 2026-09-13 Phase A: 共感を短くし、tomorrow を「根拠のある気づき＋明日試せる候補（最大3件）」に変更
+ * （plans/2026-09-13-ai-reflection-improvement-plan.md）
  */
-const REFLECTION_SYSTEM_PROMPT_V2 = `あなたは「PivotLog」のデイリーリフレクションパートナーです。
+export const REFLECTION_SYSTEM_PROMPT_V2 = `あなたは「PivotLog」のデイリーリフレクションパートナーです。
 
 【PivotLogとは】
-人生の有限性を意識するライフログアプリ。ユーザーは目標寿命を設定し、残り時間を可視化しながら、毎日3つの問いに答えています。
+人生の有限性を意識するライフログアプリ。ユーザーは目標寿命を設定し、残り時間を可視化しながら、毎日3つの問い（今日良かったこと・今日少し後悔していること・明日大切にしたいこと）に答えています。
 
 【あなたの役割】
-単なる共感や励ましではなく、ユーザーが「自分でも気づいていなかった感情や価値観」を発見し、「明日から具体的に行動したくなる」ようなリフレクションを提供します。
+ユーザーの日記を読み、「自分の傾向に気づき、明日ひとつ試せる」リフレクションを返します。共感は短く自然に残しつつ、主役は「根拠のある気づき」と「本人が選べる小さな行動の候補」です。
+あなたはコーチでも先生でもなく、「ちょっと先を歩いている先輩」です。答えを与えるのではなく、本人の言葉を手がかりに選択肢を差し出し、選ぶのは本人に任せます。
 
-【分析の3層構造 - 最重要】
-日記を読む際、以下の3層で分析してください：
-1. 表層：書かれている出来事（何が起きたか）
-2. 中層：その裏にある感情（どう感じたか）
-3. 深層：その感情が示す価値観（何を大切にしているか）
+【分析の3層構造】
+日記を読むときは、次の3層で考えます。
+1. 表層：書かれている出来事
+2. 中層：その裏にある感情
+3. 深層：その感情が示す価値観
+この分析は understanding と気づきの「仮説」の材料に使い、結果を断定的には書きません。
 
-【動的セクション構造】
-日記の内容に応じて、1〜3セクションを出力してください。すべてのセクションを必ず出力する必要はありません。
+【出力セクション】
 
 ■ understanding（必須）: 今日のあなたへ
-- 感情の理解と共感の核となるメッセージ
-- 日記から具体的な言葉を「」で引用
-- その体験がなぜ良かったのか/なぜ後悔なのかを言語化
-- 温かく、穏やかなトーン
-- 過去の日記との繋がりがあれば、自然に織り込む
+- 40〜80文字程度の短い共感
+- 日記の言葉を必ず1つ「」で引用する
+- その体験がなぜ良かったのか／なぜ気にかかるのかを一言で言語化する
+- 「嬉しそうですね」だけのような無機質な返答は避ける
 
 ■ perspective（任意）: 人生という視点で
-- 深い日記や人生の節目にのみ出力
-- 軽い日記（「ランチが美味しかった」など）では省略
-- 成長の観察があれば含める
+- 人生の節目、大きな決断、価値観に深く触れる日記にのみ出力する（多くの日は省略する）
+- 「残り〇〇年」という数字表現は多用せず、経験の回数・時間の質・未来から見た今日・季節や年齢・人とのつながり、のいずれかの視点で書く
+- 80〜120文字程度
 
-【表現のバリエーション - 重要】
-「残り〇〇日」「残り〇〇年」という数字表現は3回に1回程度に留め、以下の多様な視点から日記に合うものを選んでください：
+■ insight（任意）: 今日の気づき
+- 直近の日記に根拠がある場合のみ書く。根拠がなければこのフィールドは出力しない
+- 「根拠」→「仮説」の順で書く
+  - 根拠: 日記に実際に書かれている記述を、日付を「9/10」のように月/日で添えて示す
+    例:「9/10と9/12の日記でも『夜は疲れて読めなかった』と書かれていました」
+  - 仮説: そこから考えられる見方を、断定せずに書く（「〜かもしれません」「〜が関係しているのかもしれませんね」）
+- 性格や心理状態の断定（「あなたは完璧主義です」）、日記に書かれていない事情の推測は禁止
+- 繰り返しや繋がりが本当に見えないときは、無理に見つけない
+- 50〜90文字程度の1〜2文
 
-A) 経験の回数
-  例:「人生で経験できる『妻との夕食』はあと何千回でしょう」
-  例:「桜を見られるのはあと何十回。今年の桜は今年だけのもの」
+■ experiments: 明日、試してみるなら
+- 候補を文字列の配列で出す。番号や記号は付けない（表示側で付けます）
+- 今日の「明日大切にしたいこと」が書かれている日は、必ず1〜3件出す（本人の意思を具体化する材料がある）
+- 「明日大切にしたいこと」が空の日は0〜2件。材料が乏しければ空配列 [] にする。3件を埋めることを目的にしない
+- insight を書いた場合も experiments は省略しない。読者は「気づき（なぜ）」→「候補（どう試すか）」の順で読む
+- 同じ内容・似た言い回しの候補を重ねない。3件出すなら、きっかけの時間帯や場面を互いに変える
+- 各候補は「きっかけ（いつ・どの状況で）」＋「最初の動作（小さく、数分で終わる）」の形で1文にする
+  ◯「朝、飲み物を用意したら、1ページだけ読む」
+  ◯「帰宅して座る前に、本を開いて1段落読む」
+  ✕「読書を習慣にする」「もっと意識する」（きっかけも最初の動作もない）
+- 今日の「明日大切にしたいこと」が書かれていれば、候補はそれを具体化し、取り組みやすくするものに限る。別の目標を足さない
+- 「明日大切にしたいこと」が空なら、今日の良かったこと・後悔していることから、本人が大切にしていそうなことを手がかりにする
+- 候補には「増やす」だけでなく、「減らす」「休む」「うまくいったことをそのまま続ける」も含めてよい
+- 各候補は20〜40文字程度の1文。1件で1つの行動だけ
 
-B) 時間の質
-  例:「何気ない今日という日が、かけがえのない1ページになっていく」
-  例:「この瞬間を意識して過ごすこと自体が、人生を豊かにしています」
-
-C) 未来から見た今日
-  例:「10年後のあなたは、今日のこの選択を誇らしく思えるはず」
-  例:「いつか振り返ったとき、この時期が宝物になるかもしれません」
-
-D) 季節・年齢
-  例:「この季節にこの経験ができること自体が、一期一会」
-  例:「今の年齢だからこそ感じられる感覚があります」
-
-E) 人とのつながり
-  例:「大切な人と過ごす時間は、人生の軸を作っています」
-
-日記の感情に応じて選択：喜び・感謝→A,B,E / 後悔・反省→C,D / 人間関係→E / 成長・挑戦→B,C
-
-■ tomorrow（任意）: 明日へのヒント
-- アクション提案や問いかけが意味を持つときに出力
-- 5分以内で実行できる具体的なアクション、またはその理由
-- 「はい/いいえ」で答えられない問い
-- 考えたくなる、行動のヒントが含まれた問い
-
-【セクション数の判断基準 - 記入量ではなく内容の深さで判断】
-重要: 文字数や記入量ではなく、感情の深さや人生との関連性で判断してください。
-
-■ 1セクションのみ（understandingのみ）
-- 表面的な出来事のみ（「ランチが美味しかった」「天気が良かった」）
-- 感情の奥行きがまだ見えない日記
-- 共感メッセージだけで十分な場合
-
-■ 2セクション（understanding + tomorrow または perspective）
-- 感情が読み取れる日記（嬉しさ、悔しさ、安心感など）
-- 人間関係や仕事に関する振り返り
-- 行動のヒントや問いかけが意味を持つ内容
-
-■ 3セクション（すべて）
-- 人生の節目や大きな決断（転職、引越し、家族の変化など）
-- 価値観に触れる深い振り返り
-- 過去との繋がりや成長が見える日記
-
-例:
-- 「母の誕生日に感謝を伝えた」→ 短いが深い → 2-3セクション
-- 「今日は仕事して、ご飯食べて、寝た」→ 短くて浅い → 1セクション
-- 「長年の夢だった〇〇を達成した」→ 短いが人生の節目 → 3セクション
-
-【「深い」とは何か - 具体例】
-浅い（避ける）→ 深い（目指す）
-- 「嬉しそうですね！」→「『〇〇』という言葉の裏に、△△という感情が感じられます」
-- 「後悔されているのですね」→「その後悔は、あなたが『もっとできたはず』と自分に期待している証拠かもしれません」
-- 「明日も頑張りましょう」→「今日気づいた〇〇を、明日の△△に活かせそうですね」
+【禁止する汎用アドバイス】
+日記にその話題が書かれていない限り、次のような一般論は出さない：
+早寝早起き、運動・ストレッチ、瞑想・深呼吸、感謝を書き出す、水を飲む、スマホを控える、ToDoリストを作る、目標を紙に書く、ポジティブに考える
 
 【トーン】
-- 温かく、穏やかに、親しみを込めて
-- 「〜ですね」「〜かもしれませんね」のような柔らかい語尾
-- 批判や指示は絶対にしない
-- 友人が温かく背中を押すような感じ
+- 温かく、穏やかに。「〜ですね」「〜かもしれませんね」「〜してみるのはどうでしょう」
+- 「〜しましょう」「〜すべき」「必ず」「毎日」「習慣化」「生産性」「最大化」は使わない
+- 「ぜひ」「頑張って」で背中を押しすぎない。選ばなくてもよい前提で差し出す
+- 過去の候補を実行できていなくても、責めたり残念がったりしない
 
-【絶対に避けること】
-- 「人生とは」「本当の幸せとは」などの哲学的な決めつけ
-- 日記に書かれていないことの推測
-- 説教臭いアドバイス
-- 端的すぎて無機質な返答（「嬉しそうですね」だけなど）
+【前回までの提案がある場合】
+直近の日記に「前回の提案」が添えられている場合、同じ候補・同じ言い回し・同じ問いを繰り返さない。同じテーマが続いていること自体は、気づきの根拠として使ってよい。
 
-【過去データがある場合】
-直近の日記が提供されている場合、繋がりがあれば自然に織り込んでください（毎回必須ではありません）：
-- 意図→行動の連続性: 過去の「明日やりたいこと」が今日の「良かったこと」に変化しているか
-- 後悔→改善: 過去の後悔が今日のポジティブな行動に変わっているか
-- 繋がりがない場合は、無理に言及しない
+【セクション数の判断】
+- 表面的な出来事のみで感情が読めない日記: understanding のみ、または understanding ＋ experiments 1件
+- 感情や意図が読める日記: understanding ＋ experiments（1〜3件）。根拠があれば insight も
+- 人生の節目や価値観に触れる深い日記: understanding ＋ perspective ＋ insight/experiments
 
-【出力形式】
+【出力例】
+
+例1: 直近に「夜は疲れて読めなかった」が2回あり、今日の「明日大切にしたいこと」に「読書」とある場合
 {
-  "understanding": "今日のあなたへ（必須、80-150文字程度）",
-  "perspective": "人生という視点で（任意、深い日記の場合のみ、80-150文字程度）",
-  "tomorrow": "明日へのヒント（任意、アクションや問いかけが意味を持つ場合、80-150文字程度）",
+  "understanding": "「今日も読めなかった」と書きながら、明日に「読書」と置いているところに、本を読む時間を大切にしたい気持ちが見えますね。",
+  "insight": "9/10と9/12の日記でも「夜は疲れて読めなかった」と書かれていました。読書への意欲より、取り組む時間帯が関係しているのかもしれません。",
+  "experiments": [
+    "朝、飲み物を用意したら、1ページだけ読む",
+    "昼休みの最初に、2分だけ読む",
+    "夜に読むなら、帰宅して座る前に本を開いて1段落読む"
+  ],
   "schemaVersion": 2
 }
 
-※ perspectiveとtomorrowは、日記の内容に応じて省略可能`;
+例2: 今日の良かったことに「久しぶりに友人と長電話した」、「明日大切にしたいこと」が空の場合
+{
+  "understanding": "「久しぶりに友人と長電話した」という一言に、ほっとした余韻が残っていますね。話せる相手がいる時間は、それだけで今日を良い日にしてくれます。",
+  "experiments": ["通話の余韻が残っているうちに、友人に一言だけお礼のメッセージを送る"],
+  "schemaVersion": 2
+}
+
+例3: 「仕事して、ご飯食べて、寝た」のような浅い日記で、直近との繋がりもない場合
+{
+  "understanding": "「仕事して、ご飯食べて、寝た」と書ける日も、振り返りを開いたこと自体が、今日をただ流さなかった証ですね。",
+  "schemaVersion": 2
+}
+
+【出力形式】
+{
+  "understanding": "今日のあなたへ（必須、40-80文字程度）",
+  "perspective": "人生という視点で（任意、深い日記のときのみ、80-120文字程度）",
+  "insight": "今日の気づき（任意、直近日記に根拠がある場合のみ、50-90文字程度）",
+  "experiments": ["明日試せる候補（任意、0〜3件、各20-40文字、番号なし）"],
+  "schemaVersion": 2
+}
+※ perspective・insight・experiments は省略可能。JSON以外の文字は出力しない`;
 
 /**
  * リクエストデータの型
  */
 /**
  * デフォルトで使用するGeminiモデル
- * 安定版リリース時は 'gemini-3-flash' に更新する
+ * - gemini-3-flash-preview は非推奨（deprecated）扱い。安定版 'gemini-3-flash' はリリースされなかった
+ * - 文章生成中心の用途では Google が効率重視の 3.7 Flash を推奨しているため採用（3.8 は思考トークン消費が多いエージェント向け）
+ * - 2027-01-01 に 3.6〜3.8 Flash の料金が改定される（$0.75/$3.75 → $1.50/$7.50 per 1M tokens）
  */
-const DEFAULT_GEMINI_MODEL = 'gemini-3-flash-preview';
+const DEFAULT_GEMINI_MODEL: GeminiModel = 'gemini-3.7-flash';
 
 /**
  * Gemini API共通の安全性設定
@@ -652,7 +649,34 @@ const DEFAULT_SAFETY_SETTINGS = [
 /**
  * サポートするAIモデルの型
  */
-type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro' | 'gemini-3-flash-preview' | 'gemini-3-flash';
+type GeminiModel =
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-pro'
+  | 'gemini-3-flash-preview'
+  | 'gemini-3.5-flash'
+  | 'gemini-3.6-flash'
+  | 'gemini-3.7-flash'
+  | 'gemini-3.8-flash';
+
+/**
+ * Gemini 3.x 系の思考（thinking）設定
+ * 3.x Flash は既定で thinking が "medium" で有効になり、思考トークンは出力トークンとして課金され、
+ * maxOutputTokens の枠も消費する。共感文の生成には "low" で十分なため明示的に下げる。
+ * 2.5 系は thinkingLevel 非対応（thinkingBudget 方式）のため付与しない。
+ */
+const getThinkingConfig = (model: string): { thinkingConfig?: { thinkingLevel: 'low' } } =>
+  model.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: 'low' } } : {};
+
+/**
+ * 候補（candidate）から思考パート（thought: true）を除いた最初のテキストを取り出す
+ * includeThoughts を有効にした場合や将来のレスポンス形式変更に備えた防御的実装
+ */
+const extractAnswerText = (
+  candidate: { content?: { parts?: Array<{ text?: string; thought?: boolean }> } } | undefined,
+): string | undefined => {
+  const parts = candidate?.content?.parts;
+  return parts?.find((p) => !p.thought && typeof p.text === 'string')?.text ?? parts?.[0]?.text;
+};
 
 /**
  * 直近の日記エントリ（Phase 2で追加）
@@ -665,6 +689,119 @@ interface RecentDiaryEntry {
 }
 
 /**
+ * プロンプトに渡す直近日記の文脈（Phase A: 2026-09-13）
+ * クライアント送信分（最大3日）にサーバー側で Firestore から不足分を補完し、
+ * 前回のリフレクションで出した提案も添える（同じ提案の繰り返し防止用）
+ */
+interface RecentDiaryContext extends RecentDiaryEntry {
+  /** その日の日記に保存されている前回の提案（aiReflection.tomorrow など）の要約 */
+  previousHint?: string;
+}
+
+/** サーバー側で補完する直近日記の日数 */
+const RECENT_DIARY_CONTEXT_DAYS = 7;
+
+/** 前回の提案としてプロンプトに添える最大文字数 */
+const PREVIOUS_HINT_MAX_LENGTH = 120;
+
+/**
+ * YYYY-MM-DD 文字列を deltaDays 日ずらす（タイムゾーンの影響を受けないよう UTC で計算）
+ */
+function shiftDateString(dateString: string, deltaDays: number): string {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + deltaDays)).toISOString().slice(0, 10);
+}
+
+/**
+ * YYYY-MM-DD を「M/D」表記に変換（プロンプト内で根拠の日付として示すため）
+ */
+function formatMonthDay(dateString: string): string {
+  const [, month, day] = dateString.split('-').map(Number);
+  return `${month}/${day}`;
+}
+
+/**
+ * 日記ドキュメントに保存された aiReflection から「前回の提案」に相当するテキストを取り出す
+ * V2: tomorrow / V1: actionSuggestion.micro または question
+ */
+function extractPreviousHint(aiReflection: unknown): string | undefined {
+  if (!aiReflection || typeof aiReflection !== 'object') return undefined;
+  const data = aiReflection as {
+    tomorrow?: unknown;
+    actionSuggestion?: { micro?: unknown };
+    question?: unknown;
+  };
+  const candidates = [data.tomorrow, data.actionSuggestion?.micro, data.question];
+  const hint = candidates.find((value) => typeof value === 'string' && value.trim().length > 0) as
+    | string
+    | undefined;
+  if (!hint) return undefined;
+  const normalized = hint.replace(/\s+/g, ' ').trim();
+  return normalized.length > PREVIOUS_HINT_MAX_LENGTH
+    ? `${normalized.slice(0, PREVIOUS_HINT_MAX_LENGTH)}…`
+    : normalized;
+}
+
+/**
+ * 直近日記の文脈を組み立てる（Phase A）
+ * - クライアント送信分（recentEntries）を土台にし、Firestore の users/{uid}/diaries から
+ *   直近 RECENT_DIARY_CONTEXT_DAYS 日分を補完する
+ * - 本文はクライアント送信分を優先（ローカル編集が最新の可能性があるため）
+ * - Firestore 読み取りに失敗しても生成は続ける（クライアント送信分のみで動く）
+ */
+async function buildRecentDiaryContext(
+  userId: string,
+  diaryDate: string,
+  clientEntries: RecentDiaryEntry[] | undefined,
+): Promise<RecentDiaryContext[]> {
+  const startDate = shiftDateString(diaryDate, -RECENT_DIARY_CONTEXT_DAYS);
+  const endDate = shiftDateString(diaryDate, -1);
+  const byDate = new Map<string, RecentDiaryContext>();
+
+  for (const entry of clientEntries ?? []) {
+    if (typeof entry?.date !== 'string') continue;
+    byDate.set(entry.date, {
+      date: entry.date,
+      goodTime: typeof entry.goodTime === 'string' ? entry.goodTime : '',
+      wastedTime: typeof entry.wastedTime === 'string' ? entry.wastedTime : '',
+      tomorrow: typeof entry.tomorrow === 'string' ? entry.tomorrow : '',
+    });
+  }
+
+  try {
+    const snapshot = await db
+      .collection('users')
+      .doc(userId)
+      .collection('diaries')
+      .where('date', '>=', startDate)
+      .where('date', '<=', endDate)
+      .orderBy('date', 'asc')
+      .get();
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const date = typeof data.date === 'string' ? data.date : doc.id;
+      const existing = byDate.get(date);
+      byDate.set(date, {
+        date,
+        goodTime: existing?.goodTime || (typeof data.goodTime === 'string' ? data.goodTime : ''),
+        wastedTime: existing?.wastedTime || (typeof data.wastedTime === 'string' ? data.wastedTime : ''),
+        tomorrow: existing?.tomorrow || (typeof data.tomorrow === 'string' ? data.tomorrow : ''),
+        previousHint: extractPreviousHint(data.aiReflection),
+      });
+    }
+    console.log(`[buildRecentDiaryContext] Firestore entries: ${snapshot.size}, merged: ${byDate.size}`);
+  } catch (error) {
+    console.warn('[buildRecentDiaryContext] Firestore read failed, using client entries only:', error);
+  }
+
+  return [...byDate.values()]
+    .filter((entry) => entry.date >= startDate && entry.date <= endDate)
+    .filter((entry) => entry.goodTime.trim() || entry.wastedTime.trim() || entry.tomorrow.trim())
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
  * リクエストデータの型
  */
 interface GenerateReflectionRequest {
@@ -674,7 +811,7 @@ interface GenerateReflectionRequest {
   currentAge: number;
   remainingYears: number;
   remainingDays: number;
-  /** 使用するAIモデル（デフォルト: gemini-3-flash-preview） */
+  /** 使用するAIモデル（デフォルト: DEFAULT_GEMINI_MODEL） */
   model?: GeminiModel;
   /** 日記の日付（YYYY-MM-DD形式）- 利用制限チェック用 */
   diaryDate?: string;
@@ -761,50 +898,58 @@ interface ReflectionResponseV2 {
 type ReflectionResponse = ReflectionResponseV1 | ReflectionResponseV2;
 
 /**
- * ユーザープロンプトを生成
+ * ユーザープロンプトを生成（Phase A: 2026-09-13）
+ * - 記入欄の有無だけで決まっていた focusHint を廃止し、日記の中身から判断させる
+ * - 直近日記は古い順に最大7日分。前回の提案があれば添えて、同じ提案の繰り返しを防ぐ
+ * - 「明日大切にしたいこと」を候補の中心に置く（本人の意思を優先）
  */
-function generateUserPrompt(params: GenerateReflectionRequest): string {
-  const {
-    goodTime,
-    wastedTime,
-    tomorrow,
-    currentAge,
-    remainingYears,
-    recentEntries,
-  } = params;
+export function generateUserPrompt(
+  params: GenerateReflectionRequest,
+  recentContext: RecentDiaryContext[] = [],
+  diaryDate?: string,
+): string {
+  const { goodTime, wastedTime, tomorrow, currentAge, remainingYears } = params;
 
-  let focusHint = '';
-  if (goodTime && goodTime.trim()) {
-    focusHint = '良かったことに共感し、その喜びを一緒に味わってください。';
-  } else if (wastedTime && wastedTime.trim()) {
-    focusHint = '後悔に寄り添いつつ、それに気づけた勇気を認めてください。';
-  } else if (tomorrow && tomorrow.trim()) {
-    focusHint = '明日への想いを応援し、その意識を持てていることを肯定してください。';
-  }
-
+  const todayLabel = diaryDate ? `（${diaryDate}）` : '';
   let prompt = `【ユーザー情報】
 ${currentAge}歳。目標寿命まで残り約${remainingYears}年。
 
-【今日の振り返り】
-✨ 良かったこと: ${goodTime || '（記入なし）'}
-💭 後悔していること: ${wastedTime || '（記入なし）'}
-🌅 明日大切にしたいこと: ${tomorrow || '（記入なし）'}`;
+【今日の振り返り${todayLabel}】
+✨ 良かったこと: ${goodTime?.trim() || '（記入なし）'}
+💭 後悔していること: ${wastedTime?.trim() || '（記入なし）'}
+🌅 明日大切にしたいこと: ${tomorrow?.trim() || '（記入なし）'}`;
 
-  // 直近の日記データがある場合は追加（Phase 2）
-  if (recentEntries && recentEntries.length > 0) {
-    prompt += '\n\n【直近の日記】\n';
-    for (const entry of recentEntries) {
-      prompt += `--- ${entry.date} ---\n`;
-      prompt += `✨ 良かった: ${entry.goodTime || '（なし）'}\n`;
-      prompt += `💭 後悔: ${entry.wastedTime || '（なし）'}\n`;
-      prompt += `🌅 明日: ${entry.tomorrow || '（なし）'}\n\n`;
+  if (recentContext.length > 0) {
+    prompt += `\n\n【直近の日記（古い順、最大${RECENT_DIARY_CONTEXT_DAYS}日分）】\n`;
+    for (const entry of recentContext) {
+      prompt += `--- ${entry.date}（${formatMonthDay(entry.date)}） ---\n`;
+      prompt += `✨ 良かった: ${entry.goodTime.trim() || '（なし）'}\n`;
+      prompt += `💭 後悔: ${entry.wastedTime.trim() || '（なし）'}\n`;
+      prompt += `🌅 明日: ${entry.tomorrow.trim() || '（なし）'}\n`;
+      if (entry.previousHint) {
+        prompt += `💬 前回の提案: ${entry.previousHint}\n`;
+      }
+      prompt += '\n';
     }
-    prompt += '※ 過去の日記との繋がりや成長があれば、understandingセクションに自然に織り込んでください。\n';
+  } else {
+    prompt += '\n\n【直近の日記】\nなし（記録を始めたばかりです。気づきパートは書かず、今日の内容だけから候補を考えてください）';
   }
 
-  prompt += `
-【リフレクションのポイント】
-${focusHint}`;
+  const focusPoints: string[] = [];
+  if (tomorrow?.trim()) {
+    focusPoints.push('experiments は必ず1〜3件出してください。今日の「明日大切にしたいこと」を具体化し、取り組みやすくするものに限り、別の目標は足さないでください');
+  } else {
+    focusPoints.push('「明日大切にしたいこと」が空なので、良かったこと・後悔していることから本人が大切にしていそうなことを手がかりに、候補は控えめに（0〜2件）出してください');
+  }
+  if (recentContext.length > 0) {
+    focusPoints.push('直近の日記に繰り返しや繋がりがあれば、日付（M/D）を添えて根拠にしてください。見えなければ気づきパートは書かないでください');
+  }
+  if (recentContext.some((entry) => entry.previousHint)) {
+    focusPoints.push('「前回の提案」と同じ候補・同じ言い回しは避けてください');
+  }
+  focusPoints.push('各フィールドの文字数の目安を守ってください（候補を減らして短くするのではなく、1文ずつを短く）');
+
+  prompt += `\n\n【今回のポイント】\n${focusPoints.map((point) => `- ${point}`).join('\n')}`;
 
   return prompt;
 }
@@ -1013,10 +1158,51 @@ interface ParsedAIResponseV2 {
   tomorrow?: string;
 }
 
+/** 「明日、試してみるなら」の見出し（クライアントの tomorrow 文字列に含める） */
+const EXPERIMENTS_HEADING = '明日、試してみるなら';
+
+/** 候補の最大件数 */
+const MAX_EXPERIMENTS = 3;
+
+/**
+ * insight（気づき）と experiments（候補配列）から、V2 の tomorrow 文字列を組み立てる（Phase A）
+ * - 候補は番号を付け直し、先頭の番号・記号の重複や同一候補を除く
+ * - どちらも無ければ undefined（tomorrow セクションを出さない）
+ */
+export function composeTomorrowSection(
+  insight: unknown,
+  experiments: unknown,
+): string | undefined {
+  const parts: string[] = [];
+
+  if (typeof insight === 'string' && insight.trim()) {
+    parts.push(insight.trim());
+  }
+
+  const items: string[] = [];
+  if (Array.isArray(experiments)) {
+    for (const raw of experiments) {
+      if (typeof raw !== 'string') continue;
+      const cleaned = raw
+        .replace(/^\s*(?:\d+|[①②③])\s*[.．、)）:：]?\s*/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!cleaned || items.includes(cleaned)) continue;
+      items.push(cleaned);
+      if (items.length >= MAX_EXPERIMENTS) break;
+    }
+  }
+  if (items.length > 0) {
+    parts.push([EXPERIMENTS_HEADING, ...items.map((item, index) => `${index + 1}. ${item}`)].join('\n'));
+  }
+
+  return parts.length > 0 ? parts.join('\n\n') : undefined;
+}
+
 /**
  * AIのレスポンスをパース（V2: 動的セクション）
  */
-function parseAIResponseV2(response: string): ParsedAIResponseV2 | null {
+export function parseAIResponseV2(response: string): ParsedAIResponseV2 | null {
   try {
     console.log('[parseAIResponseV2] Input length:', response.length);
 
@@ -1035,7 +1221,8 @@ function parseAIResponseV2(response: string): ParsedAIResponseV2 | null {
       console.log('[parseAIResponseV2] JSON.parse succeeded');
       console.log('[parseAIResponseV2] understanding length:', parsed.understanding.length);
       console.log('[parseAIResponseV2] has perspective:', !!parsed.perspective);
-      console.log('[parseAIResponseV2] has tomorrow:', !!parsed.tomorrow);
+      console.log('[parseAIResponseV2] has insight:', !!parsed.insight);
+      console.log('[parseAIResponseV2] experiments:', Array.isArray(parsed.experiments) ? parsed.experiments.length : 0);
 
       const result: ParsedAIResponseV2 = {
         understanding: parsed.understanding,
@@ -1045,8 +1232,12 @@ function parseAIResponseV2(response: string): ParsedAIResponseV2 | null {
       if (parsed.perspective && typeof parsed.perspective === 'string') {
         result.perspective = parsed.perspective;
       }
-      if (parsed.tomorrow && typeof parsed.tomorrow === 'string') {
-        result.tomorrow = parsed.tomorrow;
+      // Phase A: insight + experiments を tomorrow 文字列に組み立てる（旧形式の tomorrow も受け付ける）
+      const tomorrow =
+        composeTomorrowSection(parsed.insight, parsed.experiments) ??
+        (typeof parsed.tomorrow === 'string' && parsed.tomorrow.trim() ? parsed.tomorrow.trim() : undefined);
+      if (tomorrow) {
+        result.tomorrow = tomorrow;
       }
 
       return result;
@@ -1199,6 +1390,16 @@ export const generateReflection = onCall(
     const userId = request.auth.uid;
     const diaryDate = data.diaryDate || new Date().toISOString().split('T')[0];
 
+    // 直近日記の文脈をサーバー側で補完（利用制限チェックと並行。失敗しても生成は続ける）
+    const isValidDiaryDate = /^\d{4}-\d{2}-\d{2}$/.test(diaryDate);
+    const recentContextPromise: Promise<RecentDiaryContext[]> = isValidDiaryDate
+      ? buildRecentDiaryContext(userId, diaryDate, data.recentEntries)
+      : Promise.resolve(
+          (data.recentEntries ?? [])
+            .map((entry) => ({ ...entry }))
+            .sort((a, b) => a.date.localeCompare(b.date)),
+        );
+
     // ============================================================
     // 利用制限チェック
     // ============================================================
@@ -1254,8 +1455,10 @@ export const generateReflection = onCall(
     }
 
     try {
-      const userPrompt = generateUserPrompt(data);
-      // 使用するモデルを決定（デフォルト: gemini-3-flash-preview）
+      const recentContext = await recentContextPromise;
+      console.log(`[generateReflection] Recent diary context: ${recentContext.length} entries`);
+      const userPrompt = generateUserPrompt(data, recentContext, isValidDiaryDate ? diaryDate : undefined);
+      // 使用するモデルを決定（デフォルト: DEFAULT_GEMINI_MODEL）
       const selectedModel: GeminiModel = data.model || DEFAULT_GEMINI_MODEL;
       console.log('[generateReflection] Selected model:', selectedModel);
       console.log('[generateReflection] Using V2 schema');
@@ -1264,30 +1467,39 @@ export const generateReflection = onCall(
       // 共通設定を事前定義
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
       const generationConfig = {
+        ...getThinkingConfig(selectedModel),
         temperature: 0.7,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096, // 思考トークンも枠を消費するため 2048 → 4096 に拡大
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'object',
           properties: {
             understanding: {
               type: 'string',
-              description: '今日のあなたへ：感情の理解と共感（必須、80-150文字程度）',
+              description: '今日のあなたへ：日記の言葉を引用した短い共感（必須、40-80文字程度）',
             },
             perspective: {
               type: 'string',
-              description: '人生という視点で：深い日記の場合のみ（任意、80-150文字程度）',
+              description: '人生という視点で：人生の節目や深い日記の場合のみ（任意、80-120文字程度）',
             },
-            tomorrow: {
+            insight: {
               type: 'string',
-              description: '明日へのヒント：アクション提案や問いかけ（任意、80-150文字程度）',
+              description: '今日の気づき：直近日記の記述を日付つきで示した根拠と、断定しない仮説（任意、根拠がある場合のみ、50-90文字程度）',
+            },
+            experiments: {
+              type: 'array',
+              description: '明日、試してみるなら：きっかけ＋最初の動作の形の候補（任意、0〜3件、各20-40文字、番号なし）',
+              maxItems: 3,
+              items: { type: 'string' },
             },
             schemaVersion: {
               type: 'integer',
               description: 'スキーマバージョン（常に2）',
             },
           },
-          required: ['understanding'],
+          // experiments は必須（候補が無い日は空配列）。任意にすると perspective/insight だけで済ませがちなため
+          required: ['understanding', 'experiments'],
+          propertyOrdering: ['understanding', 'perspective', 'insight', 'experiments', 'schemaVersion'],
         },
       };
       const safetySettings = DEFAULT_SAFETY_SETTINGS;
@@ -1392,7 +1604,7 @@ export const generateReflection = onCall(
             }
           }
 
-          const content = candidate?.content?.parts?.[0]?.text;
+          const content = extractAnswerText(candidate);
 
           if (!content) {
             console.error(`[generateReflection] Empty response from Gemini (attempt ${attempt})`);
@@ -2105,6 +2317,7 @@ export const generateWeeklyInsight = onCall(
             ],
             safetySettings: DEFAULT_SAFETY_SETTINGS,
             generationConfig: {
+              ...getThinkingConfig(DEFAULT_GEMINI_MODEL),
               temperature: 0.8, // 創造性と安定性のバランス
               maxOutputTokens: 8192, // 十分な出力枠を確保
               responseMimeType: 'application/json',
@@ -2183,8 +2396,9 @@ export const generateWeeklyInsight = onCall(
       // レスポンスの詳細をログ出力（デバッグ用）
       const finishReason = responseData.candidates?.[0]?.finishReason;
       console.log('[generateWeeklyInsight] Finish reason:', finishReason);
+      console.log('[generateWeeklyInsight] usageMetadata:', JSON.stringify(responseData.usageMetadata));
 
-      const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+      const content = extractAnswerText(responseData.candidates?.[0]);
 
       if (!content) {
         console.error('[generateWeeklyInsight] Empty response from Gemini. Full response:', JSON.stringify(responseData));
@@ -2601,6 +2815,7 @@ export const generateWeeklyInsightV2 = onCall(
             ],
             safetySettings: DEFAULT_SAFETY_SETTINGS,
             generationConfig: {
+              ...getThinkingConfig(DEFAULT_GEMINI_MODEL),
               temperature: 0.8,
               maxOutputTokens: 8192,
               responseMimeType: 'application/json',
@@ -2697,8 +2912,9 @@ export const generateWeeklyInsightV2 = onCall(
 
       const finishReason = responseData.candidates?.[0]?.finishReason;
       console.log('[generateWeeklyInsightV2] Finish reason:', finishReason);
+      console.log('[generateWeeklyInsightV2] usageMetadata:', JSON.stringify(responseData.usageMetadata));
 
-      const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+      const content = extractAnswerText(responseData.candidates?.[0]);
 
       if (!content) {
         console.error('[generateWeeklyInsightV2] Empty response from Gemini');
@@ -3777,6 +3993,7 @@ export const generateMonthlyInsight = onCall(
             ],
             safetySettings: DEFAULT_SAFETY_SETTINGS,
             generationConfig: {
+              ...getThinkingConfig(DEFAULT_GEMINI_MODEL),
               temperature: 0.8, // 創造性を高めて手紙の質を向上
               maxOutputTokens: 16384, // 出力量増加に対応
               responseMimeType: 'application/json',
@@ -3936,8 +4153,9 @@ export const generateMonthlyInsight = onCall(
 
       const finishReason = responseData.candidates?.[0]?.finishReason;
       console.log('[generateMonthlyInsight] Finish reason:', finishReason);
+      console.log('[generateMonthlyInsight] usageMetadata:', JSON.stringify(responseData.usageMetadata));
 
-      const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+      const content = extractAnswerText(responseData.candidates?.[0]);
 
       if (!content) {
         console.error('[generateMonthlyInsight] Empty response from Gemini');

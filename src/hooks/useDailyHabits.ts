@@ -145,6 +145,11 @@ export const useDailyHabits = () => {
   );
 
   const goToToday = useCallback(() => selectDate(todayRef.current), [selectDate]);
+  const goToPreviousDay = useCallback(
+    () => selectDate(addDaysToDateString(dateRef.current, -1)),
+    [selectDate]
+  );
+  const goToNextDay = useCallback(() => selectDate(addDaysToDateString(dateRef.current, 1)), [selectDate]);
   const goToPreviousWeek = useCallback(
     () => selectDate(addDaysToDateString(dateRef.current, -7)),
     [selectDate]
@@ -257,6 +262,8 @@ export const useDailyHabits = () => {
     suggestions,
     selectDate,
     goToToday,
+    goToPreviousDay,
+    goToNextDay,
     goToPreviousWeek,
     goToNextWeek,
     goToPreviousMonth,

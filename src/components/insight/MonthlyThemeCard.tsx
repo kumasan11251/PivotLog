@@ -53,13 +53,13 @@ export const MonthlyThemeCard: React.FC<MonthlyThemeCardProps> = ({ theme }) => 
         <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
           <Ionicons name={icon} size={18} color={color} />
         </View>
-        <Text style={[styles.title, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.title, { color: themeColors.text.primary }]}>
           {theme.title}
         </Text>
       </View>
 
       {/* 説明 */}
-      <Text style={[styles.description, { color: themeColors.text.secondary }]}>
+      <Text selectable style={[styles.description, { color: themeColors.text.secondary }]}>
         {theme.description}
       </Text>
 
@@ -74,7 +74,7 @@ export const MonthlyThemeCard: React.FC<MonthlyThemeCardProps> = ({ theme }) => 
               <Text style={[styles.exampleDate, { color: themeColors.text.secondary }]}>
                 {formatDateShort(example.date)}
               </Text>
-              <Text style={[styles.exampleQuote, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.exampleQuote, { color: themeColors.text.primary }]}>
                 「{example.quote}」
               </Text>
             </View>

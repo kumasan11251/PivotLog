@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import Constants from 'expo-constants';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +27,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { useTheme, ThemeMode } from '../contexts/ThemeContext';
 import { useDisplaySettings } from '../hooks/useDisplaySettings';
-import { getSeason, getSeasonTheme, Season } from '../components/home/SeasonalBackdrop';
+import SeasonalBackdrop, { getBackdropMonth, MONTH_BACKDROPS } from '../components/home/SeasonalBackdrop';
 import { getEffectiveToday } from '../utils/dateUtils';
 import ScreenHeader from '../components/common/ScreenHeader';
 import DevDebugPanel from '../components/common/DevDebugPanel';
@@ -42,14 +41,6 @@ const THEME_OPTIONS: { value: ThemeMode; label: string; icon: keyof typeof Ionic
   { value: 'light', label: 'ライト', icon: 'sunny-outline' },
   { value: 'dark', label: 'ダーク', icon: 'moon-outline' },
   { value: 'system', label: 'システム設定に従う', icon: 'phone-portrait-outline' },
-];
-
-// 季節の背景プレビュー用の季節一覧
-const SEASON_PREVIEWS: { value: Season; label: string; emoji: string }[] = [
-  { value: 'spring', label: '春', emoji: '🌸' },
-  { value: 'summer', label: '夏', emoji: '☀️' },
-  { value: 'autumn', label: '秋', emoji: '🍁' },
-  { value: 'winter', label: '冬', emoji: '❄️' },
 ];
 
 interface SettingItemProps {
@@ -285,8 +276,8 @@ const SettingsScreen: React.FC = () => {
     return option?.label || 'システム設定に従う';
   };
 
-  // 現在の季節（プレビューのハイライト用。1日の開始時刻を考慮）
-  const currentSeason = getSeason(getEffectiveToday(dayStartHour));
+  // 現在の月（プレビューのハイライト用。1日の開始時刻を考慮）
+  const currentMonth = getBackdropMonth(getEffectiveToday(dayStartHour));
 
   // 動的なスタイル
   const dynamicStyles = {
@@ -873,7 +864,7 @@ const SettingsScreen: React.FC = () => {
             </View>
             <View style={[styles.modalDescription, { backgroundColor: `${themeColors.primary}08`, borderBottomColor: themeColors.border }]}>
               <Text style={[styles.modalDescriptionText, dynamicStyles.settingValue]}>
-                春・夏・秋・冬の移ろいに合わせて、{"\n"}
+                1月から12月の移ろいに合わせて、{"\n"}
                 ホーム画面の背景がやさしく変化します。
               </Text>
             </View>
@@ -891,42 +882,39 @@ const SettingsScreen: React.FC = () => {
                 thumbColor="#FFFFFF"
               />
             </View>
-            <View style={[styles.seasonPreviewRow, !seasonalBackdropEnabled && styles.seasonPreviewRowDisabled]}>
-              {SEASON_PREVIEWS.map((season) => {
-                const seasonTheme = getSeasonTheme(season.value, isDark);
-                const isCurrentSeason = season.value === currentSeason;
+            <ScrollView style={styles.monthPreviewScroll} contentContainerStyle={[styles.seasonPreviewRow, !seasonalBackdropEnabled && styles.seasonPreviewRowDisabled]}>
+              {MONTH_BACKDROPS.map(({ month, label, date }) => {
+                const isCurrentMonth = month === currentMonth;
                 return (
-                  <View key={season.value} style={styles.seasonPreviewItem}>
-                    <LinearGradient
-                      colors={seasonTheme.gradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                  <View
+                    key={month}
+                    style={styles.seasonPreviewItem}
+                    accessible
+                    accessibilityLabel={`${month}月、${label}${isCurrentMonth ? '、今月' : ''}`}
+                  >
+                    <View
                       style={[
                         styles.seasonPreviewCard,
-                        { borderColor: isCurrentSeason ? themeColors.primary : themeColors.border },
-                        isCurrentSeason && styles.seasonPreviewCardCurrent,
+                        { borderColor: isCurrentMonth ? themeColors.primary : themeColors.border },
+                        isCurrentMonth && styles.seasonPreviewCardCurrent,
                       ]}
                     >
-                      <Text style={styles.seasonPreviewEmoji}>{season.emoji}</Text>
-                      <View style={styles.seasonPreviewSwatches}>
-                        <View style={[styles.seasonPreviewSwatch, { backgroundColor: seasonTheme.primary }]} />
-                        <View style={[styles.seasonPreviewSwatch, { backgroundColor: seasonTheme.secondary }]} />
-                        <View style={[styles.seasonPreviewSwatch, { backgroundColor: seasonTheme.accent }]} />
-                      </View>
-                    </LinearGradient>
+                      <SeasonalBackdrop date={date} isDark={isDark} />
+                    </View>
                     <Text
                       style={[
                         styles.seasonPreviewLabel,
-                        { color: isCurrentSeason ? themeColors.primary : themeColors.text.secondary },
-                        isCurrentSeason && styles.seasonPreviewLabelCurrent,
+                        { color: isCurrentMonth ? themeColors.primary : themeColors.text.secondary },
+                        isCurrentMonth && styles.seasonPreviewLabelCurrent,
                       ]}
                     >
-                      {season.label}
+                      {month}月{isCurrentMonth ? '・今月' : ''}
                     </Text>
+                    <Text style={[styles.seasonPreviewLabel, { color: themeColors.text.secondary }]}>{label}</Text>
                   </View>
                 );
               })}
-            </View>
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -1350,9 +1338,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.family.regular,
     ...textBase,
   },
+  monthPreviewScroll: {
+    flexShrink: 1,
+  },
   seasonPreviewRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
@@ -1360,13 +1353,14 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   seasonPreviewItem: {
-    flex: 1,
+    width: '30%',
     alignItems: 'center',
     gap: spacing.xs,
   },
   seasonPreviewCard: {
     width: '100%',
-    aspectRatio: 0.9,
+    aspectRatio: 390 / 844,
+    overflow: 'hidden',
     borderRadius: spacing.borderRadius.medium,
     borderWidth: 1,
     borderColor: colors.border,
@@ -1376,18 +1370,6 @@ const styles = StyleSheet.create({
   },
   seasonPreviewCardCurrent: {
     borderWidth: 2,
-  },
-  seasonPreviewEmoji: {
-    fontSize: 20,
-  },
-  seasonPreviewSwatches: {
-    flexDirection: 'row',
-    gap: 3,
-  },
-  seasonPreviewSwatch: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   seasonPreviewLabel: {
     fontSize: fonts.size.labelSmall,

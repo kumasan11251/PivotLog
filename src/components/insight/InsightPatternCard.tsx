@@ -61,7 +61,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern,
         <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
           <Ionicons name={icon} size={18} color={color} />
         </View>
-        <Text style={[styles.title, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.title, { color: themeColors.text.primary }]}>
           {pattern.title}
         </Text>
         {'frequency' in pattern && pattern.frequency && pattern.frequency > 1 && (
@@ -74,7 +74,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern,
       </View>
 
       {/* 説明 */}
-      <Text style={[styles.description, { color: themeColors.text.primary }]}>
+      <Text selectable style={[styles.description, { color: themeColors.text.primary }]}>
         {pattern.description}
       </Text>
 
@@ -89,7 +89,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern,
               <Text style={[styles.exampleDate, { color: themeColors.text.secondary }]}>
                 {formatDateShort(example.date)}
               </Text>
-              <Text style={[styles.exampleQuote, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.exampleQuote, { color: themeColors.text.primary }]}>
                 「{example.quote}」
               </Text>
             </View>
@@ -99,7 +99,7 @@ export const InsightPatternCard: React.FC<InsightPatternCardProps> = ({ pattern,
 
       {/* 深掘り（V2のみ） */}
       {'insight' in pattern && pattern.insight && (
-        <Text style={[styles.insightText, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.insightText, { color: themeColors.text.primary }]}>
           {pattern.insight}
         </Text>
       )}

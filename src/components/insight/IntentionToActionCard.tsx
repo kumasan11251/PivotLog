@@ -43,7 +43,7 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
               <Text style={[styles.dateLabel, { color: themeColors.text.secondary }]}>
                 {formatDate(item.intentionDate)}
               </Text>
-              <Text style={[styles.intentionText, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.intentionText, { color: themeColors.text.primary }]}>
                 「{item.intention.slice(0, 40)}{item.intention.length > 40 ? '...' : ''}」
               </Text>
             </View>
@@ -58,7 +58,7 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
               <Text style={[styles.dateLabel, { color: themeColors.text.secondary }]}>
                 {formatDate(item.achievedDate)}
               </Text>
-              <Text style={[styles.achievementText, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.achievementText, { color: themeColors.text.primary }]}>
                 「{item.achievement.slice(0, 40)}{item.achievement.length > 40 ? '...' : ''}」
               </Text>
             </View>
@@ -74,7 +74,7 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
       {/* なぜ達成できたかの分析 */}
       {intentionToAction.successAnalysis && (
         <View style={[styles.analysisContainer, { borderTopColor: themeColors.border }]}>
-          <Text style={[styles.analysisText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.analysisText, { color: themeColors.text.primary }]}>
             {intentionToAction.successAnalysis}
           </Text>
         </View>
@@ -82,7 +82,7 @@ export const IntentionToActionCard: React.FC<IntentionToActionCardProps> = ({
 
       {/* 祝福コメント */}
       {intentionToAction.celebration && (
-        <Text style={[styles.celebrationText, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.celebrationText, { color: themeColors.text.primary }]}>
           {intentionToAction.celebration}
         </Text>
       )}

@@ -1,7 +1,7 @@
-import React, { memo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { memo, useId, useState } from 'react';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle, G, Path } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Path, Rect, Use } from 'react-native-svg';
 
 interface SeasonalBackdropProps {
   /** 1日の開始時刻を考慮した基準日（YYYY-MM-DD形式） */
@@ -9,6 +9,8 @@ interface SeasonalBackdropProps {
   /** ダークモードかどうか */
   isDark: boolean;
 }
+
+export type Month = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
 
@@ -21,9 +23,15 @@ export interface SeasonTheme {
   glow: string;
 }
 
-export const getSeason = (date: string): Season | null => {
+export const getBackdropMonth = (date: string): Month | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const month = Number(date.slice(5, 7));
-  if (!Number.isInteger(month) || month < 1 || month > 12) return null;
+  return Number.isInteger(month) && month >= 1 && month <= 12 ? month as Month : null;
+};
+
+export const getSeason = (date: string): Season | null => {
+  const month = getBackdropMonth(date);
+  if (month === null) return null;
   if (month >= 3 && month <= 5) return 'spring';
   if (month >= 6 && month <= 8) return 'summer';
   if (month >= 9 && month <= 11) return 'autumn';
@@ -107,6 +115,90 @@ export const getSeasonTheme = (season: Season, isDark: boolean): SeasonTheme => 
   };
 
   return themes[season][isDark ? 'dark' : 'light'];
+};
+
+// ホームと設定プレビューで共有する月別の名前・基準日。
+export const MONTH_BACKDROPS: ReadonlyArray<{ month: Month; label: string; date: string }> = [
+  { month: 1, label: '静かな雪', date: '2000-01-01' },
+  { month: 2, label: '梅のつぼみ', date: '2000-02-01' },
+  { month: 3, label: '芽吹き', date: '2000-03-01' },
+  { month: 4, label: '桜', date: '2000-04-01' },
+  { month: 5, label: '新緑', date: '2000-05-01' },
+  { month: 6, label: '雨と紫陽花', date: '2000-06-01' },
+  { month: 7, label: '水辺の波紋', date: '2000-07-01' },
+  { month: 8, label: '夏の葉', date: '2000-08-01' },
+  { month: 9, label: 'すすき', date: '2000-09-01' },
+  { month: 10, label: '色づくもみじ', date: '2000-10-01' },
+  { month: 11, label: '紅葉', date: '2000-11-01' },
+  { month: 12, label: '霜のきらめき', date: '2000-12-01' },
+];
+
+type ThemePair = { light: SeasonTheme; dark: SeasonTheme };
+
+// 季節の基調を残し、月ごとの色温度と装飾色を調整する。
+const MONTH_THEME_OVERRIDES: Partial<Record<Month, ThemePair>> = {
+  2: {
+    light: { gradient: ['#F7F1F2', '#F1EEF0', '#F4F3ED'], primary: '#C794A4', secondary: '#DBB5BE', accent: '#B1AD96', line: '#AC969A', glow: '#E8D4B5' },
+    dark: { gradient: ['#20181D', '#1C1B23', '#1D1E1B'], primary: '#B58496', secondary: '#CC9FAC', accent: '#96967C', line: '#917D86', glow: '#C7B18E' },
+  },
+  6: {
+    light: { gradient: ['#F1EFF7', '#EBF1F6', '#EEF3F0'], primary: '#A69FC4', secondary: '#B2BFD8', accent: '#95B5A9', line: '#A0B3C5', glow: '#D8DDEE' },
+    dark: { gradient: ['#1B1925', '#17202A', '#18221F'], primary: '#9A90BB', secondary: '#96A9C7', accent: '#789E91', line: '#7F9CB4', glow: '#B5BBDD' },
+  },
+  7: {
+    light: { gradient: ['#EFF6F7', '#E7F2F4', '#EEF4EF'], primary: '#89B5C3', secondary: '#ACCCD2', accent: '#9BBDAE', line: '#91B7C6', glow: '#DBE9E7' },
+    dark: { gradient: ['#131D24', '#13252B', '#17221F'], primary: '#78A6B9', secondary: '#99BEC8', accent: '#80A596', line: '#709DAE', glow: '#AACACD' },
+  },
+  9: {
+    light: { gradient: ['#F7F3E9', '#F2EFE2', '#F0F2E9'], primary: '#BCA574', secondary: '#D0BC8F', accent: '#A9B08B', line: '#A99D80', glow: '#E8DFC1' },
+    dark: { gradient: ['#201D17', '#242218', '#1C211A'], primary: '#AB966A', secondary: '#BFAA7E', accent: '#939C78', line: '#90866C', glow: '#C7B88D' },
+  },
+  10: {
+    light: { gradient: ['#F8F2E8', '#F5EBDD', '#F3F0E6'], primary: '#C77845', secondary: '#D3A04E', accent: '#BD6254', line: '#AA9278', glow: '#E8D6B5' },
+    dark: { gradient: ['#211B17', '#272018', '#201E18'], primary: '#C58D61', secondary: '#CCAA68', accent: '#C27D6E', line: '#917D67', glow: '#C2AA80' },
+  },
+  12: {
+    light: { gradient: ['#F0F3F7', '#E9EEF5', '#F1F2F5'], primary: '#ACBED5', secondary: '#CDD8E7', accent: '#B8C9DA', line: '#9DAFC4', glow: '#E1E7F2' },
+    dark: { gradient: ['#161A24', '#192131', '#1C1F29'], primary: '#92A9C5', secondary: '#B3C2D7', accent: '#C1CFDF', line: '#8096B2', glow: '#C8D5E8' },
+  },
+};
+
+/** 日付から月別テーマを取得。1・4・8・11月は従来の四季の基調。 */
+export const getBackdropTheme = (date: string, isDark: boolean): SeasonTheme | null => {
+  const season = getSeason(date);
+  if (season === null) return null;
+  const base = getSeasonTheme(season, isDark);
+  const month = getBackdropMonth(date);
+  if (month === null) return null;
+  const override = MONTH_THEME_OVERRIDES[month];
+  if (override) return override[isDark ? 'dark' : 'light'];
+  if (month === 3) {
+    return isDark ? {
+      ...base,
+      gradient: ['#171D19', '#19211C', '#1C1E18'],
+      primary: '#9CAD82', secondary: '#B3BE96', accent: '#8EA782',
+      line: '#829076', glow: '#C8C399',
+    } : {
+      ...base,
+      gradient: ['#F2F5EC', '#EDF3E8', '#F6F3E9'],
+      primary: '#A4B58C', secondary: '#C3CDA8', accent: '#97AF89',
+      line: '#99A58A', glow: '#E4DEC0',
+    };
+  }
+  if (month === 5) {
+    return isDark ? {
+      ...base,
+      gradient: ['#131D19', '#16231C', '#1B2018'],
+      primary: '#7FA984', secondary: '#A1BB91', accent: '#B0C18C',
+      line: '#7D9878', glow: '#C8C897',
+    } : {
+      ...base,
+      gradient: ['#EEF5EC', '#E8F2E9', '#F4F4E7'],
+      primary: '#8FB095', secondary: '#ADC69A', accent: '#BDCDA0',
+      line: '#96AE8B', glow: '#E4E6BC',
+    };
+  }
+  return base;
 };
 
 interface PositionedMotifProps {
@@ -262,6 +354,48 @@ const SpringMotif: React.FC<{ theme: SeasonTheme; isDark: boolean }> = ({ theme,
   );
 };
 
+/** 同じ枝の配置で、3月の芽吹きから5月の新緑への成長を表す。 */
+const SpringFoliageMotif: React.FC<{ theme: SeasonTheme; isDark: boolean; budding: boolean }> = ({ theme, isDark, budding }) => {
+  const leafOpacity = isDark ? 0.24 : 0.32;
+  const leafScale = budding ? 0.36 : 0.76;
+  const leaves = [
+    { x: 26, y: 107, rotation: -26 },
+    { x: 57, y: 138, rotation: 42 },
+    { x: 92, y: 169, rotation: -21 },
+    { x: 363, y: 107, rotation: -149 },
+    { x: 332, y: 138, rotation: -88 },
+    { x: 298, y: 169, rotation: -146 },
+    { x: 24, y: 796, rotation: -49 },
+    { x: 56, y: 746, rotation: 13 },
+    { x: 97, y: 695, rotation: -42 },
+    { x: 366, y: 796, rotation: -131 },
+    { x: 334, y: 746, rotation: -73 },
+    { x: 293, y: 695, rotation: -138 },
+  ];
+  return (
+    <>
+      <G fill="none" stroke={theme.line} strokeLinecap="round" opacity={isDark ? 0.15 : 0.2}>
+        <Path d="M-24 70 C17 83 42 106 67 136 C86 159 104 176 137 190 M414 69 C379 82 356 105 333 136 C313 162 292 179 260 193" strokeWidth="1.1" />
+        <Path d="M-26 858 C9 819 30 778 57 738 C79 705 104 681 143 661 M418 858 C385 822 364 784 339 746 C318 714 294 690 255 669" strokeWidth="1.15" />
+      </G>
+      {leaves.map((leaf, index) => (
+        <G key={index}>
+          <BotanicalLeaf {...leaf} scale={leafScale} color={index % 2 ? theme.secondary : theme.primary} veinColor={theme.line} opacity={leafOpacity} />
+          <BotanicalLeaf {...leaf} rotation={leaf.rotation + 65} scale={leafScale * 0.7} color={theme.accent} veinColor={theme.line} opacity={leafOpacity - 0.05} />
+        </G>
+      ))}
+      {!budding && (
+        <G fill={theme.glow} opacity={isDark ? 0.06 : 0.16}>
+          <Circle cx="23" cy="280" r="15" />
+          <Circle cx="367" cy="374" r="11" />
+          <Circle cx="27" cy="568" r="9" />
+          <Circle cx="360" cy="666" r="17" />
+        </G>
+      )}
+    </>
+  );
+};
+
 const SummerMotif: React.FC<{ theme: SeasonTheme; isDark: boolean }> = ({ theme, isDark }) => {
   const strongOpacity = isDark ? 0.23 : 0.31;
   const softOpacity = isDark ? 0.1 : 0.16;
@@ -323,6 +457,56 @@ const SummerMotif: React.FC<{ theme: SeasonTheme; isDark: boolean }> = ({ theme,
     </>
   );
 };
+
+// 枝と葉の接続位置を同じ曲線から求め、葉柄も含めて一続きに描く。
+const OCTOBER_BRANCHES = [
+  { startX: -24, startY: 67, controlX: 55, controlY: 94, endX: 140, endY: 190 },
+  { startX: 414, startY: 67, controlX: 335, controlY: 94, endX: 258, endY: 193 },
+  { startX: -27, startY: 858, controlX: 39, controlY: 716, endX: 142, endY: 662 },
+  { startX: 418, startY: 858, controlX: 352, controlY: 724, endX: 255, endY: 670 },
+];
+
+const EarlyAutumnMotif: React.FC<MonthlyMotifProps> = ({ theme, isDark }) => (
+  <>
+    {OCTOBER_BRANCHES.map(({ startX, startY, controlX, controlY, endX, endY }, i) => (
+      <G key={i}>
+        <Path
+          d={`M${startX} ${startY} Q${controlX} ${controlY} ${endX} ${endY}`}
+          fill="none" stroke={theme.line} strokeWidth="1.1" strokeLinecap="round" opacity={isDark ? 0.17 : 0.23}
+        />
+        {[0.2, 0.32, 0.48, 0.6, 0.74, 0.86].map((t, j) => {
+          const u = 1 - t;
+          const x = u * u * startX + 2 * u * t * controlX + t * t * endX;
+          const y = u * u * startY + 2 * u * t * controlY + t * t * endY;
+          const dx = u * (controlX - startX) + t * (endX - controlX);
+          const dy = u * (controlY - startY) + t * (endY - controlY);
+          // 枝の先へ向かいつつ、葉を左右交互に開く。
+          const direction = Math.atan2(dy, dx) + (j % 2 ? -0.7 : 0.7);
+          const baseX = x + 5 * Math.cos(direction);
+          const baseY = y + 5 * Math.sin(direction);
+          // MapleLeaf の葉柄の終点 (0, 38) を接続点に合わせる。
+          const leafScale = j % 3 === 1 ? 0.56 : 0.46;
+          const rotation = direction * 180 / Math.PI + 90;
+          const leafX = baseX + 38 * leafScale * Math.cos(direction);
+          const leafY = baseY + 38 * leafScale * Math.sin(direction);
+          return (
+            <G key={j}>
+              <Path d={`M${x} ${y} L${baseX} ${baseY}`} fill="none" stroke={theme.line} strokeWidth="0.8" strokeLinecap="round" opacity={isDark ? 0.23 : 0.31} />
+              <MapleLeaf
+                x={leafX} y={leafY} scale={leafScale} rotation={rotation}
+                color={[theme.primary, theme.secondary, theme.accent][j % 3]}
+                detailColor={theme.line} opacity={isDark ? 0.32 : 0.42}
+              />
+            </G>
+          );
+        })}
+      </G>
+    ))}
+    {/* 枝から離れた中段の2枚は、舞い落ちる葉。 */}
+    <MapleLeaf x={28} y={319} scale={0.22} rotation={-29} color={theme.secondary} detailColor={theme.line} opacity={isDark ? 0.1 : 0.15} />
+    <MapleLeaf x={362} y={407} scale={0.2} rotation={34} color={theme.primary} detailColor={theme.line} opacity={isDark ? 0.09 : 0.14} />
+  </>
+);
 
 const AutumnMotif: React.FC<{ theme: SeasonTheme; isDark: boolean }> = ({ theme, isDark }) => {
   const leafOpacity = isDark ? 0.23 : 0.31;
@@ -413,28 +597,161 @@ const WinterMotif: React.FC<{ theme: SeasonTheme; isDark: boolean }> = ({ theme,
   );
 };
 
-const renderMotif = (season: Season, theme: SeasonTheme, isDark: boolean): React.ReactNode => {
-  switch (season) {
-    case 'spring':
-      return <SpringMotif theme={theme} isDark={isDark} />;
-    case 'summer':
-      return <SummerMotif theme={theme} isDark={isDark} />;
-    case 'autumn':
-      return <AutumnMotif theme={theme} isDark={isDark} />;
-    case 'winter':
-      return <WinterMotif theme={theme} isDark={isDark} />;
+interface MonthlyMotifProps { theme: SeasonTheme; isDark: boolean }
+
+/** 冬の枝先に、丸いつぼみと少数の梅の花。 */
+const PlumMotif: React.FC<MonthlyMotifProps> = ({ theme, isDark }) => (
+  <>
+    <G fill="none" stroke={theme.line} strokeWidth="1.1" strokeLinecap="round" opacity={isDark ? 0.17 : 0.22}>
+      <Path d="M-20 83 Q54 106 126 184 M410 83 Q336 106 264 184 M-20 860 Q48 742 127 680 M410 860 Q342 742 263 680" />
+      <Path d="M48 123 L55 93 M342 123 L335 93 M47 765 L26 738 M343 765 L364 738" />
+    </G>
+    {[[28,108],[73,139],[109,167],[362,108],[317,139],[281,167],[29,795],[72,735],[111,694],[361,795],[318,735],[279,694]].map(([x,y], i) => (
+      <G key={i} transform={`translate(${x} ${y})`} opacity={isDark ? 0.26 : 0.34}>
+        {i % 3 === 1 ? <>
+          {[0,72,144,216,288].map(angle => <Circle key={angle} cx="0" cy="-4.8" r="4" fill={theme.primary} transform={`rotate(${angle})`} />)}
+          <Circle cx="0" cy="0" r="2" fill={theme.glow} />
+        </> : <>
+          <Path d="M-2 4 L0 7 L2 4" fill="none" stroke={theme.line} strokeWidth="1" />
+          <Circle cx="0" cy="0" r={i % 2 ? 3.8 : 4.8} fill={theme.secondary} />
+        </>}
+      </G>
+    ))}
+  </>
+);
+
+const HydrangeaMotif: React.FC<MonthlyMotifProps> = ({ theme, isDark }) => (
+  <>
+    {[[32,125],[356,140],[40,762],[349,782]].map(([x,y], i) => (
+      <G key={i} transform={`translate(${x} ${y})`}>
+        <BotanicalLeaf x={0} y={22} scale={0.9} rotation={i % 2 ? -145 : -10} color={theme.accent} veinColor={theme.line} opacity={isDark ? 0.19 : 0.26} />
+        <G opacity={isDark ? 0.25 : 0.32}>
+          {[[0,0],[-12,-7],[11,-9],[-14,8],[0,15],[14,6],[0,-18]].map(([cx,cy], j) => (
+            <G key={j} transform={`translate(${cx} ${cy})`} fill={j % 2 ? theme.primary : theme.secondary}>
+              {[0,90,180,270].map(angle => <Path key={angle} d="M0 0 C-9 -2 -7 -10 -2 -7 C2 -7 4 -3 0 0 Z" transform={`rotate(${angle})`} />)}
+              <Circle cx="0" cy="0" r="1.3" fill={theme.glow} />
+            </G>
+          ))}
+        </G>
+      </G>
+    ))}
+    <G fill="none" stroke={theme.line} strokeWidth="1" strokeLinecap="round" opacity={isDark ? 0.12 : 0.18}>
+      <Path d="M20 304 L17 316 M369 358 L366 370 M31 489 L28 501 M359 590 L356 602 M69 190 L66 202 M325 220 L322 232" />
+    </G>
+  </>
+);
+
+const WaterMotif: React.FC<MonthlyMotifProps> = ({ theme, isDark }) => (
+  <>
+    {[[18,128,1],[369,167,0.8],[23,732,0.9],[368,801,1.1]].map(([x,y,scale], i) => (
+      <G key={i} transform={`translate(${x} ${y}) scale(${scale})`} fill="none" stroke={theme.line} strokeWidth="1.2" opacity={isDark ? 0.23 : 0.3}>
+        <Path d="M-28 0 C-28 -10 28 -10 28 0 C28 10 -28 10 -28 0 M-48 0 C-48 -18 48 -18 48 0 C48 18 -48 18 -48 0 M-68 0 C-68 -26 68 -26 68 0 C68 26 -68 26 -68 0" />
+      </G>
+    ))}
+    <G fill={theme.primary} opacity={isDark ? 0.11 : 0.17}>
+      <Circle cx="24" cy="340" r="3" /><Circle cx="365" cy="450" r="2" /><Circle cx="32" cy="565" r="2.5" />
+    </G>
+  </>
+);
+
+// 二次ベジェの終点と制御点を共有し、穂の軸を茎の接線方向にそろえる。
+const GRASS_STEMS = [
+  { startX: 0, startY: 0, controlX: -8, controlY: -82, tipX: 34, tipY: -135 },
+  { startX: 12, startY: 5, controlX: 15, controlY: -62, tipX: 61, tipY: -98 },
+  { startX: -5, startY: -2, controlX: -19, controlY: -68, tipX: 8, tipY: -108 },
+];
+
+const GrassMotif: React.FC<MonthlyMotifProps> = ({ theme, isDark }) => (
+  <>
+    {/* 左右反転せず、どの株も左から右への風に沿わせる。位置と大きさは少しずらす。 */}
+    {[[0,220,0.9], [285,235,0.85], [1,856,1.05], [276,861,1]].map(([x,y,scale], i) => (
+      <G key={i} transform={`translate(${x} ${y}) scale(${scale})`}>
+        <Path d="M8 -20 Q25 -57 62 -49" fill="none" stroke={theme.line} strokeWidth="1" strokeLinecap="round" opacity={isDark ? 0.2 : 0.27} />
+        {GRASS_STEMS.map(({ startX, startY, controlX, controlY, tipX, tipY }, j) => {
+          const angle = Math.atan2(tipX - controlX, controlY - tipY) * 180 / Math.PI;
+          return (
+            <G key={j}>
+              <Path
+                d={`M${startX} ${startY} Q${controlX} ${controlY} ${tipX} ${tipY}`}
+                fill="none" stroke={theme.line} strokeWidth="1" strokeLinecap="round" opacity={isDark ? 0.2 : 0.27}
+              />
+              <G transform={`translate(${tipX} ${tipY}) rotate(${angle})`} fill="none" stroke={j % 2 ? theme.secondary : theme.primary} strokeLinecap="round" opacity={isDark ? 0.29 : 0.36}>
+                {/* 茎から滑らかに続く軸を風下へ曲げ、穂の細枝も非対称に流す。 */}
+                <Path d="M0 0 C0 -16 9 -30 25 -32" strokeWidth="0.9" />
+                <Path
+                  d="M0 -3 Q-8 -18 7 -29 M1 -8 Q-4 -24 14 -33 M3 -13 Q1 -30 22 -35 M6 -18 Q9 -34 30 -34 M0 -4 Q10 -7 21 -19 M2 -10 Q15 -12 29 -24 M5 -16 Q20 -18 34 -28 M10 -23 Q26 -24 37 -31"
+                  strokeWidth="0.75"
+                />
+              </G>
+            </G>
+          );
+        })}
+      </G>
+    ))}
+  </>
+);
+
+const FrostMotif: React.FC<MonthlyMotifProps> = ({ theme, isDark }) => (
+  <>
+    <G fill="none" stroke={theme.line} strokeWidth="1" strokeLinecap="round" opacity={isDark ? 0.18 : 0.24}>
+      <Path d="M-12 87 L96 170 M15 108 L17 78 M39 126 L69 126 M61 144 L63 115 M402 87 L294 170 M375 108 L373 78 M351 126 L321 126 M329 144 L327 115 M-10 850 L102 703 M24 805 L17 773 M45 777 L77 766 M68 747 L64 715 M400 850 L288 703 M366 805 L373 773 M345 777 L313 766 M322 747 L326 715" />
+    </G>
+    {[[32,140],[356,117],[81,176],[312,187],[25,335],[366,449],[30,578],[355,622],[49,772],[342,799],[97,704],[294,718]].map(([x,y], i) => (
+      <G key={i} transform={`translate(${x} ${y}) scale(${i % 3 === 0 ? 1 : 0.6})`} opacity={isDark ? 0.25 : 0.32}>
+        <Path d="M0 -8 Q1 -1 6 0 Q1 1 0 8 Q-1 1 -6 0 Q-1 -1 0 -8 Z" fill={theme.accent} />
+        <Circle cx="11" cy="-10" r="1.5" fill={theme.secondary} />
+      </G>
+    ))}
+  </>
+);
+
+const renderMotif = (month: Month, theme: SeasonTheme, isDark: boolean): React.ReactNode => {
+  switch (month) {
+    case 1: return <WinterMotif theme={theme} isDark={isDark} />;
+    case 2: return <PlumMotif theme={theme} isDark={isDark} />;
+    case 3: return <SpringFoliageMotif theme={theme} isDark={isDark} budding />;
+    case 4: return <SpringMotif theme={theme} isDark={isDark} />;
+    case 5: return <SpringFoliageMotif theme={theme} isDark={isDark} budding={false} />;
+    case 6: return <HydrangeaMotif theme={theme} isDark={isDark} />;
+    case 7: return <WaterMotif theme={theme} isDark={isDark} />;
+    case 8: return <SummerMotif theme={theme} isDark={isDark} />;
+    case 9: return <GrassMotif theme={theme} isDark={isDark} />;
+    case 10: return <EarlyAutumnMotif theme={theme} isDark={isDark} />;
+    case 11: return <AutumnMotif theme={theme} isDark={isDark} />;
+    case 12: return <FrostMotif theme={theme} isDark={isDark} />;
   }
 };
 
 /**
  * ホーム画面に季節の気配を添える背景。
- * 端末上の基準日に合わせ、春夏秋冬を3か月単位で自動切り替えする。
+ * 端末上の基準日に合わせて自動切り替えする。1〜12月の月別背景。
  */
 const SeasonalBackdrop: React.FC<SeasonalBackdropProps> = ({ date, isDark }) => {
-  const season = getSeason(date);
-  if (season === null) return null;
+  const [size, setSize] = useState({ width: 390, height: 844 });
+  const id = useId().replace(/:/g, '');
+  const onLayout = ({ nativeEvent: { layout } }: LayoutChangeEvent) => {
+    if (layout.width <= 0 || layout.height <= 0) return;
+    setSize(previous => previous.width === layout.width && previous.height === layout.height
+      ? previous : { width: layout.width, height: layout.height });
+  };
+  // 葉の縦横比を保ち、短い画面でも上下の装飾が重ならない倍率にする。
+  const scale = Math.min(size.width / 390, size.height / 534);
+  const width = size.width / scale;
+  const height = size.height / scale;
+  const month = getBackdropMonth(date);
+  if (month === null) return null;
 
-  const theme = getSeasonTheme(season, isDark);
+  const theme = getBackdropTheme(date, isDark);
+  if (theme === null) return null;
+
+  const renderArtworkEdges = () => (
+    <>
+      <G clipPath={`url(#${id}-left)`}><Use href={`#${id}-art`} /></G>
+      <G transform={`translate(${width - 390} 0)`}>
+        <G clipPath={`url(#${id}-right)`}><Use href={`#${id}-art`} /></G>
+      </G>
+    </>
+  );
 
   return (
     <View
@@ -443,6 +760,7 @@ const SeasonalBackdrop: React.FC<SeasonalBackdropProps> = ({ date, isDark }) => 
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={styles.container}
+      onLayout={onLayout}
     >
       <LinearGradient
         colors={theme.gradient}
@@ -455,11 +773,31 @@ const SeasonalBackdrop: React.FC<SeasonalBackdropProps> = ({ date, isDark }) => 
       <Svg
         width="100%"
         height="100%"
-        viewBox="0 0 390 844"
-        preserveAspectRatio="xMidYMid slice"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid meet"
         style={StyleSheet.absoluteFill}
       >
-        {renderMotif(season, theme, isDark)}
+        <Defs>
+          <G id={`${id}-art`}>{renderMotif(month, theme, isDark)}</G>
+          <ClipPath id={`${id}-left`}><Rect x="0" y="0" width="195" height="844" /></ClipPath>
+          <ClipPath id={`${id}-right`}><Rect x="195" y="0" width="195" height="844" /></ClipPath>
+          <ClipPath id={`${id}-top`}><Rect x="0" y="0" width={width} height="250" /></ClipPath>
+          <ClipPath id={`${id}-middle`}><Rect x="0" y="250" width={width} height="390" /></ClipPath>
+          <ClipPath id={`${id}-bottom`}><Rect x="0" y="640" width={width} height="204" /></ClipPath>
+          <ClipPath id={`${id}-middle-window`}><Rect x="0" y="250" width={width} height={height - 454} /></ClipPath>
+        </Defs>
+        {/* 上下は表示領域の端に固定し、中段の控えめな装飾だけを中央に追従させる。 */}
+        <G>
+          <G clipPath={`url(#${id}-top)`}>{renderArtworkEdges()}</G>
+          <G clipPath={`url(#${id}-middle-window)`}>
+            <G transform={`translate(0 ${(height - 844) / 2})`}>
+              <G clipPath={`url(#${id}-middle)`}>{renderArtworkEdges()}</G>
+            </G>
+          </G>
+          <G transform={`translate(0 ${height - 844})`}>
+            <G clipPath={`url(#${id}-bottom)`}>{renderArtworkEdges()}</G>
+          </G>
+        </G>
       </Svg>
     </View>
   );

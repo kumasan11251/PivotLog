@@ -19,6 +19,7 @@ import YearMonthPickerModal from './diary/YearMonthPickerModal';
 import HabitCalendar, { type HabitCalendarHandle } from './habit/HabitCalendar';
 import HabitList, { type HabitListHandle } from './habit/HabitList';
 import { useDailyHabits } from '../hooks/useDailyHabits';
+import { useHorizontalSwipe } from '../hooks/useHorizontalSwipe';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import { addDaysToDateString, formatJapaneseMonthDay, parseLocalDateString } from '../utils/dateUtils';
 import type { HomeScreenNavigationProp } from '../types/navigation';
@@ -55,8 +56,8 @@ const HabitContent: React.FC<HabitContentProps> = ({ isActive }) => {
   const scrollToRowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reduceMotion = useReduceMotion();
   const [isYearMonthPickerVisible, setYearMonthPickerVisible] = useState(false);
-  // カレンダーを横スワイプしている間は縦スクロールを止める（記録一覧と同じ）
-  const [isCalendarSwiping, setIsCalendarSwiping] = useState(false);
+  // カレンダーや習慣カードを横スワイプしている間は縦スクロールを止める（記録一覧と同じ）
+  const [isHorizontalSwiping, setIsHorizontalSwiping] = useState(false);
 
   // 全項目完了時の演出: ヒント文がふわっと入れ替わり、カウント表示が少し弾む
   const hintAnim = useMemo(() => new Animated.Value(1), []);
@@ -108,6 +109,8 @@ const HabitContent: React.FC<HabitContentProps> = ({ isActive }) => {
     suggestions,
     selectDate,
     goToToday,
+    goToPreviousDay,
+    goToNextDay,
     goToPreviousWeek,
     goToNextWeek,
     goToPreviousMonth,
@@ -188,6 +191,15 @@ const HabitContent: React.FC<HabitContentProps> = ({ isActive }) => {
     commitPendingInput();
     selectDate(date);
   };
+
+  // 習慣カードの左右スワイプで前後の日へ（左＝翌日、右＝前日。カレンダーと同じ約束）
+  // 入力中は書きかけの行き先が曖昧になるので受け付けない
+  const cardSwipe = useHorizontalSwipe({
+    onPrevious: withCommit(goToPreviousDay),
+    onNext: withCommit(goToNextDay),
+    onSwipeActiveChange: setIsHorizontalSwiping,
+    canStart: () => focusedRowRef.current === null,
+  });
 
   // 週⇄月の切り替え（一覧側がなめらかに押し下がる/戻るようにレイアウトをアニメーション）
   const handleChangeCalendarMode = (mode: HabitCalendarMode) => {
@@ -325,7 +337,7 @@ const HabitContent: React.FC<HabitContentProps> = ({ isActive }) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        scrollEnabled={!isCalendarSwiping}
+        scrollEnabled={!isHorizontalSwiping}
         automaticallyAdjustKeyboardInsets
       >
         <View ref={scrollContentRef}>
@@ -342,10 +354,13 @@ const HabitContent: React.FC<HabitContentProps> = ({ isActive }) => {
             onPreviousMonth={withCommit(goToPreviousMonth)}
             onNextMonth={withCommit(goToNextMonth)}
             onGoToToday={withCommit(goToToday)}
-            onSwipeActiveChange={setIsCalendarSwiping}
+            onSwipeActiveChange={setIsHorizontalSwiping}
           />
 
-          <View style={[styles.listSection, { borderTopColor: themeColors.border }]}>
+          <Animated.View
+            style={[styles.listSection, { borderTopColor: themeColors.border }, cardSwipe.animatedStyle]}
+            {...cardSwipe.panHandlers}
+          >
             <HabitList
               ref={dailyListRef}
               header={listHeader}
@@ -366,7 +381,7 @@ const HabitContent: React.FC<HabitContentProps> = ({ isActive }) => {
               onInputFocus={handleInputFocus}
               onInputBlur={handleInputBlur}
             />
-          </View>
+          </Animated.View>
         </View>
       </ScrollView>
 
@@ -409,13 +424,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     flexShrink: 1,
-    fontSize: fonts.size.sectionTitle,
+    fontSize: fonts.size.body,
     fontFamily: fonts.family.bold,
     ...textBase,
   },
   countLabel: {
     flexShrink: 0,
-    fontSize: fonts.size.label,
+    fontSize: fonts.size.labelSmall,
     fontFamily: fonts.family.bold,
     ...textBase,
   },

@@ -10,7 +10,14 @@ import type { MonthlyThemeType } from '../../types/monthlyInsight';
 /**
  * サポートするAIモデルの型
  */
-export type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
+export type GeminiModel =
+  | 'gemini-2.5-flash'
+  | 'gemini-2.5-pro'
+  | 'gemini-3-flash-preview'
+  | 'gemini-3.5-flash'
+  | 'gemini-3.6-flash'
+  | 'gemini-3.7-flash'
+  | 'gemini-3.8-flash';
 
 /**
  * 直近の日記エントリ（リクエスト用）

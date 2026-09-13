@@ -67,6 +67,7 @@ const DIARY_VIEW_MODE_KEY = '@pivot_log_diary_view_mode';
 const SKIPPED_UPDATE_VERSION_KEY = '@pivot_log_skipped_update_version';
 const REVIEW_PROMPT_HISTORY_KEY = '@pivot_log_review_prompt_history';
 const PERSPECTIVE_HISTORY_KEY = '@pivot_log_perspective_history';
+const LIFE_MILESTONE_SEEN_KEY = '@pivot_log_life_milestone_seen';
 
 export interface PerspectiveHistoryEntry {
   date: string;
@@ -886,6 +887,33 @@ export const savePerspectiveHistoryEntry = async (
     await AsyncStorage.setItem(getPerspectiveHistoryKey(), JSON.stringify(next));
   } catch (error) {
     console.error('今日の視点の表示履歴の保存に失敗しました:', error);
+  }
+};
+
+// =============== 人生の節目カードの表示履歴 ===============
+// 初回表示の演出（ハプティクス・カウントアップ）を1日1回にするための端末単位の記録。
+// 保存するのは「日付:節目キー」の1文字列のみで、アカウントや Firestore とは同期しない。
+
+/**
+ * 最後に演出付きで表示した節目カードのキー（"YYYY-MM-DD:kind:value"）を読み込む
+ */
+export const loadLifeMilestoneSeen = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(LIFE_MILESTONE_SEEN_KEY);
+  } catch (error) {
+    console.error('節目カードの表示履歴の読み込みに失敗しました:', error);
+    return null;
+  }
+};
+
+/**
+ * 演出付きで表示した節目カードのキーを保存する
+ */
+export const saveLifeMilestoneSeen = async (seenKey: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(LIFE_MILESTONE_SEEN_KEY, seenKey);
+  } catch (error) {
+    console.error('節目カードの表示履歴の保存に失敗しました:', error);
   }
 };
 

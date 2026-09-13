@@ -1,7 +1,6 @@
-/* eslint-disable react-hooks/refs */
-import React, { useMemo, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, PanResponder } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import React, { useMemo, forwardRef, useImperativeHandle } from 'react';
+import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
+import { useHorizontalSwipe } from '../../hooks/useHorizontalSwipe';
 import { parseLocalDateString, getMonthGridWeeks } from '../../utils/dateUtils';
 import type { HabitSummaryByDate } from '../../hooks/useDailyHabits';
 import type { HabitCalendarMode } from '../../types/habit';
@@ -11,12 +10,6 @@ import { useTheme } from '../../contexts/ThemeContext';
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 const SUNDAY_COLOR = '#E57373';
 const SATURDAY_COLOR = '#64B5F6';
-
-// 横スワイプによる週/月移動の判定・演出パラメータ
-const SWIPE_TRIGGER_DISTANCE = 50;
-const SWIPE_TRIGGER_VELOCITY = 0.3;
-const SLIDE_DISTANCE = 60;
-const DRAG_DAMPING = 0.4;
 
 /** ヘッダー下バーの矢印から、スワイプと同じ演出で期間を移動させるためのハンドル */
 export interface HabitCalendarHandle {
@@ -64,100 +57,21 @@ const HabitCalendar = forwardRef<HabitCalendarHandle, HabitCalendarProps>(
     const isMonthMode = mode === 'month';
     const isViewingToday = selectedDate === today;
 
-    const swipeAnim = useMemo(() => new Animated.Value(0), []);
-    const isTransitioningRef = useRef(false);
-    // PanResponder コールバックから最新のpropsを参照するためのref
-    const onPreviousRef = useRef(isMonthMode ? onPreviousMonth : onPreviousWeek);
-    const onNextRef = useRef(isMonthMode ? onNextMonth : onNextWeek);
-    const onSwipeActiveChangeRef = useRef(onSwipeActiveChange);
-    useEffect(() => {
-      onPreviousRef.current = isMonthMode ? onPreviousMonth : onPreviousWeek;
-      onNextRef.current = isMonthMode ? onNextMonth : onNextWeek;
-      onSwipeActiveChangeRef.current = onSwipeActiveChange;
-    }, [isMonthMode, onPreviousWeek, onNextWeek, onPreviousMonth, onNextMonth, onSwipeActiveChange]);
-
-    // アンマウント時に親ScrollViewのスクロールを必ず戻す
-    useEffect(
-      () => () => {
-        onSwipeActiveChangeRef.current?.(false);
-      },
-      []
-    );
-
-    // スライドアウト → 期間変更 → 反対側からスライドイン
-    const runTransition = useCallback(
-      (direction: 'previous' | 'next') => {
-        if (isTransitioningRef.current) return;
-        isTransitioningRef.current = true;
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        const outValue = direction === 'next' ? -SLIDE_DISTANCE : SLIDE_DISTANCE;
-        Animated.timing(swipeAnim, { toValue: outValue, duration: 100, useNativeDriver: true }).start(() => {
-          if (direction === 'next') {
-            onNextRef.current();
-          } else {
-            onPreviousRef.current();
-          }
-          swipeAnim.setValue(-outValue);
-          Animated.timing(swipeAnim, { toValue: 0, duration: 130, useNativeDriver: true }).start(() => {
-            isTransitioningRef.current = false;
-          });
-        });
-      },
-      [swipeAnim]
-    );
+    // 横スワイプで前後の週/月へ（習慣カードの日送りと同じ演出・同じ方向の約束）
+    const swipe = useHorizontalSwipe({
+      onPrevious: isMonthMode ? onPreviousMonth : onPreviousWeek,
+      onNext: isMonthMode ? onNextMonth : onNextWeek,
+      onSwipeActiveChange,
+    });
 
     useImperativeHandle(
       ref,
       () => ({
-        goPrevious: () => runTransition('previous'),
-        goNext: () => runTransition('next'),
+        goPrevious: swipe.goPrevious,
+        goNext: swipe.goNext,
       }),
-      [runTransition]
+      [swipe.goPrevious, swipe.goNext]
     );
-
-    const resetSwipePosition = useCallback(() => {
-      Animated.spring(swipeAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 200 }).start();
-    }, [swipeAnim]);
-
-    const panResponder = useMemo(
-      () =>
-        PanResponder.create({
-          onStartShouldSetPanResponder: () => false,
-          onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-            !isTransitioningRef.current && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10,
-          onMoveShouldSetPanResponderCapture: (_, { dx, dy }) =>
-            !isTransitioningRef.current && Math.abs(dx) > Math.abs(dy) * 1.5 && Math.abs(dx) > 15,
-          onPanResponderTerminationRequest: () => false,
-          onPanResponderGrant: () => {
-            // 横スワイプ中は親ScrollViewの縦スクロールを止めて上下の揺れを防ぐ
-            onSwipeActiveChangeRef.current?.(true);
-          },
-          onPanResponderMove: (_, { dx }) => {
-            swipeAnim.setValue(dx * DRAG_DAMPING);
-          },
-          onPanResponderRelease: (_, { dx, vx }) => {
-            onSwipeActiveChangeRef.current?.(false);
-            if (dx < 0 && (dx < -SWIPE_TRIGGER_DISTANCE || vx < -SWIPE_TRIGGER_VELOCITY)) {
-              runTransition('next');
-            } else if (dx > 0 && (dx > SWIPE_TRIGGER_DISTANCE || vx > SWIPE_TRIGGER_VELOCITY)) {
-              runTransition('previous');
-            } else {
-              resetSwipePosition();
-            }
-          },
-          onPanResponderTerminate: () => {
-            onSwipeActiveChangeRef.current?.(false);
-            resetSwipePosition();
-          },
-        }),
-      [swipeAnim, runTransition, resetSwipePosition]
-    );
-
-    const swipeOpacity = swipeAnim.interpolate({
-      inputRange: [-SLIDE_DISTANCE, 0, SLIDE_DISTANCE],
-      outputRange: [0.3, 1, 0.3],
-      extrapolate: 'clamp',
-    });
 
     const monthWeeks = useMemo(() => (isMonthMode ? getMonthGridWeeks(selectedDate) : []), [isMonthMode, selectedDate]);
 
@@ -270,10 +184,7 @@ const HabitCalendar = forwardRef<HabitCalendarHandle, HabitCalendarProps>(
         )}
 
         {/* 日付マス（横スワイプで前後の週/月へ） */}
-        <Animated.View
-          style={{ transform: [{ translateX: swipeAnim }], opacity: swipeOpacity }}
-          {...panResponder.panHandlers}
-        >
+        <Animated.View style={swipe.animatedStyle} {...swipe.panHandlers}>
           {isMonthMode ? (
             monthWeeks.map((week, weekIndex) => (
               <View key={weekIndex} style={styles.daysRow}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,7 @@ import ScreenHeader from './common/ScreenHeader';
 import CountdownSection from './home/CountdownSection';
 import ProgressSection from './home/ProgressSection';
 import PerspectiveSection from './home/PerspectiveSection';
+import LifeMilestoneCard from './home/LifeMilestoneCard';
 import SeasonalBackdrop from './home/SeasonalBackdrop';
 import NightMoon from './home/NightMoon';
 import { useTimeCalculation } from '../hooks/useTimeCalculation';
@@ -23,6 +24,7 @@ import { deriveReviewPromptTrigger } from '../utils/reviewPrompt';
 import { loadUserSettings } from '../utils/storage';
 import { getTodayDateString, getStreakInfo } from '../utils/homeHelpers';
 import { getEffectiveToday } from '../utils/dateUtils';
+import { getLifeMilestoneForDate } from '../utils/lifeMilestones';
 
 // アイコンコンポーネント
 const EditIcon: React.FC<{ size?: number; color?: string }> = ({
@@ -178,6 +180,12 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
   const todayDate = getTodayDateString();
   const effectiveToday = getEffectiveToday(dayStartHour);
 
+  // 人生の節目（生後○日・残り○日・進捗○%など）。該当日は視点メッセージ枠を節目カードに差し替える
+  const lifeMilestone = useMemo(
+    () => (birthday && targetLifespan > 0 ? getLifeMilestoneForDate(birthday, targetLifespan, effectiveToday) : null),
+    [birthday, targetLifespan, effectiveToday],
+  );
+
   // ストリーク情報（連続記録があればストリーク、なければ総記録日数を表示）
   const streakInfo = streakDays > 0
     ? getStreakInfo(streakDays)
@@ -187,10 +195,6 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {seasonalBackdropEnabled && <SeasonalBackdrop date={effectiveToday} isDark={isDark} />}
-      {/* 夜間帯のみ月相を表示（背景装飾をオフにしている人には出さない） */}
-      {seasonalBackdropEnabled && <NightMoon isDark={isDark} />}
-
       <ScreenHeader
         title="ホーム"
         rightAction={{
@@ -199,89 +203,99 @@ const HomeContent: React.FC<HomeContentProps> = ({ isActive = true }) => {
         }}
       />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        bounces={true}
-      >
-        {/* 日付 */}
-        <View style={styles.dateContainer}>
-          <Text style={[styles.dateText, { color: themeColors.text.secondary }]}>{todayDate}</Text>
-        </View>
+      {/* MainTabScreen がタブバーの高さを除外済み。ヘッダー下の領域だけに背景を置く。 */}
+      <View style={styles.body}>
+        {seasonalBackdropEnabled && <SeasonalBackdrop date={effectiveToday} isDark={isDark} />}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          {/* 日付 */}
+          <View style={styles.dateContainer}>
+            <Text style={[styles.dateText, { color: themeColors.text.secondary }]}>{todayDate}</Text>
+          </View>
 
-        {/* 上部セクション：残り時間カウントダウン */}
-        <View style={styles.sectionWrapper}>
-          <CountdownSection
-            timeLeft={timeLeft}
-            countdownMode={countdownMode}
-            onToggleMode={handleToggleCountdownMode}
-            contentOpacity={countdownFadeAnim}
-          />
-        </View>
+          {/* 上部セクション：残り時間カウントダウン */}
+          <View style={styles.sectionWrapper}>
+            <CountdownSection
+              timeLeft={timeLeft}
+              countdownMode={countdownMode}
+              onToggleMode={handleToggleCountdownMode}
+              contentOpacity={countdownFadeAnim}
+            />
+          </View>
 
-        {/* 中央セクション：人生の進捗 */}
-        <View style={styles.sectionWrapper}>
-          <ProgressSection
-            lifeProgress={lifeProgress}
-            targetLifespan={targetLifespan}
-            currentAge={currentAge}
-            progressMode={progressMode}
-            animatedValues={animatedValues}
-            onToggleMode={handleToggleProgressMode}
-            contentOpacity={progressFadeAnim}
-          />
-        </View>
+          {/* 中央セクション：人生の進捗 */}
+          <View style={styles.sectionWrapper}>
+            <ProgressSection
+              lifeProgress={lifeProgress}
+              targetLifespan={targetLifespan}
+              currentAge={currentAge}
+              progressMode={progressMode}
+              animatedValues={animatedValues}
+              onToggleMode={handleToggleProgressMode}
+              contentOpacity={progressFadeAnim}
+            />
+          </View>
 
-        {/* 日替わり視点メッセージ */}
-        <View style={styles.sectionWrapper}>
-          <PerspectiveSection
-            remainingYears={timeLeft.totalYears}
-            remainingDays={timeLeft.totalDays}
-            remainingWeeks={timeLeft.totalWeeks}
-            currentAge={currentAge}
-            progressPercent={lifeProgress}
-            birthday={birthday ?? undefined}
-            streakDays={streakDays}
-            hasTodayEntry={hasTodayEntry}
-            date={effectiveToday}
-            isReady={isDayStartHourLoaded && birthday !== null && !isStreakLoading}
-          />
-        </View>
-
-        {/* 下部セクション：記録ボタンとストリーク */}
-        <View style={styles.bottomSection}>
-          {/* 連続記録日数（ストリーク）- 固定高さでガタつき防止 */}
-          <View style={styles.streakContainer}>
-            {!isStreakLoading && streakInfo && (
-              <>
-                <Text style={styles.streakEmoji}>{streakInfo.emoji}</Text>
-                <Text style={[styles.streakText, { color: themeColors.text.secondary }]}>{streakInfo.message}</Text>
-              </>
+          {/* 日替わり視点メッセージ（節目の日は節目カードに差し替え） */}
+          <View style={styles.sectionWrapper}>
+            {lifeMilestone ? (
+              <LifeMilestoneCard key={`${effectiveToday}:${lifeMilestone.key}`} milestone={lifeMilestone} date={effectiveToday} />
+            ) : (
+              <PerspectiveSection
+                remainingYears={timeLeft.totalYears}
+                remainingDays={timeLeft.totalDays}
+                remainingWeeks={timeLeft.totalWeeks}
+                currentAge={currentAge}
+                progressPercent={lifeProgress}
+                birthday={birthday ?? undefined}
+                streakDays={streakDays}
+                hasTodayEntry={hasTodayEntry}
+                date={effectiveToday}
+                isReady={isDayStartHourLoaded && birthday !== null && !isStreakLoading}
+              />
             )}
           </View>
 
-          {/* 記録ボタン（パルスアニメーション付き） */}
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <TouchableOpacity
-              style={[
-                styles.recordButton,
-                { backgroundColor: themeColors.primary },
-                hasTodayEntry && styles.recordButtonCompleted,
-              ]}
-              onPress={handleNavigateToDiaryEntry}
-              activeOpacity={0.8}
-            >
-              <View style={styles.recordButtonContent}>
-                {hasTodayEntry ? <CheckIcon color={themeColors.text.inverse} /> : <EditIcon color={themeColors.text.inverse} />}
-                <Text style={[styles.recordButtonText, { color: themeColors.text.inverse }]}>
-                  {hasTodayEntry ? '今日の記録を見る' : '今日を記録する'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
-      </ScrollView>
+          {/* 下部セクション：記録ボタンとストリーク */}
+          <View style={styles.bottomSection}>
+            {/* 連続記録日数（ストリーク）- 固定高さでガタつき防止 */}
+            <View style={styles.streakContainer}>
+              {!isStreakLoading && streakInfo && (
+                <>
+                  <Text style={styles.streakEmoji}>{streakInfo.emoji}</Text>
+                  <Text style={[styles.streakText, { color: themeColors.text.secondary }]}>{streakInfo.message}</Text>
+                </>
+              )}
+            </View>
+
+            {/* 記録ボタン（パルスアニメーション付き） */}
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <TouchableOpacity
+                style={[
+                  styles.recordButton,
+                  { backgroundColor: themeColors.primary },
+                  hasTodayEntry && styles.recordButtonCompleted,
+                ]}
+                onPress={handleNavigateToDiaryEntry}
+                activeOpacity={0.8}
+              >
+                <View style={styles.recordButtonContent}>
+                  {hasTodayEntry ? <CheckIcon color={themeColors.text.inverse} /> : <EditIcon color={themeColors.text.inverse} />}
+                  <Text style={[styles.recordButtonText, { color: themeColors.text.inverse }]}>
+                    {hasTodayEntry ? '今日の記録を見る' : '今日を記録する'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        </ScrollView>
+      </View>
+      {/* 夜間帯の月は既存の位置で、背景より手前に表示する。 */}
+      {seasonalBackdropEnabled && <NightMoon isDark={isDark} />}
     </View>
   );
 };
@@ -290,6 +304,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  body: {
+    flex: 1,
+    overflow: 'hidden',
   },
   scrollView: {
     flex: 1,

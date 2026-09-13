@@ -118,7 +118,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
     // 改行なし・1行のみ・20行超の場合は罫線なしで通常表示
     if (lines.length <= 1 || lines.length > 20) {
       return (
-        <Text style={[styles.letterBodyText, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.letterBodyText, { color: themeColors.text.primary }]}>
           {bodyText}
         </Text>
       );
@@ -135,7 +135,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           },
         ] as ViewStyle[]}
       >
-        <Text style={[styles.letterBodyText, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.letterBodyText, { color: themeColors.text.primary }]}>
           {line.trim()}
         </Text>
       </View>
@@ -147,7 +147,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
     const senderMatch = text.match(senderPattern);
     if (senderMatch) {
       return (
-        <Text style={[styles.letterSender, { color: themeColors.text.secondary }]}>
+        <Text selectable style={[styles.letterSender, { color: themeColors.text.secondary }]}>
           {senderMatch[1]}
         </Text>
       );
@@ -157,7 +157,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
     const lastLine = lines[lines.length - 1]?.trim() || '';
     if (fallbackSenderPattern.test(lastLine)) {
       return (
-        <Text style={[styles.letterSender, { color: themeColors.text.secondary }]}>
+        <Text selectable style={[styles.letterSender, { color: themeColors.text.secondary }]}>
           {lastLine.replace(/[。\s]+$/, '')}
         </Text>
       );
@@ -212,7 +212,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           </Text>
         </View>
         <View style={[styles.lifeContextContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-          <Text style={[styles.summaryText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.summaryText, { color: themeColors.text.primary }]}>
             {summaryText}
           </Text>
         </View>
@@ -275,18 +275,18 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
               <View style={styles.primaryValueRank}>
                 <Text style={[styles.rankNumber, { color: themeColors.primary }]}>1</Text>
               </View>
-              <Text style={[styles.primaryValueName, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.primaryValueName, { color: themeColors.text.primary }]}>
                 {insight.valueDiscovery.primaryValue.name}
               </Text>
             </View>
-            <Text style={[styles.primaryValueInsight, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.primaryValueInsight, { color: themeColors.text.primary }]}>
               {insight.valueDiscovery.primaryValue.insight}
             </Text>
             {insight.valueDiscovery.primaryValue.evidence.length > 0 && (
               <View style={styles.evidenceContainer}>
                 {insight.valueDiscovery.primaryValue.evidence.slice(0, 2).map((ev, idx) => (
                   <View key={idx} style={[styles.quoteContainer, quoteContainerStyle]}>
-                    <Text style={[styles.evidenceText, { color: themeColors.text.primary }]}>
+                    <Text selectable style={[styles.evidenceText, { color: themeColors.text.primary }]}>
                       「{ev}」
                     </Text>
                   </View>
@@ -304,11 +304,11 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
                     <View style={styles.secondaryValueRank}>
                       <Text style={[styles.smallRankNumber, { color: themeColors.text.secondary }]}>{idx + 2}</Text>
                     </View>
-                    <Text style={[styles.secondaryValueName, { color: themeColors.text.primary }]}>
+                    <Text selectable style={[styles.secondaryValueName, { color: themeColors.text.primary }]}>
                       {value.name}
                     </Text>
                   </View>
-                  <Text style={[styles.secondaryValueEvidence, { color: themeColors.text.primary }]}>
+                  <Text selectable style={[styles.secondaryValueEvidence, { color: themeColors.text.primary }]}>
                     {value.briefEvidence}
                   </Text>
                 </View>
@@ -320,7 +320,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           {insight.valueDiscovery.hiddenInsight && (
             <View style={[styles.hiddenInsightContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
               <Ionicons name="bulb" size={16} color="#F59E0B" />
-              <Text style={[styles.hiddenInsightText, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.hiddenInsightText, { color: themeColors.text.primary }]}>
                 {insight.valueDiscovery.hiddenInsight}
               </Text>
             </View>
@@ -390,7 +390,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           {insight.growth.improvements.map((item, index) => (
             <View key={index} style={styles.growthItem}>
               <Ionicons name="checkmark-circle" size={16} color={COLORS.improvement} style={styles.growthIcon} />
-              <Text style={[styles.growthText, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.growthText, { color: themeColors.text.primary }]}>
                 {item}
               </Text>
             </View>
@@ -405,7 +405,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           {insight.growth.challenges.map((item, index) => (
             <View key={index} style={styles.growthItem}>
               <Ionicons name="flag" size={16} color={COLORS.challenge} style={styles.growthIcon} />
-              <Text style={[styles.growthText, { color: themeColors.text.primary }]}>
+              <Text selectable style={[styles.growthText, { color: themeColors.text.primary }]}>
                 {item}
               </Text>
             </View>
@@ -418,7 +418,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
             <Text style={[styles.transformationLabel, { color: themeColors.text.secondary }]}>
               月初→月末の変化
             </Text>
-            <Text style={[styles.transformationText, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.transformationText, { color: themeColors.text.primary }]}>
               {insight.growth.transformation}
             </Text>
           </View>
@@ -434,7 +434,7 @@ export const MonthlyInsightCard: React.FC<MonthlyInsightCardProps> = ({
           </Text>
         </View>
         <View style={[styles.questionContainer, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-          <Text style={[styles.questionText, { color: themeColors.text.primary }]}>
+          <Text selectable style={[styles.questionText, { color: themeColors.text.primary }]}>
             {insight.question}
           </Text>
         </View>
@@ -533,12 +533,12 @@ const StorylinePhaseItem: React.FC<StorylinePhaseItemProps> = ({
             <Ionicons name={moodConfig.icon} size={12} color={moodConfig.color} />
           </View>
         </View>
-        <Text style={[styles.storylineSummary, { color: themeColors.text.primary }]}>
+        <Text selectable style={[styles.storylineSummary, { color: themeColors.text.primary }]}>
           {phase.summary}
         </Text>
         {phase.keyQuote && (
           <View style={[styles.quoteContainer, isDark ? styles.quoteContainerDark : styles.quoteContainerLight]}>
-            <Text style={[styles.storylineQuote, { color: themeColors.text.primary }]}>
+            <Text selectable style={[styles.storylineQuote, { color: themeColors.text.primary }]}>
               「{phase.keyQuote}」
             </Text>
           </View>
